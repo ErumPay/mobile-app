@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@tanstack/react-query": "^5.100.10",
+    "nativewind": "^4.2.3",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
