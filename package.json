@@ -1,10 +1,22 @@
 {
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
+    "@types/react": "~19.2.10",
     "expo": "^55.0.24",
     "nativewind": "^4.2.3",
-    "react": "^19.2.6",
-    "react-native": "^0.85.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.6",
+    "react-native-web": "^0.21.0",
+    "typescript": "~5.9.2",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

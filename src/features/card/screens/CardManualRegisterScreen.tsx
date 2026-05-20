@@ -5,13 +5,14 @@ import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 // 직접 입력 모드에서 실제 카드 정보 입력 폼을 보여주기 위해 사용합니다.
 import { CardRegisterForm } from '../components/CardRegisterForm';
+import { CardRegisterResult } from '../components/CardRegisterResult';
 // 카드등록 폼 값의 타입과 등록 완료 카드 타입을 지정해 TypeScript가 props와 상태를 검사하게 합니다.
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 // 입력값에서 숫자만 남겨 카드번호, CVC, 생년월일 길이를 검증하기 위해 사용합니다.
 import { onlyDigits } from '../types/cardFormat';
 
-// 카드등록 화면은 방식 선택 화면과 직접 입력 화면, 두 가지 모드로 동작합니다.
-type RegisterMode = 'select' | 'manual';
+// 카드등록 화면은 방식 선택, 직접 입력, 등록 결과 모드로 동작합니다.
+type RegisterMode = 'select' | 'manual' | 'success' | 'failure';
 
 interface CardManualRegisterScreenProps {
   onClose?: () => void;
@@ -87,7 +88,18 @@ export function CardManualRegisterScreen({
   };
 
   const handleSubmitManualCard = () => {
-    // TODO: 카드 등록 API 연동
+    setMode('success');
+    // 실패 화면 확인이 필요하면 아래 줄로 임시 전환할 수 있습니다.
+    // setMode('failure');
+  };
+
+  const handleGoCardManagement = () => {
+    // TODO: 카드 관리 화면으로 이동
+  };
+
+  const handleGoHome = () => {
+    // TODO: 홈 화면으로 이동
+    onClose?.();
   };
 
   // SafeAreaView는 휴대폰 상단 노치와 하단 영역을 피해 안전하게 화면을 배치합니다.
@@ -177,7 +189,7 @@ export function CardManualRegisterScreen({
                 </Text>
               </View>
             </View>
-          ) : (
+          ) : mode === 'manual' ? (
             <View>
               <Text className="mb-5 text-sm leading-5 text-zinc-500">
                 카드 정보를 직접 입력해 주세요.
@@ -189,6 +201,18 @@ export function CardManualRegisterScreen({
                 onSubmit={handleSubmitManualCard}
               />
             </View>
+          ) : mode === 'success' ? (
+            <CardRegisterResult
+              status="success"
+              onGoCardManagement={handleGoCardManagement}
+              onGoHome={handleGoHome}
+            />
+          ) : (
+            <CardRegisterResult
+              status="failure"
+              onRetry={() => setMode('manual')}
+              onGoHome={handleGoHome}
+            />
           )}
         </View>
       </ScrollView>
