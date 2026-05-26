@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 // 직접 입력 모드에서 실제 카드 정보 입력 폼을 보여주기 위해 사용합니다.
+import { CardOcrMock } from '../components/CardOcrMock';
 import { CardRegisterForm } from '../components/CardRegisterForm';
 import { CardRegisterResult } from '../components/CardRegisterResult';
 // 카드등록 폼 값의 타입과 등록 완료 카드 타입을 지정해 TypeScript가 props와 상태를 검사하게 합니다.
@@ -11,8 +12,8 @@ import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 // 입력값에서 숫자만 남겨 카드번호, CVC, 생년월일 길이를 검증하기 위해 사용합니다.
 import { onlyDigits } from '../types/cardFormat';
 
-// 카드등록 화면은 방식 선택, 직접 입력, 등록 결과 모드로 동작합니다.
-type RegisterMode = 'select' | 'manual' | 'success' | 'failure';
+// 카드등록 화면은 방식 선택, OCR mock, 직접 입력, 등록 결과 모드로 동작합니다.
+type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 
 interface CardManualRegisterScreenProps {
   onClose?: () => void;
@@ -68,7 +69,7 @@ export function CardManualRegisterScreen({
       return;
     }
 
-    setMode('manual');
+    setMode('ocr');
   };
 
   const handlePressManualRegister = () => {
@@ -201,6 +202,11 @@ export function CardManualRegisterScreen({
                 onSubmit={handleSubmitManualCard}
               />
             </View>
+          ) : mode === 'ocr' ? (
+            <CardOcrMock
+              onCapture={() => setMode('manual')}
+              onChangeManual={() => setMode('manual')}
+            />
           ) : mode === 'success' ? (
             <CardRegisterResult
               status="success"
