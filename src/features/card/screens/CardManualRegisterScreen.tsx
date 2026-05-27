@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useWindowDimensions } from 'react-native';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { CardMobileLayout } from '../components/CardMobileLayout';
 import { CardOcrMock } from '../components/CardOcrMock';
@@ -40,15 +42,25 @@ function isValidExpiry(expiry: string): boolean {
 }
 
 function ScreenHeader({ onClose }: { onClose?: () => void }) {
+  const { width } = useWindowDimensions();
+
   return (
-    <View className="h-[52px] w-full flex-row items-center justify-between border-b border-zinc-100 bg-white">
+    <View
+      style={{
+        marginHorizontal: -16,
+        marginTop: -24,
+        paddingHorizontal: 16,
+        width: width,
+      }}
+      className="flex-row items-center justify-between bg-white py-3 mb-2"
+    >
       <Text className="text-lg font-bold text-zinc-950">카드등록</Text>
       <Pressable
         accessibilityRole="button"
-        className="h-10 w-10 items-center justify-center"
+        className="h-8 w-8 items-center justify-center"
         onPress={onClose}
       >
-        <Text className="text-3xl font-light leading-10 text-zinc-950">×</Text>
+        <Text className="text-2xl font-light text-zinc-950">×</Text>
       </Pressable>
     </View>
   );
@@ -68,7 +80,6 @@ export function CardManualRegisterScreen({
       onOcrRegister();
       return;
     }
-
     setMode('ocr');
   };
 
@@ -161,6 +172,39 @@ export function CardManualRegisterScreen({
   );
 }
 
+function CameraIcon() {
+  return (
+    <Svg width={36} height={32} viewBox="0 0 36 32" fill="none">
+      {/* 카메라 본체 */}
+      <Rect x={1} y={8} width={34} height={23} rx={3} stroke="white" strokeWidth={2.5} />
+      {/* 렌즈 원 */}
+      <Circle cx={18} cy={20} r={7} stroke="white" strokeWidth={2.5} />
+      {/* 뷰파인더 돌출부 */}
+      <Path
+        d="M12 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"
+        stroke="white"
+        strokeWidth={2.5}
+      />
+      {/* 플래시 작은 사각형 */}
+      <Rect x={27} y={12} width={4} height={3} rx={1} fill="white" />
+    </Svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
+      <Path
+        d="M22 4l6 6L10 28H4v-6L22 4z"
+        stroke="white"
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+      />
+      <Path d="M19 7l6 6" stroke="white" strokeWidth={2.5} />
+    </Svg>
+  );
+}
+
 function RegisterMethodCard({
   tone,
   title,
@@ -179,39 +223,17 @@ function RegisterMethodCard({
   return (
     <Pressable
       accessibilityRole="button"
-      className={`h-[176px] w-full items-center justify-center rounded-xl border bg-white px-5 ${borderClassName}`}
+      className={`h-[160px] w-full items-center justify-center rounded-xl border bg-white px-5 ${borderClassName}`}
       onPress={onPress}
     >
       <View
-        className={`mb-5 h-16 w-16 items-center justify-center rounded-full ${iconClassName}`}
+        className={`mb-4 h-20 w-20 items-center justify-center rounded-full ${iconClassName}`}
       >
-        {isBlue ? (
-          <CameraMark />
-        ) : (
-          <Text
-            className="text-3xl text-white"
-            style={{ transform: [{ rotate: '45deg' }] }}
-          >
-            ✎
-          </Text>
-        )}
+        {isBlue ? <CameraIcon /> : <PencilIcon />}
       </View>
       <Text className="text-lg font-bold text-zinc-950">{title}</Text>
-      <Text className="mt-2 text-center text-sm text-zinc-500">
-        {description}
-      </Text>
+      <Text className="mt-1 text-center text-sm text-zinc-500">{description}</Text>
     </Pressable>
-  );
-}
-
-function CameraMark() {
-  return (
-    <View className="items-center justify-center">
-      <View className="absolute -top-2 h-2 w-5 rounded-sm bg-white" />
-      <View className="h-7 w-9 items-center justify-center rounded-sm border-[3px] border-white">
-        <View className="h-3 w-3 rounded-full bg-white" />
-      </View>
-    </View>
   );
 }
 
