@@ -1,6 +1,7 @@
 export * from './components/MypageDialogs';
 export * from './components/MypageLayout';
 export * from './screens/CardManagementScreen';
+export * from './screens/CardDetailScreen';
 export * from './screens/MypageHomeScreen';
 export * from './screens/PaymentDetailScreen';
 export * from './screens/PaymentHistoryScreen';

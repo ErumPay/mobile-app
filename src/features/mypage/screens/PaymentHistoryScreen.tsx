@@ -12,55 +12,13 @@ interface PaymentHistoryScreenProps {
 }
 
 const payments = [
-  {
-    method: '더치페이',
-    status: '결제완료',
-    title: 'Luxury Hotel Stay',
-    date: '2026.04.23',
-    amount: '34,000원',
-    tone: 'pink',
-  },
-  {
-    method: '원격결제',
-    status: '결제취소요청',
-    title: '코드보안 양성산',
-    date: '2026.04.18',
-    amount: '34,000원',
-    tone: 'purple',
-  },
-  {
-    method: '단일혜택',
-    status: '결제취소',
-    title: '서울순대국',
-    date: '2026.04.16',
-    amount: '8,000원',
-    tone: 'blue',
-  },
-  {
-    method: '단일실적',
-    status: '결제완료',
-    title: '스타벅스 코리아 양성점',
-    date: '2026.04.05',
-    amount: '18,300원',
-    tone: 'cyan',
-  },
-  {
-    method: '분할혜택',
-    status: '결제취소',
-    title: '유니클로 양동포점',
-    date: '2026.04.02',
-    amount: '52,900원',
-    tone: 'emerald',
-  },
-  {
-    method: '분할실적',
-    status: '결제완료',
-    title: '무인양품 첨단센타운',
-    date: '2026.04.01',
-    amount: '3,334,000원',
-    tone: 'lime',
-  },
-];
+  ['더치페이', '결제완료', 'Luxury Hotel Stay', '2026.04.23', '34,000원', 'pink'],
+  ['원격결제', '결제취소요청', '코드보안 양성산', '2026.04.18', '34,000원', 'purple'],
+  ['단일혜택', '결제취소', '서울순대국', '2026.04.16', '8,000원', 'blue'],
+  ['단일실적', '결제완료', '스타벅스 코리아 양성점', '2026.04.05', '18,300원', 'cyan'],
+  ['분할혜택', '결제취소', '유니클로 양동포점', '2026.04.02', '52,900원', 'emerald'],
+  ['분할실적', '결제완료', '무인양품 첨단센타운', '2026.04.01', '3,334,000원', 'lime'],
+] as const;
 
 export function PaymentHistoryScreen({
   isEmpty = false,
@@ -72,47 +30,55 @@ export function PaymentHistoryScreen({
 }: PaymentHistoryScreenProps) {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
-      <MypageFrame>
+      <MypageFrame backgroundClassName="bg-zinc-50">
         <MypageHeader title="결제내역" onBack={onBack} />
-        <View className="h-12 flex-row border-b border-zinc-100 bg-white">
-          <Tab label="전체" active />
-          <Tab label="결제완료" />
-          <Tab label="결제취소" />
+        <View className="h-12 w-full flex-row border-b border-zinc-100 bg-white">
+          <HistoryTab label="전체" active />
+          <HistoryTab label="결제완료" />
+          <HistoryTab label="결제취소" />
         </View>
 
         <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-4 pb-36 pt-4"
+          className="w-full flex-1"
           showsVerticalScrollIndicator={false}
         >
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-base font-bold text-slate-950">
-              총 {isEmpty ? 0 : 7}건
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              className="h-8 w-8 items-center justify-center rounded-full bg-blue-800"
-              onPress={onPressFilter}
-            >
-              <Text className="text-lg text-white">▽</Text>
-            </Pressable>
-          </View>
+          <View className="w-full px-4 pb-36 pt-4">
+            <View className="mb-4 w-full flex-row items-center justify-between">
+              <Text className="text-base font-bold text-slate-950">
+                총 {isEmpty ? 0 : 7}건
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                className="h-8 w-8 items-center justify-center rounded-full bg-blue-800"
+                onPress={onPressFilter}
+              >
+                <Text className="text-lg text-white">▽</Text>
+              </Pressable>
+            </View>
 
-          {isEmpty ? (
-            <View className="h-12 items-center justify-center rounded-xl bg-white shadow-sm">
-              <Text className="text-sm text-slate-500">결제 내역이 없습니다.</Text>
-            </View>
-          ) : (
-            <View className="gap-4">
-              {payments.map((payment) => (
-                <PaymentItem
-                  key={`${payment.title}-${payment.date}`}
-                  {...payment}
-                  onPress={onPressItem}
-                />
-              ))}
-            </View>
-          )}
+            {isEmpty ? (
+              <View className="h-12 w-full items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-sm">
+                <Text className="text-sm text-slate-500">
+                  결제 내역이 없습니다.
+                </Text>
+              </View>
+            ) : (
+              <View className="w-full gap-4">
+                {payments.map((payment) => (
+                  <PaymentItem
+                    key={`${payment[2]}-${payment[3]}`}
+                    method={payment[0]}
+                    status={payment[1]}
+                    title={payment[2]}
+                    date={payment[3]}
+                    amount={payment[4]}
+                    tone={payment[5]}
+                    onPress={onPressItem}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
 
         <BottomNav active="pay" />
@@ -122,12 +88,14 @@ export function PaymentHistoryScreen({
   );
 }
 
-function Tab({ label, active = false }: { label: string; active?: boolean }) {
+function HistoryTab({ label, active = false }: { label: string; active?: boolean }) {
   return (
-    <View className="flex-1 items-center justify-end">
-      <Text className={`pb-3 text-sm font-semibold ${active ? 'text-blue-800' : 'text-slate-500'}`}>
-        {label}
-      </Text>
+    <View className="flex-1">
+      <View className="h-[46px] items-center justify-center">
+        <Text className={`text-sm font-semibold ${active ? 'text-blue-800' : 'text-slate-500'}`}>
+          {label}
+        </Text>
+      </View>
       <View className={`h-0.5 w-full ${active ? 'bg-blue-800' : 'bg-transparent'}`} />
     </View>
   );
@@ -162,18 +130,18 @@ function PaymentItem({
   return (
     <Pressable
       accessibilityRole="button"
-      className="rounded-xl bg-white px-4 py-4 shadow-sm"
+      className="w-full rounded-2xl border border-zinc-100 bg-white px-4 py-4 shadow-sm"
       onPress={onPress}
     >
-      <View className="flex-row items-center">
+      <View className="w-full flex-row items-center">
         <Text className={`rounded-md px-2 py-1 text-xs font-bold ${toneClassName[tone]}`}>
           {method}
         </Text>
         <Text className="ml-3 text-xs text-slate-500">{status}</Text>
       </View>
       <Text className="mt-4 text-base font-bold text-slate-950">{title}</Text>
-      <View className="mt-4 h-px bg-zinc-100" />
-      <View className="mt-4 flex-row items-center justify-between">
+      <View className="mt-4 h-px w-full bg-zinc-100" />
+      <View className="mt-4 w-full flex-row items-center justify-between">
         <Text className="text-sm text-slate-500">{date}</Text>
         <Text className="text-xl font-bold text-slate-950">{amount}</Text>
       </View>
@@ -183,13 +151,13 @@ function PaymentItem({
 
 function FilterSheet({ onClose }: { onClose?: () => void }) {
   return (
-    <View className="absolute inset-0 justify-end bg-black/40">
-      <View className="rounded-t-2xl bg-white px-4 pb-6 pt-4">
-        <View className="mb-8 flex-row items-center justify-between">
+    <View className="absolute inset-0 justify-end bg-black/45">
+      <View className="w-full rounded-t-2xl bg-white px-4 pb-6 pt-4">
+        <View className="mb-8 w-full flex-row items-center justify-between">
           <Text className="text-lg font-bold text-slate-950">필터</Text>
           <Pressable
             accessibilityRole="button"
-            className="h-8 w-8 items-center justify-center"
+            className="h-8 w-8 items-end"
             onPress={onClose}
           >
             <Text className="text-3xl font-light leading-8 text-slate-950">×</Text>
@@ -197,34 +165,35 @@ function FilterSheet({ onClose }: { onClose?: () => void }) {
         </View>
 
         <Text className="mb-3 text-base font-bold text-slate-950">기간</Text>
-        <View className="mb-5 flex-row gap-2">
+        <View className="mb-5 w-full flex-row">
           <FilterChip label="이번주" active />
+          <View className="w-2" />
           <FilterChip label="이번달" />
+          <View className="w-2" />
           <FilterChip label="올해" />
         </View>
 
         <Text className="mb-3 text-base font-bold text-slate-950">기간 선택</Text>
-        <View className="mb-5 flex-row gap-2">
-          <View className="h-12 flex-1 justify-center rounded-lg border border-zinc-200 px-4">
-            <Text className="text-base text-slate-950">2026.04.30</Text>
-          </View>
-          <View className="h-12 flex-1 justify-center rounded-lg border border-zinc-200 px-4">
-            <Text className="text-base text-slate-950">2026.05.01</Text>
-          </View>
+        <View className="mb-5 w-full flex-row">
+          <DateBox label="2026.04.30" />
+          <View className="w-2" />
+          <DateBox label="2026.05.01" />
         </View>
 
         <Text className="mb-3 text-base font-bold text-slate-950">결제수단</Text>
-        <View className="mb-5 flex-row flex-wrap gap-2">
+        <View className="mb-5 w-full flex-row flex-wrap">
           {['더치페이', '원격결제', '단일혜택', '단일실적', '분할혜택', '분할실적'].map(
             (label) => (
-              <FilterChip key={label} label={label} active={label === '원격결제'} />
+              <View key={label} className="mb-2 w-1/3 px-1">
+                <FilterChip label={label} active={label === '원격결제'} />
+              </View>
             ),
           )}
         </View>
 
         <Pressable
           accessibilityRole="button"
-          className="h-12 w-full items-center justify-center rounded-lg bg-blue-800"
+          className="h-12 w-full items-center justify-center rounded-xl bg-blue-800"
         >
           <Text className="text-base font-bold text-white">결과보기</Text>
         </Pressable>
@@ -233,9 +202,17 @@ function FilterSheet({ onClose }: { onClose?: () => void }) {
   );
 }
 
+function DateBox({ label }: { label: string }) {
+  return (
+    <View className="h-12 flex-1 justify-center rounded-lg border border-zinc-200 bg-white px-4">
+      <Text className="text-base text-slate-950">{label}</Text>
+    </View>
+  );
+}
+
 function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
   return (
-    <View className={`h-10 min-w-[102px] flex-1 items-center justify-center rounded-full ${active ? 'bg-blue-800' : 'bg-zinc-100'}`}>
+    <View className={`h-10 w-full items-center justify-center rounded-full ${active ? 'bg-blue-800' : 'bg-zinc-100'}`}>
       <Text className={`text-sm font-bold ${active ? 'text-white' : 'text-slate-600'}`}>
         {label}
       </Text>
