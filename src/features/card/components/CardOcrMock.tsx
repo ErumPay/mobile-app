@@ -21,22 +21,22 @@ export function CardOcrMock({
 
   if (isScanned) {
     return (
-      <View className="flex-1 items-center justify-center bg-zinc-600 py-8">
+      <View className="w-full flex-1 items-center justify-center bg-zinc-600 py-8">
         <View className="w-full rounded-2xl bg-white px-6 py-7">
           <Text className="text-center text-lg font-bold text-slate-950">
             OCR로 확인된 카드입니다!
           </Text>
 
-          <View className="mt-7 gap-4 rounded-xl bg-zinc-50 px-4 py-4">
+          <View className="mt-7 w-full gap-4 rounded-xl bg-zinc-50 px-4 py-4">
             <OcrInfo label="카드사" value="신한카드" />
             <OcrInfo label="카드명" value="Deep Dream 카드" />
             <OcrInfo label="카드번호" value="1234-5556-2432-5678" />
           </View>
 
-          <View className="mt-6 gap-2">
+          <View className="mt-6 w-full gap-2">
             <Pressable
               accessibilityRole="button"
-              className="min-h-[45px] items-center justify-center rounded-lg bg-blue-700 px-4 py-3"
+              className="min-h-[45px] w-full items-center justify-center rounded-lg bg-blue-700 px-4 py-3"
               onPress={onRegister}
             >
               <Text className="text-base font-bold text-white">
