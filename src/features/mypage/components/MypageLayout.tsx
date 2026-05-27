@@ -30,7 +30,7 @@ export function MypageFrame({
 }: MypageFrameProps) {
   return (
     <View
-      className={`flex-1 w-[360px] max-w-full flex-col items-start self-center ${backgroundClassName}`}
+      className={`flex-1 w-[360px] w-full flex-col items-start self-center ${backgroundClassName}`}
     >
       {children}
     </View>
