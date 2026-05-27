@@ -1,7 +1,8 @@
+import './global.css';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import './global.css';
 import {
   CardDetailScreen,
   CardManagementScreen,
@@ -27,7 +28,10 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="MypageHome"
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: 'white' },
+        }}
       >
         <Stack.Screen name="MypageHome">
           {({ navigation }) => (
@@ -39,11 +43,13 @@ export default function App() {
             />
           )}
         </Stack.Screen>
+
         <Stack.Screen name="ProfileConfirm">
           {({ navigation }) => (
             <ProfileConfirmScreen onBack={navigation.goBack} />
           )}
         </Stack.Screen>
+
         <Stack.Screen name="CardManagement">
           {({ navigation }) => (
             <CardManagementScreen
@@ -52,6 +58,13 @@ export default function App() {
             />
           )}
         </Stack.Screen>
+
+        <Stack.Screen name="CardDetail">
+          {({ navigation }) => (
+            <CardDetailScreen onBack={navigation.goBack} />
+          )}
+        </Stack.Screen>
+
         <Stack.Screen name="PaymentHistory">
           {({ navigation }) => (
             <PaymentHistoryScreen
@@ -60,16 +73,12 @@ export default function App() {
             />
           )}
         </Stack.Screen>
+
         <Stack.Screen name="PaymentDetail">
           {({ navigation }) => (
             <PaymentDetailScreen onBack={navigation.goBack} />
           )}
         </Stack.Screen>
-        <Stack.Screen name="CardDetail">
-        {({ navigation }) => (
-          <CardDetailScreen onBack={navigation.goBack} />
-        )}
-      </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );

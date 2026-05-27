@@ -20,7 +20,7 @@ interface MypageHomeScreenProps {
 }
 
 export function MypageHomeScreen({
-  hasNotification = true,
+  hasNotification = false,
   onBack,
   onPressProfile,
   onPressHistory,
@@ -36,7 +36,7 @@ export function MypageHomeScreen({
           className="w-full flex-1 bg-white"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-[360px] self-center px-4 pb-36 pt-4">
+          <View className="w-full px-4 pb-44 pt-4">
             <CardSection>
               <View className="w-full flex-row items-center">
                 <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-emerald-700 shadow">
