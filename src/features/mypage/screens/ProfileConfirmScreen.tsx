@@ -11,7 +11,7 @@ export function ProfileConfirmScreen({ onBack }: ProfileConfirmScreenProps) {
     <SafeAreaView className="flex-1 bg-zinc-50">
       <MypageFrame backgroundClassName="bg-zinc-50">
         <MypageHeader title="내 정보 확인" onBack={onBack} />
-        <View className="w-full flex-1 px-4 pt-6">
+        <View className="w-full max-w-[360px] flex-1 self-center px-4 pb-44 pt-6">
           <ReadonlyField label="이름" value="조이훈" />
           <ReadonlyField label="생년월일" value="1993-03-15" />
           <ReadonlyField label="핸드폰번호" value="010-0000-0000" />

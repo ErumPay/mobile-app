@@ -62,7 +62,7 @@ export function CardManagementScreen({
           className="w-full flex-1"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full px-4 pb-36 pt-6">
+          <View className="w-full max-w-[360px] self-center px-4 pb-44 pt-4">
             {visibleCards.length === 0 ? (
               <View className="h-12 w-full items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-sm">
                 <Text className="text-sm text-slate-500">

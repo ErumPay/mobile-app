@@ -28,7 +28,7 @@ export function PaymentDetailScreen({
           className="w-full flex-1"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full px-4 pb-36 pt-4">
+          <View className="w-full max-w-[360px] flex-1 self-center px-4 pb-44 pt-6">
             <CardSection>
               <View className="w-full items-center py-2">
                 <View className="h-16 w-16 items-center justify-center rounded-full bg-emerald-300">

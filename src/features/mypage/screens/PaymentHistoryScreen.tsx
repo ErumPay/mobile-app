@@ -42,7 +42,7 @@ export function PaymentHistoryScreen({
           className="w-full flex-1"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full px-4 pb-36 pt-4">
+          <View className="w-full max-w-[360px] flex-1 self-center px-4 pb-44 pt-6">
             <View className="mb-4 w-full flex-row items-center justify-between">
               <Text className="text-base font-bold text-slate-950">
                 총 {isEmpty ? 0 : 7}건

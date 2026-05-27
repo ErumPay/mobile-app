@@ -48,7 +48,7 @@ export function CardDetailScreen({
           className="w-full flex-1"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full px-4 pb-36 pt-4">
+          <View className="w-full max-w-[360px] self-center px-4 pb-44 pt-4">
             {isDisabled ? (
               <View className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
                 <Text className="text-sm font-bold text-red-600">
