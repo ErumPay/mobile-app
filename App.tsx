@@ -1,85 +1,43 @@
-import './global.css';
-
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import {
-  CardDetailScreen,
-  CardManagementScreen,
-  MypageHomeScreen,
-  PaymentDetailScreen,
-  PaymentHistoryScreen,
-  ProfileConfirmScreen,
-} from './src/features/mypage';
+import MainScreen from './src/app/screens/MainScreen';
+import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
+// [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
+// import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
-type RootStackParamList = {
-  MypageHome: undefined;
-  ProfileConfirm: undefined;
-  CardManagement: undefined;
-  CardDetail: undefined;
-  PaymentHistory: undefined;
-  PaymentDetail: undefined;
+export type RootStackParamList = {
+    Main: undefined;
+    // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
+    /*PaymentMethodSelect: undefined;*/
+    CardManualRegister: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="MypageHome"
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: 'white' },
-        }}
-      >
-        <Stack.Screen name="MypageHome">
-          {({ navigation }) => (
-            <MypageHomeScreen
-              onBack={navigation.goBack}
-              onPressProfile={() => navigation.navigate('ProfileConfirm')}
-              onPressHistory={() => navigation.navigate('PaymentHistory')}
-              onPressCard={() => navigation.navigate('CardManagement')}
-            />
-          )}
-        </Stack.Screen>
+    return (
+        <NavigationContainer>
+            <Stack.Navigator initialRouteName="Main">
+                <Stack.Screen
+                    name="Main"
+                    component={MainScreen}
+                    options={{ title: '메인' }}
+                />
 
-        <Stack.Screen name="ProfileConfirm">
-          {({ navigation }) => (
-            <ProfileConfirmScreen onBack={navigation.goBack} />
-          )}
-        </Stack.Screen>
+                {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
+                {/*<Stack.Screen*/}
+                {/*    name="PaymentMethodSelect"*/}
+                {/*    component={PaymentMethodSelectScreen}*/}
+                {/*    options={{ title: '카드결제' }}*/}
+                {/*/>*/}
 
-        <Stack.Screen name="CardManagement">
-          {({ navigation }) => (
-            <CardManagementScreen
-              onBack={navigation.goBack}
-              onPressCard={() => navigation.navigate('CardDetail')}
-            />
-          )}
-        </Stack.Screen>
-
-        <Stack.Screen name="CardDetail">
-          {({ navigation }) => (
-            <CardDetailScreen onBack={navigation.goBack} />
-          )}
-        </Stack.Screen>
-
-        <Stack.Screen name="PaymentHistory">
-          {({ navigation }) => (
-            <PaymentHistoryScreen
-              onBack={navigation.goBack}
-              onPressItem={() => navigation.navigate('PaymentDetail')}
-            />
-          )}
-        </Stack.Screen>
-
-        <Stack.Screen name="PaymentDetail">
-          {({ navigation }) => (
-            <PaymentDetailScreen onBack={navigation.goBack} />
-          )}
-        </Stack.Screen>
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+                <Stack.Screen
+                    name="CardManualRegister"
+                    component={CardManualRegisterScreen}
+                    options={{ title: '카드 등록' }}
+                />
+            </Stack.Navigator>
+        </NavigationContainer>
+    );
 }
