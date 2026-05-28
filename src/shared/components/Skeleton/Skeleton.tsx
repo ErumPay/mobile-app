@@ -7,6 +7,8 @@
  ******************************************************************************/
 
 import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
+import type { ViewStyle } from 'react-native';
 import { Animated, Easing, Platform, View } from 'react-native';
 
 import { colors } from '../../styles';
@@ -31,6 +33,20 @@ const borderRadiusByRounded = {
   full: 999,
 };
 
+const webShimmerStyle: CSSProperties = {
+  animationDuration: '1200ms',
+  animationIterationCount: 'infinite',
+  animationName: 'erumSkeletonShimmer',
+  animationTimingFunction: 'ease-in-out',
+  backgroundImage:
+    'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.9), rgba(255,255,255,0))',
+  bottom: 0,
+  left: 0,
+  position: 'absolute',
+  top: 0,
+  width: '46%',
+};
+
 export function Skeleton({
   width = '100%',
   height = 16,
@@ -53,7 +69,7 @@ export function Skeleton({
     return () => {
       animation.stop();
     };
-  }, [shimmerTranslateX]);
+  }, []);
 
   if (Platform.OS === 'web') {
     return (
@@ -68,21 +84,7 @@ export function Skeleton({
         }}
       >
         <View
-          style={
-            {
-              animationDuration: '1200ms',
-              animationIterationCount: 'infinite',
-              animationName: 'erumSkeletonShimmer',
-              animationTimingFunction: 'ease-in-out',
-              backgroundImage:
-                'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.9), rgba(255,255,255,0))',
-              bottom: 0,
-              left: 0,
-              position: 'absolute',
-              top: 0,
-              width: '46%',
-            } as never
-          }
+          style={webShimmerStyle as ViewStyle}
         />
       </View>
     );

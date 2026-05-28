@@ -7,6 +7,7 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 type ListItemProps = {
@@ -17,7 +18,7 @@ type ListItemProps = {
   onPress?: () => void;
 };
 
-export function ListItem({
+function ListItemComponent({
   title,
   description,
   left,
@@ -58,5 +59,7 @@ export function ListItem({
 
   return <View className="rounded-lg bg-neutral-white px-4 py-3">{content}</View>;
 }
+
+export const ListItem = memo(ListItemComponent);
 
 export default ListItem;

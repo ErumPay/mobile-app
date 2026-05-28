@@ -8,7 +8,7 @@
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -313,6 +313,15 @@ export default function GuideScreen({ navigation }: Props) {
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(true);
   const [selectedFloatingItem, setSelectedFloatingItem] = useState('payment');
   const [isCardSelected, setIsCardSelected] = useState(true);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const handlePressComponentPreview = (
     preview: ComponentGuideItem['preview'],
@@ -328,9 +337,14 @@ export default function GuideScreen({ navigation }: Props) {
     }
 
     if (preview === 'toast') {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+
       setIsToastVisible(true);
-      setTimeout(() => {
+      toastTimerRef.current = setTimeout(() => {
         setIsToastVisible(false);
+        toastTimerRef.current = null;
       }, 1800);
       return;
     }
