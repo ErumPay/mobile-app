@@ -110,7 +110,7 @@ export function CardManualRegisterScreen({
     <CardMobileLayout isDark={mode === 'ocr'}>
       {mode !== 'ocr' ? <ScreenHeader onClose={onClose} /> : null}
       {mode === 'select' ? (
-        <View className="w-full">
+        <View className="mt-4 w-full">
           <Text className="mb-5 text-xl font-bold text-zinc-950">
             카드 등록 방법을 선택해주세요.
           </Text>
