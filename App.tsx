@@ -1,3 +1,5 @@
+import './global.css';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -36,6 +38,11 @@ export default function App() {
                     name="CardManualRegister"
                     component={CardManualRegisterScreen}
                     options={{ title: '카드 등록' }}
+                />
+                <Stack.Screen
+                    name="MypageHomeScreen"
+                    component={MypageHomeScreen}
+                    options={{ title: '마이페이지' }}
                 />
             </Stack.Navigator>
         </NavigationContainer>
