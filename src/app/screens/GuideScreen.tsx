@@ -19,9 +19,18 @@ import {
 } from 'react-native';
 
 import type { RootStackParamList } from '../../../App';
+import { Accordion } from '../../shared/components/Accordion';
 import { BottomSheet } from '../../shared/components/BottomSheet';
+import { Button } from '../../shared/components/Button';
+import { Checkbox } from '../../shared/components/Checkbox';
 import { ErrorPage } from '../../shared/components/ErrorPage';
+import { FloatingButton } from '../../shared/components/FloatingButton';
+import { Header } from '../../shared/components/Header';
+import { PageWrap } from '../../shared/components/PageWrap';
+import { Radio } from '../../shared/components/Radio';
+import { Tab } from '../../shared/components/Tab';
 import { Toast } from '../../shared/components/Toast';
+import { Toggle } from '../../shared/components/Toggle';
 import { colors } from '../../shared/styles';
 
 type GuideStatus = 'done' | 'progress' | 'planned';
@@ -40,9 +49,23 @@ type ComponentGuideItem = {
   name: string;
   path: string;
   status: GuideStatus;
-  preview?: 'errorPage' | 'bottomSheet' | 'toast';
+  preview?: ComponentPreview;
   note?: string;
 };
+
+type ComponentPreview =
+  | 'errorPage'
+  | 'bottomSheet'
+  | 'toast'
+  | 'header'
+  | 'button'
+  | 'floatingButton'
+  | 'tab'
+  | 'toggle'
+  | 'checkbox'
+  | 'radio'
+  | 'accordion'
+  | 'pageWrap';
 
 const guidePages: GuidePage[] = [
   {
@@ -102,32 +125,57 @@ const componentGuideItems: ComponentGuideItem[] = [
   {
     name: 'Header',
     path: 'src/shared/components/Header',
-    status: 'planned',
+    status: 'done',
+    preview: 'header',
+    note: '뒤로가기형/닫기형',
   },
   {
     name: 'Button',
     path: 'src/shared/components/Button',
-    status: 'planned',
+    status: 'done',
+    preview: 'button',
+  },
+  {
+    name: 'FloatingButton',
+    path: 'src/shared/components/FloatingButton',
+    status: 'done',
+    preview: 'floatingButton',
   },
   {
     name: 'Tab',
     path: 'src/shared/components/Tab',
-    status: 'planned',
+    status: 'done',
+    preview: 'tab',
   },
   {
     name: 'Toggle',
     path: 'src/shared/components/Toggle',
-    status: 'planned',
+    status: 'done',
+    preview: 'toggle',
+  },
+  {
+    name: 'Checkbox',
+    path: 'src/shared/components/Checkbox',
+    status: 'done',
+    preview: 'checkbox',
+  },
+  {
+    name: 'Radio',
+    path: 'src/shared/components/Radio',
+    status: 'done',
+    preview: 'radio',
   },
   {
     name: 'Accordion',
     path: 'src/shared/components/Accordion',
-    status: 'planned',
+    status: 'done',
+    preview: 'accordion',
   },
   {
     name: 'PageWrap',
     path: 'src/shared/components/PageWrap',
-    status: 'planned',
+    status: 'done',
+    preview: 'pageWrap',
     note: '모바일/태블릿 공통 wrap',
   },
 ];
@@ -195,6 +243,14 @@ export default function GuideScreen({ navigation }: Props) {
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isErrorPreviewVisible, setIsErrorPreviewVisible] = useState(false);
+  const [selectedComponentPreview, setSelectedComponentPreview] =
+    useState<ComponentPreview>('button');
+  const [selectedTab, setSelectedTab] = useState('first');
+  const [isToggleOn, setIsToggleOn] = useState(false);
+  const [isCheckboxChecked, setIsCheckboxChecked] = useState(true);
+  const [selectedRadio, setSelectedRadio] = useState('card');
+  const [isAccordionExpanded, setIsAccordionExpanded] = useState(true);
+  const [selectedFloatingItem, setSelectedFloatingItem] = useState('payment');
 
   const handlePressComponentPreview = (
     preview: ComponentGuideItem['preview'],
@@ -214,6 +270,11 @@ export default function GuideScreen({ navigation }: Props) {
 
     if (preview === 'errorPage') {
       setIsErrorPreviewVisible(true);
+      return;
+    }
+
+    if (preview) {
+      setSelectedComponentPreview(preview);
     }
   };
 
@@ -229,103 +290,103 @@ export default function GuideScreen({ navigation }: Props) {
         <ScrollView className="flex-1 bg-neutral-grey2">
           <View className="w-full items-center px-5 py-6">
             <View style={{ width: contentWidth }} className="gap-5">
-          <GuideSection title="CI">
-            <View className="rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
-              <Image
-                resizeMode="contain"
-                source={require('../../assets/images/erumpay-ci.png')}
-                style={{ width: '100%', height: 120 }}
-              />
-            </View>
-          </GuideSection>
+              <GuideSection title="CI">
+                <View className="rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
+                  <Image
+                    resizeMode="contain"
+                    source={require('../../assets/images/erumpay-ci.png')}
+                    style={{ width: '100%', height: 120 }}
+                  />
+                </View>
+              </GuideSection>
 
-          <GuideSection title="Grid">
-            <View className="gap-3 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
-              <Image
-                resizeMode="contain"
-                source={require('../../assets/images/erumpay-grid.png')}
-                style={{ width: '100%', height: 190 }}
-              />
-              <GuideGridRow label="Mobile" value="360 ~ 767 / 6 columns / gap 12" />
-              <GuideGridRow label="Tablet" value="768 ~ 1200 / 6 columns / gap 12" />
-            </View>
-          </GuideSection>
+              <GuideSection title="Grid">
+                <View className="gap-3 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
+                  <Image
+                    resizeMode="contain"
+                    source={require('../../assets/images/erumpay-grid.png')}
+                    style={{ width: '100%', height: 190 }}
+                  />
+                  <GuideGridRow label="Mobile" value="360 ~ 767 / 6 columns / gap 12" />
+                  <GuideGridRow label="Tablet" value="768 ~ 1200 / 6 columns / gap 12" />
+                </View>
+              </GuideSection>
 
-          <GuideSection title="IA">
-            <View className="gap-2">
-              {guidePages.map((page) => (
-                <GuideListRow
-                  key={`${page.depth1}-${page.depth2}-${page.routeName}`}
-                  status={page.status}
-                  title={`${page.depth1} / ${page.depth2}`}
-                  description={`${page.pageName} · ${page.routeName}`}
-                  note={page.note}
-                  onPress={
-                    page.status === 'done' && page.route
-                      ? () => {
-                          if (page.route === 'Main') {
-                            navigation.navigate('Main');
-                            return;
-                          }
+              <GuideSection title="IA">
+                <View className="gap-2">
+                  {guidePages.map((page) => (
+                    <GuideListRow
+                      key={`${page.depth1}-${page.depth2}-${page.routeName}`}
+                      status={page.status}
+                      title={`${page.depth1} / ${page.depth2}`}
+                      description={`${page.pageName} · ${page.routeName}`}
+                      note={page.note}
+                      onPress={
+                        page.status === 'done' && page.route
+                          ? () => {
+                              if (page.route === 'Main') {
+                                navigation.navigate('Main');
+                                return;
+                              }
 
-                          if (page.route === 'CardManualRegister') {
-                            navigation.navigate('CardManualRegister');
-                          }
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-            </View>
-          </GuideSection>
+                              if (page.route === 'CardManualRegister') {
+                                navigation.navigate('CardManualRegister');
+                              }
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+                </View>
+              </GuideSection>
 
-          <GuideSection title="Colors">
-            <View className="gap-4 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
-              {colorGroups.map((group) => (
-                <View key={group.title}>
-                  <Text className="mb-2 font-pretendard text-heading-3 text-neutral-black1">
-                    {group.title}
-                  </Text>
-                  <View className="flex-row flex-wrap gap-3">
-                    {group.items.map((item) => (
-                      <View key={`${group.title}-${item.name}`} className="w-[92px]">
-                        <View
-                          style={{ backgroundColor: item.value }}
-                          className="mb-2 h-12 rounded-lg border border-neutral-grey1"
-                        />
-                        <Text className="font-pretendard text-normal-bold text-neutral-black1">
-                          {item.name}
-                        </Text>
-                        <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                          {item.value}
-                        </Text>
+              <GuideSection title="Colors">
+                <View className="gap-4 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
+                  {colorGroups.map((group) => (
+                    <View key={group.title}>
+                      <Text className="mb-2 font-pretendard text-heading-3 text-neutral-black1">
+                        {group.title}
+                      </Text>
+                      <View className="flex-row flex-wrap gap-3">
+                        {group.items.map((item) => (
+                          <View key={`${group.title}-${item.name}`} className="w-[92px]">
+                            <View
+                              style={{ backgroundColor: item.value }}
+                              className="mb-2 h-12 rounded-lg border border-neutral-grey1"
+                            />
+                            <Text className="font-pretendard text-normal-bold text-neutral-black1">
+                              {item.name}
+                            </Text>
+                            <Text className="font-pretendard text-normal-regular text-neutral-black2">
+                              {item.value}
+                            </Text>
+                          </View>
+                        ))}
                       </View>
-                    ))}
-                  </View>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-          </GuideSection>
+              </GuideSection>
 
-          <GuideSection title="Typography">
-            <View className="gap-3 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
-              {typographyItems.map((item) => (
-                <View
-                  key={item.name}
-                  className="flex-row items-center justify-between gap-4"
-                >
-                  <Text
-                    className={`min-w-0 flex-1 font-pretendard text-erum-secondary ${item.className}`}
-                  >
-                    {item.name}
-                  </Text>
-                  <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                    {item.spec}
-                  </Text>
+              <GuideSection title="Typography">
+                <View className="gap-3 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
+                  {typographyItems.map((item) => (
+                    <View
+                      key={item.name}
+                      className="flex-row items-center justify-between gap-4"
+                    >
+                      <Text
+                        className={`min-w-0 flex-1 font-pretendard text-erum-secondary ${item.className}`}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text className="font-pretendard text-normal-regular text-neutral-black2">
+                        {item.spec}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-          </GuideSection>
+              </GuideSection>
 
               <GuideSection title="Components">
                 <View className="gap-2">
@@ -343,6 +404,29 @@ export default function GuideScreen({ navigation }: Props) {
                       }
                     />
                   ))}
+                </View>
+              </GuideSection>
+
+              <GuideSection title="Preview">
+                <View className="min-h-[180px] overflow-hidden rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
+                  <ComponentPreviewArea
+                    preview={selectedComponentPreview}
+                    selectedTab={selectedTab}
+                    isToggleOn={isToggleOn}
+                    isCheckboxChecked={isCheckboxChecked}
+                    selectedRadio={selectedRadio}
+                    isAccordionExpanded={isAccordionExpanded}
+                    selectedFloatingItem={selectedFloatingItem}
+                    onPressButton={() => handlePressComponentPreview('toast')}
+                    onChangeTab={setSelectedTab}
+                    onChangeToggle={setIsToggleOn}
+                    onChangeCheckbox={setIsCheckboxChecked}
+                    onChangeRadio={setSelectedRadio}
+                    onChangeFloatingItem={setSelectedFloatingItem}
+                    onToggleAccordion={() =>
+                      setIsAccordionExpanded((currentValue) => !currentValue)
+                    }
+                  />
                 </View>
               </GuideSection>
             </View>
@@ -459,5 +543,154 @@ function GuideListRow({
     <View className="rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
       {content}
     </View>
+  );
+}
+
+function ComponentPreviewArea({
+  preview,
+  selectedTab,
+  isToggleOn,
+  isCheckboxChecked,
+  selectedRadio,
+  isAccordionExpanded,
+  selectedFloatingItem,
+  onPressButton,
+  onChangeTab,
+  onChangeToggle,
+  onChangeCheckbox,
+  onChangeRadio,
+  onChangeFloatingItem,
+  onToggleAccordion,
+}: {
+  preview: ComponentPreview;
+  selectedTab: string;
+  isToggleOn: boolean;
+  isCheckboxChecked: boolean;
+  selectedRadio: string;
+  isAccordionExpanded: boolean;
+  selectedFloatingItem: string;
+  onPressButton: () => void;
+  onChangeTab: (value: string) => void;
+  onChangeToggle: (value: boolean) => void;
+  onChangeCheckbox: (value: boolean) => void;
+  onChangeRadio: (value: string) => void;
+  onChangeFloatingItem: (value: string) => void;
+  onToggleAccordion: () => void;
+}) {
+  if (preview === 'header') {
+    return (
+      <View className="gap-3">
+        <Header title="뒤로가기 헤더" type="back" onPressLeft={() => {}} />
+        <Header title="닫기 헤더" type="close" onPressRight={() => {}} />
+      </View>
+    );
+  }
+
+  if (preview === 'button') {
+    return (
+      <View className="gap-3">
+        <Button label="Primary Button" onPress={onPressButton} />
+        <Button label="Secondary Button" variant="secondary" onPress={onPressButton} />
+        <Button label="Disabled Button" disabled onPress={onPressButton} />
+        <Button label="Readonly Button" readOnly />
+      </View>
+    );
+  }
+
+  if (preview === 'floatingButton') {
+    return (
+      <View className="min-h-[220px] overflow-hidden rounded-xl bg-neutral-grey2">
+        <Text className="font-pretendard text-large-regular text-neutral-black2">
+          앱 하단 플로팅 내비게이션 미리보기
+        </Text>
+        <FloatingButton
+          value={selectedFloatingItem}
+          onChange={onChangeFloatingItem}
+        />
+      </View>
+    );
+  }
+
+  if (preview === 'tab') {
+    return (
+      <Tab
+        items={[
+          { label: '첫번째', value: 'first' },
+          { label: '두번째', value: 'second' },
+          { label: '세번째', value: 'third' },
+        ]}
+        value={selectedTab}
+        onChange={onChangeTab}
+      />
+    );
+  }
+
+  if (preview === 'toggle') {
+    return (
+      <Toggle
+        label="알림 받기"
+        value={isToggleOn}
+        onChange={onChangeToggle}
+      />
+    );
+  }
+
+  if (preview === 'checkbox') {
+    return (
+      <Checkbox
+        checked={isCheckboxChecked}
+        label="약관에 동의합니다"
+        onChange={onChangeCheckbox}
+      />
+    );
+  }
+
+  if (preview === 'radio') {
+    return (
+      <Radio
+        items={[
+          { label: '카드 결제', value: 'card' },
+          { label: '계좌 결제', value: 'account' },
+          { label: '포인트 결제', value: 'point' },
+        ]}
+        value={selectedRadio}
+        onChange={onChangeRadio}
+      />
+    );
+  }
+
+  if (preview === 'accordion') {
+    return (
+      <Accordion
+        expanded={isAccordionExpanded}
+        title="아코디언 타이틀"
+        onToggle={onToggleAccordion}
+      >
+        <Text className="font-pretendard text-large-regular text-neutral-black2">
+          접고 펼칠 수 있는 상세 내용 영역입니다.
+        </Text>
+      </Accordion>
+    );
+  }
+
+  if (preview === 'pageWrap') {
+    return (
+      <View className="h-[220px] overflow-hidden rounded-lg border border-neutral-grey1">
+        <PageWrap>
+          <Text className="font-pretendard text-large-bold text-neutral-black1">
+            PageWrap Preview
+          </Text>
+          <Text className="mt-2 font-pretendard text-large-regular text-neutral-black2">
+            SafeArea, 배경, 기본 padding을 포함한 화면 래퍼입니다.
+          </Text>
+        </PageWrap>
+      </View>
+    );
+  }
+
+  return (
+    <Text className="font-pretendard text-large-regular text-neutral-black2">
+      목록에서 컴포넌트를 선택해주세요.
+    </Text>
   );
 }
