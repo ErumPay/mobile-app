@@ -72,7 +72,7 @@ function getTextClassName({
   variant: ButtonVariant;
 }) {
   if (disabled) {
-    return 'text-[#B4B8BD]';
+    return 'text-neutral-disabled';
   }
 
   if (readOnly) {

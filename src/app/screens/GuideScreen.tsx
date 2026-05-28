@@ -20,14 +20,23 @@ import {
 
 import type { RootStackParamList } from '../../../App';
 import { Accordion } from '../../shared/components/Accordion';
-import { BottomSheet } from '../../shared/components/BottomSheet';
+import {
+  BottomSheet,
+  DraggableBottomSheet,
+} from '../../shared/components/BottomSheet';
 import { Button } from '../../shared/components/Button';
+import { Card } from '../../shared/components/Card';
 import { Checkbox } from '../../shared/components/Checkbox';
+import { EmptyState } from '../../shared/components/EmptyState';
 import { ErrorPage } from '../../shared/components/ErrorPage';
 import { FloatingButton } from '../../shared/components/FloatingButton';
 import { Header } from '../../shared/components/Header';
+import { ListItem } from '../../shared/components/ListItem';
+import { Loading } from '../../shared/components/Loading';
+import { NoticeBox } from '../../shared/components/NoticeBox';
 import { PageWrap } from '../../shared/components/PageWrap';
 import { Radio } from '../../shared/components/Radio';
+import { SkeletonCard } from '../../shared/components/Skeleton';
 import { Tab } from '../../shared/components/Tab';
 import { Toast } from '../../shared/components/Toast';
 import { Toggle } from '../../shared/components/Toggle';
@@ -56,7 +65,10 @@ type ComponentGuideItem = {
 type ComponentPreview =
   | 'errorPage'
   | 'bottomSheet'
+  | 'draggableBottomSheet'
   | 'toast'
+  | 'loading'
+  | 'skeleton'
   | 'header'
   | 'button'
   | 'floatingButton'
@@ -65,6 +77,10 @@ type ComponentPreview =
   | 'checkbox'
   | 'radio'
   | 'accordion'
+  | 'card'
+  | 'listItem'
+  | 'emptyState'
+  | 'noticeBox'
   | 'pageWrap';
 
 const guidePages: GuidePage[] = [
@@ -117,10 +133,29 @@ const componentGuideItems: ComponentGuideItem[] = [
     preview: 'bottomSheet',
   },
   {
+    name: 'DraggableBottomSheet',
+    path: 'src/shared/components/BottomSheet',
+    status: 'done',
+    preview: 'draggableBottomSheet',
+    note: '드래그 높이 변경',
+  },
+  {
     name: 'Toast',
     path: 'src/shared/components/Toast',
     status: 'done',
     preview: 'toast',
+  },
+  {
+    name: 'Loading',
+    path: 'src/shared/components/Loading',
+    status: 'done',
+    preview: 'loading',
+  },
+  {
+    name: 'Skeleton',
+    path: 'src/shared/components/Skeleton',
+    status: 'done',
+    preview: 'skeleton',
   },
   {
     name: 'Header',
@@ -170,6 +205,30 @@ const componentGuideItems: ComponentGuideItem[] = [
     path: 'src/shared/components/Accordion',
     status: 'done',
     preview: 'accordion',
+  },
+  {
+    name: 'Card',
+    path: 'src/shared/components/Card',
+    status: 'done',
+    preview: 'card',
+  },
+  {
+    name: 'ListItem',
+    path: 'src/shared/components/ListItem',
+    status: 'done',
+    preview: 'listItem',
+  },
+  {
+    name: 'EmptyState',
+    path: 'src/shared/components/EmptyState',
+    status: 'done',
+    preview: 'emptyState',
+  },
+  {
+    name: 'NoticeBox',
+    path: 'src/shared/components/NoticeBox',
+    status: 'done',
+    preview: 'noticeBox',
   },
   {
     name: 'PageWrap',
@@ -241,22 +300,30 @@ export default function GuideScreen({ navigation }: Props) {
   const horizontalPadding = 20;
   const contentWidth = Math.max(0, Math.min(width - horizontalPadding * 2, 720));
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
+  const [isDraggableBottomSheetVisible, setIsDraggableBottomSheetVisible] =
+    useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isErrorPreviewVisible, setIsErrorPreviewVisible] = useState(false);
   const [selectedComponentPreview, setSelectedComponentPreview] =
-    useState<ComponentPreview>('button');
+    useState<ComponentPreview>('skeleton');
   const [selectedTab, setSelectedTab] = useState('first');
   const [isToggleOn, setIsToggleOn] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(true);
   const [selectedRadio, setSelectedRadio] = useState('card');
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(true);
   const [selectedFloatingItem, setSelectedFloatingItem] = useState('payment');
+  const [isCardSelected, setIsCardSelected] = useState(true);
 
   const handlePressComponentPreview = (
     preview: ComponentGuideItem['preview'],
   ) => {
     if (preview === 'bottomSheet') {
       setIsBottomSheetVisible(true);
+      return;
+    }
+
+    if (preview === 'draggableBottomSheet') {
+      setIsDraggableBottomSheetVisible(true);
       return;
     }
 
@@ -417,12 +484,14 @@ export default function GuideScreen({ navigation }: Props) {
                     selectedRadio={selectedRadio}
                     isAccordionExpanded={isAccordionExpanded}
                     selectedFloatingItem={selectedFloatingItem}
+                    isCardSelected={isCardSelected}
                     onPressButton={() => handlePressComponentPreview('toast')}
                     onChangeTab={setSelectedTab}
                     onChangeToggle={setIsToggleOn}
                     onChangeCheckbox={setIsCheckboxChecked}
                     onChangeRadio={setSelectedRadio}
                     onChangeFloatingItem={setSelectedFloatingItem}
+                    onChangeCardSelected={setIsCardSelected}
                     onToggleAccordion={() =>
                       setIsAccordionExpanded((currentValue) => !currentValue)
                     }
@@ -448,6 +517,25 @@ export default function GuideScreen({ navigation }: Props) {
           </Text>
         </View>
       </BottomSheet>
+
+      <DraggableBottomSheet
+        title="Draggable BottomSheet Preview"
+        visible={isDraggableBottomSheetVisible}
+        onClose={() => setIsDraggableBottomSheetVisible(false)}
+      >
+        <View className="gap-3">
+          <Text className="font-pretendard text-large-bold text-neutral-black1">
+            핸들을 탭하거나 위아래로 드래그해보세요.
+          </Text>
+          <Text className="font-pretendard text-large-regular text-neutral-black2">
+            기본 높이와 확장 높이 사이에서 바텀시트 높이가 변경됩니다.
+          </Text>
+          <NoticeBox
+            description="정교한 제스처/스냅 포인트는 추후 gesture-handler 도입 시 고도화 가능합니다."
+            tone="info"
+          />
+        </View>
+      </DraggableBottomSheet>
 
       <Toast
         visible={isToastVisible}
@@ -554,12 +642,14 @@ function ComponentPreviewArea({
   selectedRadio,
   isAccordionExpanded,
   selectedFloatingItem,
+  isCardSelected,
   onPressButton,
   onChangeTab,
   onChangeToggle,
   onChangeCheckbox,
   onChangeRadio,
   onChangeFloatingItem,
+  onChangeCardSelected,
   onToggleAccordion,
 }: {
   preview: ComponentPreview;
@@ -569,14 +659,24 @@ function ComponentPreviewArea({
   selectedRadio: string;
   isAccordionExpanded: boolean;
   selectedFloatingItem: string;
+  isCardSelected: boolean;
   onPressButton: () => void;
   onChangeTab: (value: string) => void;
   onChangeToggle: (value: boolean) => void;
   onChangeCheckbox: (value: boolean) => void;
   onChangeRadio: (value: string) => void;
   onChangeFloatingItem: (value: string) => void;
+  onChangeCardSelected: (value: boolean) => void;
   onToggleAccordion: () => void;
 }) {
+  if (preview === 'loading') {
+    return <Loading message="결제 정보를 불러오는 중입니다." />;
+  }
+
+  if (preview === 'skeleton') {
+    return <SkeletonCard />;
+  }
+
   if (preview === 'header') {
     return (
       <View className="gap-3">
@@ -670,6 +770,98 @@ function ComponentPreviewArea({
           접고 펼칠 수 있는 상세 내용 영역입니다.
         </Text>
       </Accordion>
+    );
+  }
+
+  if (preview === 'card') {
+    return (
+      <Card
+        selected={isCardSelected}
+        title="이룸페이 카드"
+        description="선택 가능한 카드형 공통 UI입니다."
+        onPress={() => onChangeCardSelected(!isCardSelected)}
+      >
+        <Text className="font-pretendard text-normal-regular text-erum-secondary">
+          누르면 선택 상태가 변경됩니다.
+        </Text>
+      </Card>
+    );
+  }
+
+  if (preview === 'listItem') {
+    return (
+      <View className="gap-2 rounded-xl bg-neutral-grey2 p-3">
+        <ListItem
+          description="신한카드 Deep Dream"
+          left={
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-erum-main">
+              <Text className="font-pretendard text-normal-bold text-neutral-white">
+                카드
+              </Text>
+            </View>
+          }
+          right={
+            <View className="items-end">
+              <Text className="font-pretendard text-large-bold text-erum-main">
+                선택
+              </Text>
+              <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
+                결제수단
+              </Text>
+            </View>
+          }
+          title="카드 결제"
+          onPress={() => {}}
+        />
+        <ListItem
+          description="2026.05.29 01:42"
+          left={
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-neutral-white">
+              <Text className="font-pretendard text-normal-bold text-erum-main">
+                PAY
+              </Text>
+            </View>
+          }
+          right={
+            <View className="flex-row items-center gap-3">
+              <View className="items-end">
+                <Text className="font-pretendard text-large-bold text-neutral-black1">
+                  32,000원
+                </Text>
+                <Text className="mt-1 font-pretendard text-normal-regular text-state-success">
+                  승인완료
+                </Text>
+              </View>
+              <Text className="font-pretendard text-heading-3 text-neutral-black2">
+                ›
+              </Text>
+            </View>
+          }
+          title="이룸카페"
+          onPress={() => {}}
+        />
+      </View>
+    );
+  }
+
+  if (preview === 'emptyState') {
+    return (
+      <EmptyState
+        actionLabel="새로고침"
+        description="조건에 맞는 결제 내역이 없어요."
+        title="조회 결과가 없습니다"
+        onPressAction={() => {}}
+      />
+    );
+  }
+
+  if (preview === 'noticeBox') {
+    return (
+      <View className="gap-3">
+        <NoticeBox description="입력하신 정보는 안전하게 보호됩니다." tone="info" />
+        <NoticeBox description="카드 등록이 완료되었습니다." tone="success" />
+        <NoticeBox description="결제 전 금액을 다시 확인해주세요." tone="warning" />
+      </View>
     );
   }
 

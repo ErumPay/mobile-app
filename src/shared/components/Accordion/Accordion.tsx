@@ -10,6 +10,8 @@ import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { colors } from '../../styles';
+
 type AccordionProps = {
   title: string;
   children: ReactNode;
@@ -58,7 +60,7 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
     >
       <Path
         d="M7.5 4.5L12.5 10L7.5 15.5"
-        stroke="#4B5057"
+        stroke={colors.neutral.black2}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={2}

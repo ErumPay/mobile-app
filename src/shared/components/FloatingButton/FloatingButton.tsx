@@ -9,6 +9,8 @@
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
+import { colors } from '../../styles';
+
 export type FloatingButtonItem = {
   label: string;
   value: string;
@@ -37,7 +39,9 @@ export function FloatingButton({
       <View className="min-h-[92px] flex-row items-center justify-between rounded-full bg-neutral-white px-7 shadow-sm">
         {items.map((item) => {
           const isSelected = item.value === value;
-          const iconColor = isSelected ? '#FFFFFF' : '#4B5057';
+          const iconColor = isSelected
+            ? colors.neutral.white
+            : colors.neutral.black2;
 
           return (
             <Pressable
@@ -49,7 +53,7 @@ export function FloatingButton({
               <View
                 className={`items-center justify-center rounded-full ${
                   isSelected
-                    ? '-mt-11 h-[76px] w-[76px] bg-[#2F5F9E] shadow-sm'
+                    ? '-mt-11 h-[76px] w-[76px] bg-erum-secondary shadow-sm'
                     : 'h-[56px] w-[56px] bg-neutral-grey2'
                 }`}
               >
@@ -57,7 +61,7 @@ export function FloatingButton({
               </View>
               <Text
                 className={`mt-2 font-pretendard text-large-bold ${
-                  isSelected ? 'text-[#2F5F9E]' : 'text-neutral-black2'
+                  isSelected ? 'text-erum-secondary' : 'text-neutral-black2'
                 }`}
               >
                 {item.label}
