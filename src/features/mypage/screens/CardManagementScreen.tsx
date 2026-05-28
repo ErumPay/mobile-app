@@ -1,4 +1,4 @@
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
 
@@ -55,7 +55,6 @@ export function CardManagementScreen({
           : cards;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
       <MypageFrame backgroundClassName="bg-white">
         <MypageHeader title="카드관리" onBack={onBack} />
         <ScrollView
@@ -106,7 +105,6 @@ export function CardManagementScreen({
         </ScrollView>
         <BottomNav active="pay" />
       </MypageFrame>
-    </SafeAreaView>
   );
 }
 

@@ -54,7 +54,7 @@ export function MypageHeader({ title, onBack }: HeaderProps) {
 
 export function BottomNav({ active = 'pay' }: BottomNavProps) {
   return (
-    <View className="absolute bottom-8 left-0 right-0 items-center">
+    <View className="w-full items-center py-3">
       <View className="h-[84px] w-[292px] flex-row items-center justify-between rounded-full bg-white px-6 shadow-2xl">
         <NavItem icon="⌂" label="홈" active={active === 'home'} />
         <View className="-mt-8 items-center">

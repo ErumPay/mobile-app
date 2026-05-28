@@ -1,5 +1,4 @@
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
-
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import {
   BottomNav,
   CardSection,
@@ -29,14 +28,16 @@ export function MypageHomeScreen({
   onPressWithdraw,
 }: MypageHomeScreenProps) {
   return (
-    <SafeAreaView className="flex-1 bg-white">
       <MypageFrame backgroundClassName="bg-white">
         <MypageHeader title="마이페이지" onBack={onBack} />
+
+        {/* ✅ flex-1로 남은 공간 전부 차지 */}
         <ScrollView
-          className="w-full flex-1 bg-white"
+          className="flex-1 w-full bg-white"
+          contentContainerStyle={{ paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full px-4 pb-44 pt-4">
+          <View className="w-full px-4 pt-4">
             <CardSection>
               <View className="w-full flex-row items-center">
                 <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-emerald-700 shadow">
@@ -136,9 +137,10 @@ export function MypageHomeScreen({
             </View>
           </View>
         </ScrollView>
+
+        {/* ✅ BottomNav를 absolute 대신 flex 흐름 안에 배치 */}
         <BottomNav active="my" />
       </MypageFrame>
-    </SafeAreaView>
   );
 }
 

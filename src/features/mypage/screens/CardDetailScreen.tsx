@@ -1,4 +1,4 @@
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   BottomNav,
@@ -41,7 +41,6 @@ export function CardDetailScreen({
   onDelete,
 }: CardDetailScreenProps) {
   return (
-    <SafeAreaView className="flex-1 bg-white">
       <MypageFrame backgroundClassName="bg-white">
         <MypageHeader title="카드 상세" onBack={onBack} />
         <ScrollView
@@ -161,7 +160,6 @@ export function CardDetailScreen({
         </ScrollView>
         <BottomNav active="pay" />
       </MypageFrame>
-    </SafeAreaView>
   );
 }
 

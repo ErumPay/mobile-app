@@ -1,4 +1,4 @@
-import { SafeAreaView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
 
@@ -8,7 +8,7 @@ interface ProfileConfirmScreenProps {
 
 export function ProfileConfirmScreen({ onBack }: ProfileConfirmScreenProps) {
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
+
       <MypageFrame backgroundClassName="bg-zinc-50">
         <MypageHeader title="내 정보 확인" onBack={onBack} />
         <View className="w-full max-w-[360px] flex-1 self-center px-4 pb-44 pt-6">
@@ -18,7 +18,6 @@ export function ProfileConfirmScreen({ onBack }: ProfileConfirmScreenProps) {
         </View>
         <BottomNav active="my" />
       </MypageFrame>
-    </SafeAreaView>
   );
 }
 

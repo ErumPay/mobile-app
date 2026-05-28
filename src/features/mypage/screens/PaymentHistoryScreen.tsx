@@ -1,4 +1,4 @@
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
 
@@ -29,7 +29,6 @@ export function PaymentHistoryScreen({
   onCloseFilter,
 }: PaymentHistoryScreenProps) {
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
       <MypageFrame backgroundClassName="bg-zinc-50">
         <MypageHeader title="결제내역" onBack={onBack} />
         <View className="h-12 w-full flex-row border-b border-zinc-100 bg-white">
@@ -84,7 +83,6 @@ export function PaymentHistoryScreen({
         <BottomNav active="pay" />
         {showFilterSheet ? <FilterSheet onClose={onCloseFilter} /> : null}
       </MypageFrame>
-    </SafeAreaView>
   );
 }
 

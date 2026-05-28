@@ -1,4 +1,4 @@
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   BottomNav,
@@ -21,7 +21,6 @@ export function PaymentDetailScreen({
   onPressReceipt,
 }: PaymentDetailScreenProps) {
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
       <MypageFrame backgroundClassName="bg-zinc-50">
         <MypageHeader title="결제내역 상세보기" onBack={onBack} />
         <ScrollView
@@ -103,7 +102,6 @@ export function PaymentDetailScreen({
         <BottomNav active="pay" />
         {showReceipt ? <ReceiptModal /> : null}
       </MypageFrame>
-    </SafeAreaView>
   );
 }
 
