@@ -7,6 +7,7 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
+import { memo } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 
 type BottomSheetProps = {
@@ -16,7 +17,7 @@ type BottomSheetProps = {
   onClose: () => void;
 };
 
-export function BottomSheet({
+function BottomSheetComponent({
   visible,
   title,
   children,
@@ -58,5 +59,7 @@ export function BottomSheet({
     </Modal>
   );
 }
+
+export const BottomSheet = memo(BottomSheetComponent);
 
 export default BottomSheet;

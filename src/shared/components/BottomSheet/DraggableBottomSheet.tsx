@@ -7,7 +7,7 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Modal,
@@ -29,7 +29,7 @@ type DraggableBottomSheetProps = {
   onClose: () => void;
 };
 
-export function DraggableBottomSheet({
+function DraggableBottomSheetComponent({
   visible,
   title,
   children,
@@ -157,5 +157,7 @@ export function DraggableBottomSheet({
     </Modal>
   );
 }
+
+export const DraggableBottomSheet = memo(DraggableBottomSheetComponent);
 
 export default DraggableBottomSheet;

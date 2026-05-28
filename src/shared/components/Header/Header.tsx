@@ -55,7 +55,7 @@ export function Header({
       <Pressable
         accessibilityRole={isCloseType || onPressRight ? 'button' : undefined}
         className="h-10 w-10 items-center justify-center"
-        disabled={isCloseType ? !onPressRight : !onPressRight}
+        disabled={!onPressRight}
         onPress={onPressRight}
       >
         {isCloseType ? rightIcon ?? defaultRightIcon : rightIcon}

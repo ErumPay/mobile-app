@@ -7,6 +7,7 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -19,7 +20,7 @@ type AccordionProps = {
   onToggle: () => void;
 };
 
-export function Accordion({
+function AccordionComponent({
   title,
   children,
   expanded,
@@ -46,6 +47,8 @@ export function Accordion({
     </View>
   );
 }
+
+export const Accordion = memo(AccordionComponent);
 
 export default Accordion;
 
