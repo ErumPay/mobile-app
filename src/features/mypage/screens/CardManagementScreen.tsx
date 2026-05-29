@@ -2,17 +2,28 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
 
-type CardManagementState = 'empty' | 'single' | 'multiple' | 'disabled';
 
-interface CardManagementScreenProps {
-  state?: CardManagementState;
-  onBack?: () => void;
-  onAddCard?: () => void;
-  onPressCard?: () => void;
+export interface ManagedCard {
+  id: string;
+  issuer: string;
+  title: string;
+  name: string;
+  alias: string;
+  colorClassName: string;
+  isDefault: boolean;
+  disabled?: boolean;
 }
 
-const cards = [
+interface CardManagementScreenProps {
+  cards?: ManagedCard[];
+  onBack?: () => void;
+  onAddCard?: () => void;
+  onPressCard?: (card: ManagedCard) => void;
+}
+
+export const mockManagedCards: ManagedCard[] = [
   {
+    id: 'card-1',
     issuer: 'Shinhan',
     title: '신한카드 (1234)',
     name: 'Simple Plan+',
@@ -21,14 +32,16 @@ const cards = [
     isDefault: true,
   },
   {
+    id: 'card-2',
     issuer: 'Samsung',
     title: '삼성카드 (4444)',
     name: 'taptap O',
-    alias: '탭탭탑탑탑',
+    alias: '탭탭타탑탑',
     colorClassName: 'bg-indigo-600',
     isDefault: false,
   },
   {
+    id: 'card-3',
     issuer: 'KB',
     title: '국민카드 (5893)',
     name: '노리',
@@ -40,19 +53,12 @@ const cards = [
 ];
 
 export function CardManagementScreen({
-  state = 'empty',
+  cards = [],
   onBack,
   onAddCard,
   onPressCard,
 }: CardManagementScreenProps) {
-  const visibleCards =
-    state === 'empty'
-      ? []
-      : state === 'single'
-        ? cards.slice(0, 1)
-        : state === 'disabled'
-          ? [cards[2]]
-          : cards;
+  const visibleCards = cards;
 
   return (
       <MypageFrame backgroundClassName="bg-white">
@@ -72,9 +78,9 @@ export function CardManagementScreen({
               <View className="w-full gap-3">
                 {visibleCards.map((card) => (
                   <CardListItem
-                    key={card.title}
+                    key={card.id}
                     {...card}
-                    onPress={onPressCard}
+                    onPress={() => onPressCard?.(card)}
                   />
                 ))}
               </View>
@@ -130,8 +136,8 @@ function CardListItem({
   return (
     <Pressable
       accessibilityRole="button"
-      className={`h-[82px] w-full flex-row items-center rounded-2xl border border-zinc-100 bg-white px-4 shadow-sm ${
-        disabled ? 'opacity-50' : ''
+      className={`relative h-[82px] w-full flex-row items-center overflow-hidden rounded-2xl border px-4 shadow-sm ${
+        disabled ? 'border-zinc-300 bg-white' : 'border-zinc-100 bg-white'
       }`}
       onPress={onPress}
     >
@@ -150,17 +156,20 @@ function CardListItem({
               대표
             </Text>
           ) : null}
-          {disabled ? (
-            <Text className="mr-2 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
-              사용불가
-            </Text>
-          ) : null}
+
           <Text className="text-base font-bold text-slate-950">{title}</Text>
         </View>
         <Text className="mt-1 text-sm text-slate-950">{name}</Text>
         <Text className="mt-1 text-xs text-slate-500">{alias}</Text>
       </View>
       <Text className="text-3xl font-light text-slate-400">›</Text>
+      {disabled ? (
+        <View className="absolute inset-0 items-center justify-center bg-zinc-700/45">
+          <Text className="rounded-full bg-red-500 px-4 py-1.5 text-sm font-bold text-white">
+            사용불가
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }

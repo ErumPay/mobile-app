@@ -16,6 +16,7 @@ interface CardManualRegisterScreenProps {
   onClose?: () => void;
   onOcrRegister?: () => void;
   onCardRegistered?: (card: RegisteredCard) => void;
+  onGoCardManagement?: () => void;
 }
 
 const initialFormValues: CardRegisterFormValues = {
@@ -69,6 +70,8 @@ function ScreenHeader({ onClose }: { onClose?: () => void }) {
 export function CardManualRegisterScreen({
   onClose,
   onOcrRegister,
+  onCardRegistered,
+  onGoCardManagement,
 }: CardManualRegisterScreenProps) {
   const [mode, setMode] = useState<RegisterMode>('select');
   const [formValues, setFormValues] =
@@ -94,11 +97,24 @@ export function CardManualRegisterScreen({
   };
 
   const handleSubmitManualCard = () => {
-    setMode('success');
-  };
+  const digits = onlyDigits(formValues.cardNumber);
+
+  onCardRegistered?.({
+    id: `card-${Date.now()}`,
+    issuer: 'SHINHAN',
+    last4: digits.slice(-4),
+    holderName: '조이훈',
+    cardNickname: formValues.cardNickname || '별칭미설정',
+    isDefault: false,
+    createdAt: '2026.05.29',
+  });
+
+  setMode('success');
+};
 
   const handleGoCardManagement = () => {
     // TODO: 카드 관리 화면으로 이동
+    onGoCardManagement?.();
   };
 
   const handleGoHome = () => {
