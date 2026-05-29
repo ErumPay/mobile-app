@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import type { RootStackParamList } from '../../../../App';
 import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
 
 interface PaymentHistoryScreenProps {
@@ -93,6 +96,13 @@ export function PaymentHistoryScreen({
 }: PaymentHistoryScreenProps) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const handlePressPayment = (payment: PaymentHistoryItem) => {
+    navigation.navigate('PaymentDetailScreen', {
+      paymentId: payment.id,
+    });
+  };
 
   const sourcePayments = isEmpty ? [] : mockPayments;
 
@@ -171,7 +181,7 @@ export function PaymentHistoryScreen({
                     date={payment.date}
                     amount={payment.amount}
                     tone={payment.tone}
-                    onPress={onPressItem}
+                    onPress={() => handlePressPayment(payment)}
                   />
                 ))}
               </View>

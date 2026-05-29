@@ -29,7 +29,9 @@ export type RootStackParamList = {
     CardDetailScreen: undefined;
     CardManagementScreen: undefined;
     MypageHomeScreen: undefined;
-    PaymentDetailScreen: undefined;
+    PaymentDetailScreen: {
+        paymentId: string;
+        };
     PaymentHistoryScreen: undefined;
     ProfileConfirmScreen: undefined;
 };
