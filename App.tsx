@@ -2,21 +2,38 @@ import './global.css';
 
 import { useEffect, useRef } from 'react';
 import { Alert, useWindowDimensions } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+    NavigationContainer,
+    type LinkingOptions,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import GuideScreen from './src/app/screens/GuideScreen';
 import MainScreen from './src/app/screens/MainScreen';
 import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
+import QrScanScreen from './src/features/qr/screens/QrScanScreen';
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
 export type RootStackParamList = {
     Main: undefined;
     Guide: undefined;
+    QrScan: undefined;
     // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
     /*PaymentMethodSelect: undefined;*/
     CardManualRegister: undefined;
+};
+
+const linking: LinkingOptions<RootStackParamList> = {
+    prefixes: ['http://localhost:19000'],
+    config: {
+        screens: {
+            Main: '',
+            Guide: 'guide',
+            QrScan: 'qr-scan',
+            CardManualRegister: 'card-register',
+        },
+    },
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -41,7 +58,7 @@ export default function App() {
     }, [width]);
 
     return (
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
             <Stack.Navigator initialRouteName="Main">
                 <Stack.Screen
                     name="Main"
@@ -68,6 +85,11 @@ export default function App() {
                     options={{ title: '카드 등록' }}
                 />
 
+                <Stack.Screen
+                    name="QrScan"
+                    component={QrScanScreen}
+                    options={{ headerShown: false }}
+                />
                 {/*
                 // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
                 <Stack.Screen

@@ -101,6 +101,14 @@ const guidePages: GuidePage[] = [
     status: 'done',
   },
   {
+    depth1: 'qr',
+    depth2: 'scan',
+    pageName: 'QR 스캔',
+    routeName: 'QrScan',
+    route: 'QrScan',
+    status: 'progress',
+  },
+  {
     depth1: 'payment',
     depth2: 'method-select',
     pageName: '카드결제 결제수단 선택',
@@ -403,7 +411,7 @@ export default function GuideScreen({ navigation }: Props) {
                       description={`${page.pageName} · ${page.routeName}`}
                       note={page.note}
                       onPress={
-                        page.status === 'done' && page.route
+                        page.route
                           ? () => {
                               if (page.route === 'Main') {
                                 navigation.navigate('Main');
@@ -412,6 +420,12 @@ export default function GuideScreen({ navigation }: Props) {
 
                               if (page.route === 'CardManualRegister') {
                                 navigation.navigate('CardManualRegister');
+                                return;
+                              }
+
+                              if (page.route === 'QrScan') {
+                                navigation.navigate('QrScan');
+                                return;
                               }
                             }
                           : undefined
