@@ -1,9 +1,12 @@
 import './global.css';
 import { useState } from 'react';
 
+import { useEffect, useRef } from 'react';
+import { Alert, useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import GuideScreen from './src/app/screens/GuideScreen';
 import MainScreen from './src/app/screens/MainScreen';
 import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
@@ -27,6 +30,7 @@ import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmSc
 
 export type RootStackParamList = {
     Main: undefined;
+    Guide: undefined;
     // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
     /*PaymentMethodSelect: undefined;*/
     CardManualRegister: undefined;
@@ -45,6 +49,24 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+    const { width } = useWindowDimensions();
+    const hasShownMobileOnlyAlert = useRef(false);
+
+    useEffect(() => {
+        if (width < 768) {
+            hasShownMobileOnlyAlert.current = false;
+            return;
+        }
+
+        if (hasShownMobileOnlyAlert.current) {
+            return;
+        }
+
+        hasShownMobileOnlyAlert.current = true;
+
+        Alert.alert('안내', '모바일로 이용해주세요.');
+    }, [width]);
+
     const [managedCards, setManagedCards] = useState<ManagedCard[]>(mockManagedCards);
     
     const handleDeleteCard = (deletedCardId: string) => {
@@ -62,6 +84,12 @@ export default function App() {
                     options={{ title: '메인' }}
                 />
 
+                <Stack.Screen
+                    name="Guide"
+                    component={GuideScreen}
+                    options={{ title: 'IA 가이드' }}
+                />
+
                 {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
                 {/*<Stack.Screen*/}
                 {/*    name="PaymentMethodSelect"*/}
@@ -69,6 +97,14 @@ export default function App() {
                 {/*    options={{ title: '카드결제' }}*/}
                 {/*/>*/}
 
+                <Stack.Screen
+                    name="CardManualRegister"
+                    component={CardManualRegisterScreen}
+                    options={{ title: '카드 등록' }}
+                />
+
+                {/*
+                // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
                 <Stack.Screen name="CardManualRegister" options={{ title: '카드 등록' }}>
                     {({ navigation }) => (
                         <CardManualRegisterScreen
@@ -95,6 +131,7 @@ export default function App() {
                     name="MypageHomeScreen"
                     component={MypageHomeScreen}
                     options={{ title: '마이페이지' }}
+                />*/}
                 />
                 <Stack.Screen
                     name="CardDetailScreen"

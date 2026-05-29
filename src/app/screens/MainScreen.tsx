@@ -10,6 +10,11 @@ export default function MainScreen({ navigation }: Props) {
         <View>
             <Text>ERoom Pay</Text>
 
+            <Button
+                title="IA 가이드"
+                onPress={() => navigation.navigate('Guide')}
+            />
+
             {/*
             // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
             <Button
