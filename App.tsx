@@ -97,14 +97,7 @@ export default function App() {
                 {/*    options={{ title: '카드결제' }}*/}
                 {/*/>*/}
 
-                <Stack.Screen
-                    name="CardManualRegister"
-                    component={CardManualRegisterScreen}
-                    options={{ title: '카드 등록' }}
-                />
 
-                {/*
-                // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
                 <Stack.Screen name="CardManualRegister" options={{ title: '카드 등록' }}>
                     {({ navigation }) => (
                         <CardManualRegisterScreen
@@ -131,8 +124,8 @@ export default function App() {
                     name="MypageHomeScreen"
                     component={MypageHomeScreen}
                     options={{ title: '마이페이지' }}
-                />*/}
                 />
+                
                 <Stack.Screen
                     name="CardDetailScreen"
                     component={CardDetailScreen}
