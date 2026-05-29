@@ -1,3 +1,6 @@
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../../../App';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import {
   BottomNav,
@@ -27,6 +30,10 @@ export function MypageHomeScreen({
   onPressLogout,
   onPressWithdraw,
 }: MypageHomeScreenProps) {
+
+  const navigation =
+      useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
       <MypageFrame backgroundClassName="bg-white">
         <MypageHeader title="마이페이지" onBack={onBack} />
@@ -56,7 +63,7 @@ export function MypageHomeScreen({
               <Pressable
                 accessibilityRole="button"
                 className="mt-4 h-11 w-full flex-row items-center justify-center rounded-xl bg-emerald-700"
-                onPress={onPressProfile}
+                onPress={() => navigation.navigate('ProfileConfirmScreen')}
               >
                 <Text className="text-base font-bold text-white">
                   내 정보 확인
@@ -94,7 +101,7 @@ export function MypageHomeScreen({
                   iconBgClassName="bg-purple-50"
                   iconTextClassName="text-purple-600"
                   title="결제내역"
-                  onPress={onPressHistory}
+                  onPress={() => navigation.navigate('PaymentHistoryScreen')}
                 />
                 <Divider />
                 <MenuRow
@@ -102,7 +109,7 @@ export function MypageHomeScreen({
                   iconBgClassName="bg-orange-50"
                   iconTextClassName="text-orange-600"
                   title="카드관리"
-                  onPress={onPressCard}
+                  onPress={() => navigation.navigate('CardManagementScreen')}
                 />
               </CardSection>
             </View>

@@ -21,6 +21,11 @@ export default function MainScreen({ navigation }: Props) {
                 title="카드 등록"
                 onPress={() => navigation.navigate('CardManualRegister')}
             />
+
+            <Button
+                title="마이페이지"
+                onPress={() => navigation.navigate('MypageHomeScreen')}
+            />
         </View>
     );
 }
