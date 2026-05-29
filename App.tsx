@@ -12,6 +12,7 @@ import GuideScreen from './src/app/screens/GuideScreen';
 import MainScreen from './src/app/screens/MainScreen';
 import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
 import QrScanScreen from './src/features/qr/screens/QrScanScreen';
+import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
@@ -19,6 +20,7 @@ export type RootStackParamList = {
     Main: undefined;
     Guide: undefined;
     QrScan: undefined;
+    PaymentMethodSelect: undefined;
     // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
     /*PaymentMethodSelect: undefined;*/
     CardManualRegister: undefined;
@@ -76,13 +78,13 @@ export default function App() {
                 {/*<Stack.Screen*/}
                 {/*    name="PaymentMethodSelect"*/}
                 {/*    component={PaymentMethodSelectScreen}*/}
-                {/*    options={{ title: '카드결제' }}*/}
+                {/*.   options={{ headerShown: false }}*/}
                 {/*/>*/}
 
                 <Stack.Screen
                     name="CardManualRegister"
                     component={CardManualRegisterScreen}
-                    options={{ title: '카드 등록' }}
+                    options={{ headerShown: false }}
                 />
 
                 <Stack.Screen
@@ -90,12 +92,19 @@ export default function App() {
                     component={QrScanScreen}
                     options={{ headerShown: false }}
                 />
+
+                <Stack.Screen
+                    name="PaymentMethodSelect"
+                    component={PaymentMethodSelectScreen}
+                    options={{ headerShown: false }}
+                />
+
                 {/*
                 // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
                 <Stack.Screen
                     name="MypageHomeScreen"
                     component={MypageHomeScreen}
-                    options={{ title: '마이페이지' }}
+                    options={{ headerShown: false }}
                 />*/}
             </Stack.Navigator>
         </NavigationContainer>

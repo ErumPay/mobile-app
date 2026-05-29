@@ -85,12 +85,21 @@ type ComponentPreview =
 
 const guidePages: GuidePage[] = [
   {
+    depth1: 'guide',
+    depth2: 'ia',
+    pageName: 'IA/컴포넌트 가이드',
+    routeName: 'Guide',
+    route: 'Guide',
+    status: 'progress',
+  },
+  {
     depth1: 'app',
     depth2: 'main',
     pageName: '메인',
     routeName: 'Main',
     route: 'Main',
     status: 'done',
+    note: '담당자 : 이준혁',
   },
   {
     depth1: 'card',
@@ -99,6 +108,7 @@ const guidePages: GuidePage[] = [
     routeName: 'CardManualRegister',
     route: 'CardManualRegister',
     status: 'done',
+    note: '담당자 : 나혜빈',
   },
   {
     depth1: 'qr',
@@ -107,22 +117,16 @@ const guidePages: GuidePage[] = [
     routeName: 'QrScan',
     route: 'QrScan',
     status: 'progress',
+    note: '담당자 : 조보름',
   },
   {
     depth1: 'payment',
     depth2: 'method-select',
     pageName: '카드결제 결제수단 선택',
     routeName: 'PaymentMethodSelect',
-    status: 'planned',
-    note: 'KAN-1151 작업 예정',
-  },
-  {
-    depth1: 'guide',
-    depth2: 'ia',
-    pageName: 'IA/컴포넌트 가이드',
-    routeName: 'Guide',
-    route: 'Guide',
+    route: 'PaymentMethodSelect',
     status: 'progress',
+    note: '담당자 : 조보름',
   },
 ];
 
@@ -427,6 +431,11 @@ export default function GuideScreen({ navigation }: Props) {
                                 navigation.navigate('QrScan');
                                 return;
                               }
+
+                              if (page.route === 'PaymentMethodSelect') {
+                                navigation.navigate('PaymentMethodSelect');
+                                return;
+                              }
                             }
                           : undefined
                       }
@@ -470,7 +479,7 @@ export default function GuideScreen({ navigation }: Props) {
                       className="flex-row items-center justify-between gap-4"
                     >
                       <Text
-                        className={`min-w-0 flex-1 font-pretendard text-erum-secondary ${item.className}`}
+                        className={`min-w-0 flex-1 font-pretendard text-neutral-black1 ${item.className}`}
                       >
                         {item.name}
                       </Text>

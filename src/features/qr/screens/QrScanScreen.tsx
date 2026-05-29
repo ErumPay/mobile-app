@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, SafeAreaView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
 
 import { Toast } from '../../../shared/components/Toast';
 import type { RootStackParamList } from '../../../../App';
@@ -37,7 +38,7 @@ export default function QrScanScreen({ navigation }: Props) {
                 <Header
                     title="카드 촬영"
                     tone="dark"
-                    leftIcon={<Text className="font-pretendard text-heading-2 text-white">×</Text>}
+                    leftIcon={<Feather name="x" size={28} color="#FFFFFF" />}
                     onPressLeft={handlePressClose}
                 />
 
@@ -56,9 +57,10 @@ export default function QrScanScreen({ navigation }: Props) {
 
                     <Pressable
                         accessibilityRole="button"
-                        className="w-full items-center justify-center rounded-[28px] bg-erum-main px-5 py-4"
+                        className="w-full items-center justify-center flex-row gap-2 rounded-[28px] bg-erum-main px-5 py-4"
                         onPress={handlePressScan}
                     >
+                        <Feather name="camera" size={22} color="#FFFFFF" />
                         <Text className="font-pretendard text-heading-3 text-white">
                             QR 코드 스캔
                         </Text>

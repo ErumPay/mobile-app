@@ -7,6 +7,7 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
+import { Feather } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 type HeaderProps = {
@@ -28,20 +29,21 @@ export function Header({
    onPressRight,
 }: HeaderProps) {
     const isDark = tone === 'dark';
+    const iconColor = isDark ? '#FFFFFF' : '#1D1F1F';
     const containerClassName = isDark ? 'bg-black' : 'bg-neutral-white';
     const textClassName = isDark ? 'text-neutral-white' : 'text-neutral-black1';
 
   const isCloseType = type === 'close';
   const iconClassName = `font-pretendard text-heading-2 ${textClassName}`;
   const defaultLeftIcon = (
-    <Text className={iconClassName}>‹</Text>
+    <Feather name="chevron-left" size={28} color={iconColor} />
   );
   const defaultRightIcon = (
-    <Text className={iconClassName}>×</Text>
+      <Feather name="x" size={28} color={iconColor} />
   );
 
   return (
-    <View className={`min-h-[52px] w-full flex-row items-center justify-between px-5 ${containerClassName}`}>
+    <View className={`w-full flex-row items-center justify-between py-3 px-5 ${containerClassName}`}>
       <Pressable
         accessibilityRole={!isCloseType && onPressLeft ? 'button' : undefined}
         className="h-10 w-10 items-center justify-center"
