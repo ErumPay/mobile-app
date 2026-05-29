@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
@@ -11,14 +12,76 @@ interface PaymentHistoryScreenProps {
   onCloseFilter?: () => void;
 }
 
-const payments = [
-  ['더치페이', '결제완료', 'Luxury Hotel Stay', '2026.04.23', '34,000원', 'pink'],
-  ['원격결제', '결제취소요청', '코드보안 양성산', '2026.04.18', '34,000원', 'purple'],
-  ['단일혜택', '결제취소', '서울순대국', '2026.04.16', '8,000원', 'blue'],
-  ['단일실적', '결제완료', '스타벅스 코리아 양성점', '2026.04.05', '18,300원', 'cyan'],
-  ['분할혜택', '결제취소', '유니클로 양동포점', '2026.04.02', '52,900원', 'emerald'],
-  ['분할실적', '결제완료', '무인양품 첨단센타운', '2026.04.01', '3,334,000원', 'lime'],
-] as const;
+type PaymentTab = 'all' | 'completed' | 'canceled';
+
+type PaymentStatus = '결제완료' | '결제취소' | '결제취소요청';
+
+interface PaymentHistoryItem {
+  id: string;
+  method: string;
+  status: PaymentStatus;
+  title: string;
+  date: string;
+  amount: string;
+  tone: string;
+}
+
+const mockPayments: PaymentHistoryItem[] = [
+  {
+    id: 'payment-1',
+    method: '더치페이',
+    status: '결제완료',
+    title: 'Luxury Hotel Stay',
+    date: '2026.04.23',
+    amount: '34,000원',
+    tone: 'pink',
+  },
+  {
+    id: 'payment-2',
+    method: '원격결제',
+    status: '결제취소요청',
+    title: '코드보안 양성산',
+    date: '2026.04.18',
+    amount: '34,000원',
+    tone: 'purple',
+  },
+  {
+    id: 'payment-3',
+    method: '단일혜택',
+    status: '결제취소',
+    title: '서울순대국',
+    date: '2026.04.16',
+    amount: '8,000원',
+    tone: 'blue',
+  },
+  {
+    id: 'payment-4',
+    method: '단일실적',
+    status: '결제완료',
+    title: '스타벅스 코리아 양성점',
+    date: '2026.04.05',
+    amount: '18,300원',
+    tone: 'cyan',
+  },
+  {
+    id: 'payment-5',
+    method: '분할혜택',
+    status: '결제취소',
+    title: '유니클로 양동포점',
+    date: '2026.04.02',
+    amount: '52,900원',
+    tone: 'emerald',
+  },
+  {
+    id: 'payment-6',
+    method: '분할실적',
+    status: '결제완료',
+    title: '무인양품 첨단센타운',
+    date: '2026.04.01',
+    amount: '3,334,000원',
+    tone: 'lime',
+  },
+];
 
 export function PaymentHistoryScreen({
   isEmpty = false,
@@ -28,13 +91,55 @@ export function PaymentHistoryScreen({
   onPressItem,
   onCloseFilter,
 }: PaymentHistoryScreenProps) {
+  const [activeTab, setActiveTab] = useState<PaymentTab>('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const sourcePayments = isEmpty ? [] : mockPayments;
+
+  const filteredPayments = sourcePayments.filter((payment) => {
+    if (activeTab === 'all') {
+      return true;
+    }
+
+    if (activeTab === 'completed') {
+      return payment.status === '결제완료';
+    }
+
+    return payment.status === '결제취소' || payment.status === '결제취소요청';
+  });
+
+  const hasPayments = filteredPayments.length > 0;
+  const isFilterSheetVisible = showFilterSheet || isFilterOpen;
+
+  const handlePressFilter = () => {
+    setIsFilterOpen(true);
+    onPressFilter?.();
+  };
+
+  const handleCloseFilter = () => {
+    setIsFilterOpen(false);
+    onCloseFilter?.();
+  };
+
   return (
       <MypageFrame backgroundClassName="bg-zinc-50">
         <MypageHeader title="결제내역" onBack={onBack} />
         <View className="h-12 w-full flex-row border-b border-zinc-100 bg-white">
-          <HistoryTab label="전체" active />
-          <HistoryTab label="결제완료" />
-          <HistoryTab label="결제취소" />
+          <HistoryTab
+            label="전체"
+            active={activeTab === 'all'}
+            onPress={() => setActiveTab('all')}
+          />
+          <HistoryTab
+            label="결제완료"
+            active={activeTab === 'completed'}
+            onPress={() => setActiveTab('completed')}
+          />
+          <HistoryTab
+            label="결제취소"
+            active={activeTab === 'canceled'}
+            onPress={() => setActiveTab('canceled')}
+          />
         </View>
 
         <ScrollView
@@ -44,58 +149,80 @@ export function PaymentHistoryScreen({
           <View className="w-full max-w-[360px] flex-1 self-center px-4 pb-44 pt-6">
             <View className="mb-4 w-full flex-row items-center justify-between">
               <Text className="text-base font-bold text-slate-950">
-                총 {isEmpty ? 0 : 7}건
+                총 {filteredPayments.length}건
               </Text>
               <Pressable
                 accessibilityRole="button"
                 className="h-8 w-8 items-center justify-center rounded-full bg-blue-800"
-                onPress={onPressFilter}
+                onPress={handlePressFilter}
               >
                 <Text className="text-lg text-white">▽</Text>
               </Pressable>
             </View>
 
-            {isEmpty ? (
+            {hasPayments ? (
+              <View className="w-full gap-4">
+                {filteredPayments.map((payment) => (
+                  <PaymentItem
+                    key={payment.id}
+                    method={payment.method}
+                    status={payment.status}
+                    title={payment.title}
+                    date={payment.date}
+                    amount={payment.amount}
+                    tone={payment.tone}
+                    onPress={onPressItem}
+                  />
+                ))}
+              </View>
+            ) : (
               <View className="h-12 w-full items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-sm">
                 <Text className="text-sm text-slate-500">
                   결제 내역이 없습니다.
                 </Text>
-              </View>
-            ) : (
-              <View className="w-full gap-4">
-                {payments.map((payment) => (
-                  <PaymentItem
-                    key={`${payment[2]}-${payment[3]}`}
-                    method={payment[0]}
-                    status={payment[1]}
-                    title={payment[2]}
-                    date={payment[3]}
-                    amount={payment[4]}
-                    tone={payment[5]}
-                    onPress={onPressItem}
-                  />
-                ))}
               </View>
             )}
           </View>
         </ScrollView>
 
         <BottomNav active="pay" />
-        {showFilterSheet ? <FilterSheet onClose={onCloseFilter} /> : null}
+        {isFilterSheetVisible ? (
+          <FilterSheet onClose={handleCloseFilter} />
+        ) : null}
       </MypageFrame>
   );
 }
 
-function HistoryTab({ label, active = false }: { label: string; active?: boolean }) {
+function HistoryTab({
+  label,
+  active = false,
+  onPress,
+}: {
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <View className="flex-1">
+    <Pressable
+      accessibilityRole="button"
+      className="flex-1"
+      onPress={onPress}
+    >
       <View className="h-[46px] items-center justify-center">
-        <Text className={`text-sm font-semibold ${active ? 'text-blue-800' : 'text-slate-500'}`}>
+        <Text
+          className={`text-sm font-semibold ${
+            active ? 'text-blue-800' : 'text-slate-500'
+          }`}
+        >
           {label}
         </Text>
       </View>
-      <View className={`h-0.5 w-full ${active ? 'bg-blue-800' : 'bg-transparent'}`} />
-    </View>
+      <View
+        className={`h-0.5 w-full ${
+          active ? 'bg-blue-800' : 'bg-transparent'
+        }`}
+      />
+    </Pressable>
   );
 }
 
