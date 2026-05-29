@@ -263,30 +263,30 @@ const colorGroups = [
   {
     title: 'Main',
     items: [
-      { name: 'Main', value: colors.erum.main },
-      { name: 'Secondary', value: colors.erum.secondary },
-      { name: 'Primary', value: colors.erum.primary },
+      { name: 'Main', value: colors.erum.main, className: 'bg-erum-main' },
+      { name: 'Secondary', value: colors.erum.secondary, className: 'bg-erum-secondary' },
+      { name: 'Primary', value: colors.erum.primary, className: 'bg-erum-primary' },
     ],
   },
   {
     title: 'State',
     items: [
-      { name: 'Gold', value: colors.state.gold },
-      { name: 'Silver', value: colors.state.silver },
-      { name: 'Error', value: colors.state.error },
-      { name: 'Success', value: colors.state.success },
-      { name: 'Orange', value: colors.state.orange },
-      { name: 'Sky', value: colors.state.sky },
+      { name: 'Gold', value: colors.state.gold, className: 'bg-state-gold' },
+      { name: 'Silver', value: colors.state.silver, className: 'bg-state-silver' },
+      { name: 'Error', value: colors.state.error, className: 'bg-state-error' },
+      { name: 'Success', value: colors.state.success, className: 'bg-state-success' },
+      { name: 'Orange', value: colors.state.orange, className: 'bg-state-orange' },
+      { name: 'Sky', value: colors.state.sky, className: 'bg-state-sky' },
     ],
   },
   {
     title: 'Neutral',
     items: [
-      { name: 'Black 1', value: colors.neutral.black1 },
-      { name: 'Black 2', value: colors.neutral.black2 },
-      { name: 'Grey 1', value: colors.neutral.grey1 },
-      { name: 'Grey 2', value: colors.neutral.grey2 },
-      { name: 'White', value: colors.neutral.white },
+      { name: 'Black 1', value: colors.neutral.black1, className: 'bg-neutral-black1' },
+      { name: 'Black 2', value: colors.neutral.black2, className: 'bg-neutral-black2' },
+      { name: 'Grey 1', value: colors.neutral.grey1, className: 'bg-neutral-grey1' },
+      { name: 'Grey 2', value: colors.neutral.grey2, className: 'bg-neutral-grey2' },
+      { name: 'White', value: colors.neutral.white, className: 'bg-neutral-white' },
     ],
   },
 ];
@@ -446,8 +446,7 @@ export default function GuideScreen({ navigation }: Props) {
                         {group.items.map((item) => (
                           <View key={`${group.title}-${item.name}`} className="w-[92px]">
                             <View
-                              style={{ backgroundColor: item.value }}
-                              className="mb-2 h-12 rounded-lg border border-neutral-grey1"
+                                className={`mb-2 h-12 rounded-lg border border-neutral-grey1 ${item.className}`}
                             />
                             <Text className="font-pretendard text-normal-bold text-neutral-black1">
                               {item.name}

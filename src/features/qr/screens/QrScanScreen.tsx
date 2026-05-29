@@ -1,7 +1,33 @@
+import { useState } from 'react';
 import { Pressable, SafeAreaView, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+import { Toast } from '../../../shared/components/Toast';
+import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';
 
-export default function QrScanScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'QrScan'>;
+
+export default function QrScanScreen({ navigation }: Props) {
+    const [toastVisible, setToastVisible] = useState(false);
+
+    const handlePressClose = () => {
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+            return;
+        }
+
+        navigation.navigate('Guide');
+    };
+
+    const handlePressScan = () => {
+        setToastVisible(true);
+
+        setTimeout(() => {
+            setToastVisible(false);
+        }, 1500);
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }}>
             <View
@@ -12,7 +38,7 @@ export default function QrScanScreen() {
                     title="카드 촬영"
                     tone="dark"
                     leftIcon={<Text className="font-pretendard text-heading-2 text-white">×</Text>}
-                    onPressLeft={() => {}}
+                    onPressLeft={handlePressClose}
                 />
 
                 <View className="flex-1 items-center justify-center px-9 pb-12 pt-6">
@@ -31,6 +57,7 @@ export default function QrScanScreen() {
                     <Pressable
                         accessibilityRole="button"
                         className="w-full items-center justify-center rounded-[28px] bg-erum-main px-5 py-4"
+                        onPress={handlePressScan}
                     >
                         <Text className="font-pretendard text-heading-3 text-white">
                             QR 코드 스캔
@@ -38,6 +65,12 @@ export default function QrScanScreen() {
                     </Pressable>
                 </View>
             </View>
+
+            <Toast
+                visible={toastVisible}
+                message="QR 코드가 인식되었습니다."
+                type="success"
+            />
         </SafeAreaView>
     );
 }
