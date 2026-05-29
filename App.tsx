@@ -47,6 +47,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
     const [managedCards, setManagedCards] = useState<ManagedCard[]>(mockManagedCards);
     
+    const handleDeleteCard = (deletedCardId: string) => {
+        setManagedCards((currentCards) =>
+            currentCards.filter((card) => card.id !== deletedCardId)
+        );
+    };
+
     return (
         <NavigationContainer>
             <Stack.Navigator initialRouteName="Main">

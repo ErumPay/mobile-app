@@ -9,15 +9,57 @@ import {
   MypageHeader,
 } from '../components/MypageLayout';
 
+import { useState } from 'react';
+import type { RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../../../../App';
+
 interface CardDetailScreenProps {
-  isDisabled?: boolean;
-  hasPayments?: boolean;
-  benefitOpen?: boolean;
+  route: RouteProp<RootStackParamList, 'CardDetailScreen'>;
   onBack?: () => void;
   onSetDefault?: () => void;
   onEditAlias?: () => void;
   onDelete?: () => void;
 }
+
+type MockCardDetail = {
+  issuer: string;
+  cardName: string;
+  cardNumber: string;
+  registeredAt: string;
+  isDefault: boolean;
+  disabled: boolean;
+  hasPayments: boolean;
+};
+
+const mockCardDetails: Record<string, MockCardDetail> = {
+  'card-1': {
+    issuer: 'Nany',
+    cardName: 'Nany My 카드',
+    cardNumber: '3424 **** **** 1234',
+    registeredAt: '2026.03.15',
+    isDefault: true,
+    disabled: false,
+    hasPayments: false,
+  },
+  'card-2': {
+    issuer: 'Nany',
+    cardName: 'Nany My 카드',
+    cardNumber: '3424 **** **** 1234',
+    registeredAt: '2026.03.15',
+    isDefault: false,
+    disabled: false,
+    hasPayments: true,
+  },
+  'card-3': {
+    issuer: 'Nany',
+    cardName: 'Nany My 카드',
+    cardNumber: '3424 **** **** 1234',
+    registeredAt: '2026.03.15',
+    isDefault: false,
+    disabled: true,
+    hasPayments: false,
+  },
+};
 
 const benefitRows = [
   '해외 승/오프라인 적립',
@@ -32,14 +74,19 @@ const benefitRows = [
 ];
 
 export function CardDetailScreen({
-  isDisabled = false,
-  hasPayments = false,
-  benefitOpen = false,
+  route,
   onBack,
   onSetDefault,
   onEditAlias,
   onDelete,
 }: CardDetailScreenProps) {
+  const [openBenefitIndex, setOpenBenefitIndex] = useState<number | null>(null);
+
+  const cardId = route.params.cardId;
+  const card = mockCardDetails[cardId] ?? mockCardDetails['card-1'];
+
+  const isDisabled = card.disabled;
+  const hasPayments = card.hasPayments;
   return (
       <MypageFrame backgroundClassName="bg-white">
         <MypageHeader title="카드 상세" onBack={onBack} />
@@ -60,10 +107,22 @@ export function CardDetailScreen({
               <Text className="mb-4 text-lg font-bold text-slate-950">
                 카드 정보
               </Text>
-              <InfoRow label="카드사" value="Nany" />
-              <InfoRow label="카드명" value="Nany My 카드" />
-              <InfoRow label="카드번호" value="3424 **** **** 1234" />
-              <InfoRow label="등록일" value="2026.03.15" />
+              <View className="w-full flex-row items-center justify-between py-2">
+                <Text className="text-base text-slate-500">카드사</Text>
+                <View className="flex-row items-center">
+                  {card.isDefault ? (
+                    <Text className="mr-2 rounded bg-emerald-400 px-2 py-0.5 text-xs font-bold text-white">
+                      대표
+                    </Text>
+                  ) : null}
+                  <Text className="text-base font-bold text-slate-950">
+                    {card.issuer}
+                  </Text>
+                </View>
+              </View>
+              <InfoRow label="카드명" value={card.cardName} />
+              <InfoRow label="카드번호" value={card.cardNumber} />
+              <InfoRow label="등록일" value={card.registeredAt} />
             </CardSection>
 
             <View className="mt-5">
@@ -110,7 +169,12 @@ export function CardDetailScreen({
                   <BenefitRow
                     key={row}
                     title={row}
-                    open={benefitOpen && index === 0}
+                    open={openBenefitIndex === index}
+                    onPress={() =>
+                      setOpenBenefitIndex((currentIndex) =>
+                        currentIndex === index ? null : index
+                      )
+                    }
                   />
                 ))}
               </CardSection>
@@ -163,15 +227,27 @@ export function CardDetailScreen({
   );
 }
 
-function BenefitRow({ title, open }: { title: string; open: boolean }) {
+function BenefitRow({
+  title,
+  open,
+  onPress,
+}: {
+  title: string;
+  open: boolean;
+  onPress: () => void;
+}) {
   return (
     <View className="w-full py-2">
-      <View className="w-full flex-row items-center justify-between">
+      <Pressable
+        accessibilityRole="button"
+        className="w-full flex-row items-center justify-between"
+        onPress={onPress}
+      >
         <Text className="flex-1 text-base font-semibold text-slate-950">
           {title}
         </Text>
         <Text className="text-xl text-slate-400">{open ? '⌃' : '⌄'}</Text>
-      </View>
+      </Pressable>
       {open ? (
         <Text className="mt-2 text-sm leading-5 text-slate-700">
           해외 승/오프라인 적립에 대한 내용입니다. 해외 승/오프라인 적립에
