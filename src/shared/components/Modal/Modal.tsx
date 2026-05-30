@@ -13,7 +13,7 @@ type CommonModalProps = {
   description?: string;
   confirmLabel: string;
   onConfirm: () => void;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 type OneButtonModalProps = CommonModalProps & {
@@ -42,6 +42,8 @@ type ModalProps = OneButtonModalProps | TwoButtonModalProps;
  *   title="카드 삭제가 완료되었습니다."
  *   confirmLabel="확인"
  *   onConfirm={() => setVisible(false)}
+ *   onClose={() => setIsOneButtonModalVisible(false)}
+ * 
  * />
  *
  * type="two": 실행 버튼 + 취소 버튼 2개짜리 확인 모달
@@ -56,11 +58,11 @@ type ModalProps = OneButtonModalProps | TwoButtonModalProps;
  *   cancelLabel="닫기"
  *   onConfirm={handleConfirm}
  *   onCancel={() => setVisible(false)}
+ *   onClose={() => setIsTwoButtonModalVisible(false)}
  * />
  */
 export function Modal(modalProps: ModalProps) {
-  const handleClose =
-    modalProps.type === 'two' ? modalProps.onCancel : modalProps.onClose;
+  const handleClose = modalProps.onClose;
 
   return (
     <RNModal

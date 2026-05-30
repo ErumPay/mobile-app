@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import type { TextInputProps as RNTextInputProps } from 'react-native';
+import { forwardRef, useState } from 'react';
+import type {
+  TextInput as RNTextInputRef,
+  TextInputProps as RNTextInputProps,
+} from 'react-native';
 import { Text, TextInput as RNTextInput, View } from 'react-native';
 
 type InputType = 'text' | 'number';
@@ -15,18 +18,21 @@ type InputProps = Omit<
   onChangeText?: (value: string) => void;
 };
 
-export function Input({
-  label,
-  type = 'text',
-  errorMessage,
-  readOnly = false,
-  className = '',
-  placeholderTextColor = '#B4B8BD',
-  onChangeText,
-  onFocus,
-  onBlur,
-  ...props
-}: InputProps) {
+export const Input = forwardRef<RNTextInputRef, InputProps>(function Input(
+  {
+    label,
+    type = 'text',
+    errorMessage,
+    readOnly = false,
+    className = '',
+    placeholderTextColor = '#B4B8BD',
+    onChangeText,
+    onFocus,
+    onBlur,
+    ...props
+  },
+  ref,
+) {
   const [isFocused, setIsFocused] = useState(false);
 
   const handleChangeText = (text: string) => {
@@ -79,6 +85,7 @@ const handleBlur: NonNullable<RNTextInputProps['onBlur']> = (event) => {
       </Text>
 
       <RNTextInput
+        ref={ref}
         className={`min-h-[46px] w-full rounded-xl border px-4 py-3 font-pretendard text-large-regular ${borderClassName} ${stateClassName} ${className}`}
         editable={!readOnly}
         pointerEvents={readOnly ? 'none' : 'auto'}
@@ -99,6 +106,6 @@ const handleBlur: NonNullable<RNTextInputProps['onBlur']> = (event) => {
       ) : null}
     </View>
   );
-}
+});
 
 export default Input;

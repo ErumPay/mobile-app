@@ -599,6 +599,7 @@ export default function GuideScreen({ navigation }: Props) {
         cancelLabel="닫기"
         onConfirm={() => setIsTwoButtonModalVisible(false)}
         onCancel={() => setIsTwoButtonModalVisible(false)}
+        onClose={() => setIsTwoButtonModalVisible(false)}
       />
 
       <Toast
