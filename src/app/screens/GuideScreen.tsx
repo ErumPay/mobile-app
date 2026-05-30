@@ -42,6 +42,9 @@ import { Toast } from '../../shared/components/Toast';
 import { Toggle } from '../../shared/components/Toggle';
 import { colors } from '../../shared/styles';
 
+import { NumberInput, TextInput } from '../../shared/components/Input';
+import { OneButtonModal, TwoButtonModal } from '../../shared/components/Modal';
+
 type GuideStatus = 'done' | 'progress' | 'planned';
 
 type GuidePage = {
@@ -81,7 +84,11 @@ type ComponentPreview =
   | 'listItem'
   | 'emptyState'
   | 'noticeBox'
-  | 'pageWrap';
+  | 'pageWrap'
+  | 'textInput'
+  | 'numberInput'
+  | 'oneButtonModal'
+  | 'twoButtonModal';
 
 const guidePages: GuidePage[] = [
   {
@@ -237,6 +244,30 @@ const componentGuideItems: ComponentGuideItem[] = [
     preview: 'pageWrap',
     note: '모바일/태블릿 공통 wrap',
   },
+  {
+    name: 'TextInput',
+    path: 'src/shared/components/Input/TextInput',
+    status: 'done',
+    preview: 'textInput',
+  },
+  {
+    name: 'NumberInput',
+    path: 'src/shared/components/Input/NumberInput',
+    status: 'done',
+    preview: 'numberInput',
+  },
+  {
+    name: 'OneButtonModal',
+    path: 'src/shared/components/Modal/OneButtonModal',
+    status: 'done',
+    preview: 'oneButtonModal',
+  },
+  {
+    name: 'TwoButtonModal',
+    path: 'src/shared/components/Modal/TwoButtonModal',
+    status: 'done',
+    preview: 'twoButtonModal',
+  },
 ];
 
 const statusLabel: Record<GuideStatus, string> = {
@@ -314,6 +345,10 @@ export default function GuideScreen({ navigation }: Props) {
   const [selectedFloatingItem, setSelectedFloatingItem] = useState('payment');
   const [isCardSelected, setIsCardSelected] = useState(true);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [guideTextInputValue, setGuideTextInputValue] = useState('');
+  const [guideNumberInputValue, setGuideNumberInputValue] = useState('');
+  const [isOneButtonModalVisible, setIsOneButtonModalVisible] = useState(false);
+  const [isTwoButtonModalVisible, setIsTwoButtonModalVisible] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -351,6 +386,18 @@ export default function GuideScreen({ navigation }: Props) {
 
     if (preview === 'errorPage') {
       setIsErrorPreviewVisible(true);
+      return;
+    }
+
+    if (preview === 'oneButtonModal') {
+      setSelectedComponentPreview('oneButtonModal');
+      setIsOneButtonModalVisible(true);
+      return;
+    }
+
+    if (preview === 'twoButtonModal') {
+      setSelectedComponentPreview('twoButtonModal');
+      setIsTwoButtonModalVisible(true);
       return;
     }
 
@@ -499,7 +546,13 @@ export default function GuideScreen({ navigation }: Props) {
                     isAccordionExpanded={isAccordionExpanded}
                     selectedFloatingItem={selectedFloatingItem}
                     isCardSelected={isCardSelected}
+                    guideTextInputValue={guideTextInputValue}
+                    guideNumberInputValue={guideNumberInputValue}
                     onPressButton={() => handlePressComponentPreview('toast')}
+                    onPressOneButtonModal={() => setIsOneButtonModalVisible(true)}
+                    onPressTwoButtonModal={() => setIsTwoButtonModalVisible(true)}
+                    onChangeGuideTextInputValue={setGuideTextInputValue}
+                    onChangeGuideNumberInputValue={setGuideNumberInputValue}
                     onChangeTab={setSelectedTab}
                     onChangeToggle={setIsToggleOn}
                     onChangeCheckbox={setIsCheckboxChecked}
@@ -509,6 +562,7 @@ export default function GuideScreen({ navigation }: Props) {
                     onToggleAccordion={() =>
                       setIsAccordionExpanded((currentValue) => !currentValue)
                     }
+                    
                   />
                 </View>
               </GuideSection>
@@ -550,6 +604,26 @@ export default function GuideScreen({ navigation }: Props) {
           />
         </View>
       </DraggableBottomSheet>
+      
+      <OneButtonModal
+        visible={isOneButtonModalVisible}
+        icon={<Text className="text-[52px]">✅</Text>}
+        title="카드 삭제가 완료되었습니다."
+        confirmLabel="확인"
+        onConfirm={() => setIsOneButtonModalVisible(false)}
+        onClose={() => setIsOneButtonModalVisible(false)}
+      />
+
+      <TwoButtonModal
+        visible={isTwoButtonModalVisible}
+        icon={<Text className="text-[52px]">⭐</Text>}
+        title="Nany My 카드를 대표카드로 지정 하시겠습니까?"
+        description="결제 시 우선으로 사용됩니다"
+        confirmLabel="대표카드 설정하기"
+        cancelLabel="닫기"
+        onConfirm={() => setIsTwoButtonModalVisible(false)}
+        onCancel={() => setIsTwoButtonModalVisible(false)}
+      />
 
       <Toast
         visible={isToastVisible}
@@ -657,6 +731,12 @@ function ComponentPreviewArea({
   isAccordionExpanded,
   selectedFloatingItem,
   isCardSelected,
+  guideTextInputValue,
+  guideNumberInputValue,
+  onPressOneButtonModal,
+  onPressTwoButtonModal,
+  onChangeGuideTextInputValue,
+  onChangeGuideNumberInputValue,
   onPressButton,
   onChangeTab,
   onChangeToggle,
@@ -665,6 +745,7 @@ function ComponentPreviewArea({
   onChangeFloatingItem,
   onChangeCardSelected,
   onToggleAccordion,
+  
 }: {
   preview: ComponentPreview;
   selectedTab: string;
@@ -674,6 +755,12 @@ function ComponentPreviewArea({
   isAccordionExpanded: boolean;
   selectedFloatingItem: string;
   isCardSelected: boolean;
+  guideTextInputValue: string;
+  guideNumberInputValue: string;
+  onPressOneButtonModal: () => void;
+  onPressTwoButtonModal: () => void;
+  onChangeGuideTextInputValue: (value: string) => void;
+  onChangeGuideNumberInputValue: (value: string) => void;
   onPressButton: () => void;
   onChangeTab: (value: string) => void;
   onChangeToggle: (value: boolean) => void;
@@ -772,6 +859,51 @@ function ComponentPreviewArea({
       />
     );
   }
+  if (preview === 'textInput') {
+  return (
+    <TextInput
+      label="이름"
+      placeholder="이름을 입력해주세요."
+      value={guideTextInputValue}
+      onChangeText={onChangeGuideTextInputValue}
+    />
+  );
+}
+
+if (preview === 'numberInput') {
+  return (
+    <NumberInput
+      label="카드번호"
+      placeholder="카드번호를 입력해주세요."
+      value={guideNumberInputValue}
+      maxLength={16}
+      onChangeText={onChangeGuideNumberInputValue}
+    />
+  );
+}
+
+if (preview === 'oneButtonModal') {
+  return (
+    <View className="gap-3">
+      <Button label="1버튼 모달 열기" onPress={onPressOneButtonModal} />
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        완료/안내 팝업처럼 확인 버튼 하나만 있는 모달입니다.
+      </Text>
+    </View>
+  );
+}
+
+if (preview === 'twoButtonModal') {
+  return (
+    <View className="gap-3">
+      <Button label="2버튼 모달 열기" onPress={onPressTwoButtonModal} />
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        삭제/로그아웃처럼 실행 버튼과 닫기 버튼이 있는 모달입니다.
+      </Text>
+    </View>
+  );
+}
+
 
   if (preview === 'accordion') {
     return (
@@ -893,6 +1025,8 @@ function ComponentPreviewArea({
       </View>
     );
   }
+
+
 
   return (
     <Text className="font-pretendard text-large-regular text-neutral-black2">
