@@ -854,6 +854,14 @@ function ComponentPreviewArea({
         maxLength={16}
         onChangeText={onChangeGuideInputNumber}
       />
+
+      <Input
+        label="읽기전용"
+        type="text"
+        placeholder="수정할 수 없는 입력값입니다."
+        value="읽기전용 상태"
+        readOnly
+      />
     </View>
   );
 }

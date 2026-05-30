@@ -1,49 +1,39 @@
+import { useState } from 'react';
 import type { TextInputProps as RNTextInputProps } from 'react-native';
 import { Text, TextInput as RNTextInput, View } from 'react-native';
 
 type InputType = 'text' | 'number';
 
-type InputProps = Omit<RNTextInputProps, 'keyboardType' | 'onChangeText'> & {
+type InputProps = Omit<
+  RNTextInputProps,
+  'keyboardType' | 'onChangeText' | 'editable'
+> & {
   label: string;
   type?: InputType;
   errorMessage?: string;
+  readOnly?: boolean;
   onChangeText?: (value: string) => void;
 };
 
-/**
- * 공통 Input 컴포넌트
- *
- * type="text": 이름, 별칭처럼 일반 문자를 입력받을 때 사용합니다.
- *
- * <Input
- *   label="이름"
- *   type="text"
- *   placeholder="이름을 입력해주세요."
- *   value={name}
- *   onChangeText={setName}
- * />
- *
- * type="number": 카드번호, 휴대폰번호처럼 숫자만 입력받을 때 사용합니다.
- *
- * <Input
- *   label="카드번호"
- *   type="number"
- *   placeholder="카드번호를 입력해주세요."
- *   value={cardNumber}
- *   maxLength={16}
- *   onChangeText={setCardNumber}
- * />
- */
 export function Input({
   label,
   type = 'text',
   errorMessage,
+  readOnly = false,
   className = '',
   placeholderTextColor = '#B4B8BD',
   onChangeText,
+  onFocus,
+  onBlur,
   ...props
 }: InputProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
   const handleChangeText = (text: string) => {
+    if (readOnly) {
+      return;
+    }
+
     if (type === 'number') {
       onChangeText?.(text.replace(/\D/g, ''));
       return;
@@ -52,6 +42,36 @@ export function Input({
     onChangeText?.(text);
   };
 
+  const handleFocus: NonNullable<RNTextInputProps['onFocus']> = (event) => {
+  if (readOnly) {
+    return;
+  }
+
+  setIsFocused(true);
+  onFocus?.(event);
+};
+
+const handleBlur: NonNullable<RNTextInputProps['onBlur']> = (event) => {
+  if (readOnly) {
+    return;
+  }
+
+  setIsFocused(false);
+  onBlur?.(event);
+};
+
+  const borderClassName = readOnly
+  ? 'border-neutral-grey1'
+  : errorMessage
+    ? 'border-state-error'
+    : isFocused
+      ? 'border-erum-main'
+      : 'border-neutral-grey1';
+
+  const stateClassName = readOnly
+    ? 'bg-neutral-grey2 text-neutral-black2'
+    : 'bg-neutral-white text-neutral-black1';
+
   return (
     <View className="w-full">
       <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
@@ -59,12 +79,16 @@ export function Input({
       </Text>
 
       <RNTextInput
-        className={`min-h-[46px] w-full rounded-xl border bg-neutral-white px-4 py-3 font-pretendard text-large-regular text-neutral-black1 ${
-          errorMessage ? 'border-state-error' : 'border-neutral-grey1'
-        } ${className}`}
+        className={`min-h-[46px] w-full rounded-xl border px-4 py-3 font-pretendard text-large-regular ${borderClassName} ${stateClassName} ${className}`}
+        editable={!readOnly}
+        pointerEvents={readOnly ? 'none' : 'auto'}
+        selectTextOnFocus={!readOnly}
+        caretHidden={readOnly}
         keyboardType={type === 'number' ? 'number-pad' : 'default'}
         placeholderTextColor={placeholderTextColor}
         onChangeText={handleChangeText}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         {...props}
       />
 
