@@ -24,7 +24,7 @@ type ButtonProps = {
 };
 
 const buttonClassNameByVariant: Record<ButtonVariant, string> = {
-  primary: 'bg-erum-main',
+  primary: 'bg-erum-main border border-erum-main',
   secondary: 'border border-erum-main bg-neutral-white',
   danger: 'bg-state-error',
   ghost: 'bg-transparent',
@@ -52,7 +52,7 @@ function getButtonClassName({
   variant: ButtonVariant;
 }) {
   if (disabled) {
-    return 'bg-neutral-grey1 opacity-60';
+    return 'bg-neutral-grey1 border border-neutral-grey1 opacity-60';
   }
 
   if (readOnly) {
