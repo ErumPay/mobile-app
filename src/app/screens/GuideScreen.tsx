@@ -128,6 +128,15 @@ const guidePages: GuidePage[] = [
     status: 'progress',
     note: '담당자 : 조보름',
   },
+  {
+    depth1: 'payment',
+    depth2: 'card-select',
+    pageName: '카드결제 카드 선택',
+    routeName: 'PaymentCardSelect',
+    route: 'PaymentCardSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
 ];
 
 const componentGuideItems: ComponentGuideItem[] = [
@@ -296,13 +305,15 @@ const colorGroups = [
 ];
 
 const typographyItems = [
-  { name: 'Heading 1', className: 'text-heading-1', spec: '36 / 43' },
-  { name: 'Heading 2', className: 'text-heading-2', spec: '24 / 29' },
-  { name: 'Heading 3', className: 'text-heading-3', spec: '16 / 19' },
-  { name: 'Large Bold', className: 'text-large-bold', spec: '15 / 21' },
-  { name: 'Large Regular', className: 'text-large-regular', spec: '15 / 21' },
-  { name: 'Normal Bold', className: 'text-normal-bold', spec: '12 / 14' },
-  { name: 'Normal Regular', className: 'text-normal-regular', spec: '12 / 14' },
+  { name: 'Heading 1', className: 'text-heading-1'},
+  { name: 'Heading 2', className: 'text-heading-2'},
+  { name: 'Heading 3', className: 'text-heading-3'},
+  { name: 'Large Bold', className: 'text-large-bold'},
+  { name: 'Large Regular', className: 'text-large-regular'},
+  { name: 'Normal Bold', className: 'text-normal-bold'},
+  { name: 'Normal Regular', className: 'text-normal-regular'},
+  { name: 'Small Bold', className: 'text-small-bold'},
+  { name: 'Small Regular', className: 'text-small-regular'},
 ];
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Guide'>;
@@ -436,6 +447,12 @@ export default function GuideScreen({ navigation }: Props) {
                                 navigation.navigate('PaymentMethodSelect');
                                 return;
                               }
+
+                              if (page.route === 'PaymentCardSelect') {
+                                navigation.navigate('PaymentCardSelect');
+                                return;
+                              }
+
                             }
                           : undefined
                       }
@@ -482,9 +499,6 @@ export default function GuideScreen({ navigation }: Props) {
                         className={`min-w-0 flex-1 font-pretendard text-neutral-black1 ${item.className}`}
                       >
                         {item.name}
-                      </Text>
-                      <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                        {item.spec}
                       </Text>
                     </View>
                   ))}
@@ -735,15 +749,16 @@ function ComponentPreviewArea({
 
   if (preview === 'floatingButton') {
     return (
-      <View className="min-h-[220px] overflow-hidden rounded-xl bg-neutral-grey2">
-        <Text className="font-pretendard text-large-regular text-neutral-black2">
-          앱 하단 플로팅 내비게이션 미리보기
-        </Text>
-        <FloatingButton
-          value={selectedFloatingItem}
-          onChange={onChangeFloatingItem}
-        />
-      </View>
+        <View className="min-h-[180px] overflow-hidden rounded-xl bg-neutral-grey2">
+          <Text className="font-pretendard text-large-regular text-neutral-black2">
+            앱 하단 플로팅 내비게이션 미리보기
+          </Text>
+
+          <FloatingButton
+              value={selectedFloatingItem}
+              onChange={onChangeFloatingItem}
+          />
+        </View>
     );
   }
 

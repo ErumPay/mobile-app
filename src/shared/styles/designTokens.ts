@@ -26,6 +26,7 @@ export const colors = {
     black3: '#00000080',
     grey1: '#E5E8EC',
     grey2: '#F3F9F9',
+    grey3: '#F1F1F1',
     disabled: '#B4B8BD',
     white: '#FFFFFF',
   },

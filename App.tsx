@@ -13,6 +13,7 @@ import MainScreen from './src/app/screens/MainScreen';
 import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
 import QrScanScreen from './src/features/qr/screens/QrScanScreen';
 import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
+import PaymentCardSelectScreen from './src/features/payment/screens/PaymentCardSelectScreen';
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
@@ -21,6 +22,7 @@ export type RootStackParamList = {
     Guide: undefined;
     QrScan: undefined;
     PaymentMethodSelect: undefined;
+    PaymentCardSelect: undefined;
     // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
     /*PaymentMethodSelect: undefined;*/
     CardManualRegister: undefined;
@@ -34,6 +36,8 @@ const linking: LinkingOptions<RootStackParamList> = {
             Guide: 'guide',
             QrScan: 'qr-scan',
             CardManualRegister: 'card-register',
+            PaymentMethodSelect: 'payment/method-select',
+            PaymentCardSelect: 'payment/card-select',
         },
     },
 };
@@ -96,6 +100,12 @@ export default function App() {
                 <Stack.Screen
                     name="PaymentMethodSelect"
                     component={PaymentMethodSelectScreen}
+                    options={{ headerShown: false }}
+                />
+
+                <Stack.Screen
+                    name="PaymentCardSelect"
+                    component={PaymentCardSelectScreen}
                     options={{ headerShown: false }}
                 />
 

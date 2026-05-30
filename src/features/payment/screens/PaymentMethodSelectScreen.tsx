@@ -24,6 +24,11 @@ export default function PaymentMethodSelectScreen({ navigation }: Props) {
     };
 
     const handlePressOption = (type: PaymentActionType) => {
+        if (type === 'PAY') {
+            navigation.navigate('PaymentCardSelect');
+            return;
+        }
+
         Alert.alert('결제 수단 선택', `${type} 액션이 선택되었습니다.`);
     };
 
