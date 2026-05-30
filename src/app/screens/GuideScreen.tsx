@@ -33,6 +33,7 @@ import { FloatingButton } from '../../shared/components/FloatingButton';
 import { Header } from '../../shared/components/Header';
 import { ListItem } from '../../shared/components/ListItem';
 import { Loading } from '../../shared/components/Loading';
+import { RejectConfirmModal } from '../../shared/components/Modal';
 import { NoticeBox } from '../../shared/components/NoticeBox';
 import { PageWrap } from '../../shared/components/PageWrap';
 import { Radio } from '../../shared/components/Radio';
@@ -64,6 +65,7 @@ type ComponentGuideItem = {
 
 type ComponentPreview =
   | 'errorPage'
+  | 'rejectConfirmModal'
   | 'bottomSheet'
   | 'draggableBottomSheet'
   | 'toast'
@@ -131,6 +133,13 @@ const componentGuideItems: ComponentGuideItem[] = [
     path: 'src/shared/components/BottomSheet',
     status: 'done',
     preview: 'bottomSheet',
+  },
+  {
+    name: 'RejectConfirmModal',
+    path: 'src/shared/components/Modal',
+    status: 'done',
+    preview: 'rejectConfirmModal',
+    note: '결제 거절 확인',
   },
   {
     name: 'DraggableBottomSheet',
@@ -255,30 +264,30 @@ const colorGroups = [
   {
     title: 'Main',
     items: [
-      { name: 'Main', value: colors.erum.main },
-      { name: 'Secondary', value: colors.erum.secondary },
-      { name: 'Primary', value: colors.erum.primary },
+      { name: 'Main', hex: colors.erum.main },
+      { name: 'Secondary', hex: colors.erum.secondary },
+      { name: 'Primary', hex: colors.erum.primary },
     ],
   },
   {
     title: 'State',
     items: [
-      { name: 'Gold', value: colors.state.gold },
-      { name: 'Silver', value: colors.state.silver },
-      { name: 'Error', value: colors.state.error },
-      { name: 'Success', value: colors.state.success },
-      { name: 'Orange', value: colors.state.orange },
-      { name: 'Sky', value: colors.state.sky },
+      { name: 'Gold', hex: colors.state.gold },
+      { name: 'Silver', hex: colors.state.silver },
+      { name: 'Error', hex: colors.state.error },
+      { name: 'Success', hex: colors.state.success },
+      { name: 'Orange', hex: colors.state.orange },
+      { name: 'Sky', hex: colors.state.sky },
     ],
   },
   {
     title: 'Neutral',
     items: [
-      { name: 'Black 1', value: colors.neutral.black1 },
-      { name: 'Black 2', value: colors.neutral.black2 },
-      { name: 'Grey 1', value: colors.neutral.grey1 },
-      { name: 'Grey 2', value: colors.neutral.grey2 },
-      { name: 'White', value: colors.neutral.white },
+      { name: 'Black 1', hex: colors.neutral.black1 },
+      { name: 'Black 2', hex: colors.neutral.black2 },
+      { name: 'Grey 1', hex: colors.neutral.grey1 },
+      { name: 'Grey 2', hex: colors.neutral.grey2 },
+      { name: 'White', hex: colors.neutral.white },
     ],
   },
 ];
@@ -301,6 +310,8 @@ export default function GuideScreen({ navigation }: Props) {
   const contentWidth = Math.max(0, Math.min(width - horizontalPadding * 2, 720));
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
   const [isDraggableBottomSheetVisible, setIsDraggableBottomSheetVisible] =
+    useState(false);
+  const [isRejectConfirmPreviewVisible, setIsRejectConfirmPreviewVisible] =
     useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isErrorPreviewVisible, setIsErrorPreviewVisible] = useState(false);
@@ -326,6 +337,11 @@ export default function GuideScreen({ navigation }: Props) {
   const handlePressComponentPreview = (
     preview: ComponentGuideItem['preview'],
   ) => {
+    if (preview === 'rejectConfirmModal') {
+      setIsRejectConfirmPreviewVisible(true);
+      return;
+    }
+
     if (preview === 'bottomSheet') {
       setIsBottomSheetVisible(true);
       return;
@@ -432,14 +448,14 @@ export default function GuideScreen({ navigation }: Props) {
                         {group.items.map((item) => (
                           <View key={`${group.title}-${item.name}`} className="w-[92px]">
                             <View
-                              style={{ backgroundColor: item.value }}
+                              style={{ backgroundColor: item.hex }}
                               className="mb-2 h-12 rounded-lg border border-neutral-grey1"
                             />
                             <Text className="font-pretendard text-normal-bold text-neutral-black1">
                               {item.name}
                             </Text>
                             <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                              {item.value}
+                              {item.hex}
                             </Text>
                           </View>
                         ))}
@@ -550,6 +566,12 @@ export default function GuideScreen({ navigation }: Props) {
           />
         </View>
       </DraggableBottomSheet>
+
+      <RejectConfirmModal
+        visible={isRejectConfirmPreviewVisible}
+        onCancel={() => setIsRejectConfirmPreviewVisible(false)}
+        onConfirm={() => setIsRejectConfirmPreviewVisible(false)}
+      />
 
       <Toast
         visible={isToastVisible}
