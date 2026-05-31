@@ -92,7 +92,13 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
 
     const handlePressOption = (type: PaymentActionType) => {
         if (type === 'PAY') {
-            navigation.navigate('PaymentCardSelect');
+            if (!summary) {
+                return;
+            }
+
+            navigation.navigate('PaymentCardSelect', {
+                paymentId: summary.paymentId,
+            });
             return;
         }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import type { PaymentCard } from '../types/paymentCard.types';
@@ -18,6 +18,11 @@ export default function PaymentCardPreview({
     const [isDetectedVertical, setIsDetectedVertical] = useState(false);
 
     useEffect(() => {
+        if (!card.imageUrl) {
+            setIsDetectedVertical(false);
+            return;
+        }
+
         Image.getSize(
             card.imageUrl,
             (width, height) => {
@@ -30,6 +35,7 @@ export default function PaymentCardPreview({
     }, [card.imageOrientation, card.imageUrl]);
 
     const isVertical = card.imageOrientation === 'VERTICAL' || isDetectedVertical;
+    const hasImageUrl = card.imageUrl.length > 0;
 
     const containerClassName =
         size === 'small'
@@ -53,7 +59,18 @@ export default function PaymentCardPreview({
         <View
             className={`relative items-center justify-center overflow-hidden ${containerClassName}`}
         >
-            <Image source={{ uri: card.imageUrl }} resizeMode="cover" style={imageStyle} />
+            {hasImageUrl ? (
+                <Image source={{ uri: card.imageUrl }} resizeMode="cover" style={imageStyle} />
+            ) : (
+                <View className="h-full w-full items-center justify-center rounded-2xl bg-erum-main px-4">
+                    <Text className="text-center font-pretendard text-large-bold text-neutral-white">
+                        {card.cardCompany}
+                    </Text>
+                    <Text className="mt-2 text-center font-pretendard text-normal-regular text-neutral-white">
+                        {card.maskedNumber}
+                    </Text>
+                </View>
+            )}
 
             {selected && size === 'large' && (
                 <View className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-erum-main">
