@@ -25,7 +25,9 @@ export type RootStackParamList = {
     Main: undefined;
     Guide: undefined;
     QrScan: undefined;
-    PaymentMethodSelect: { summary?: PaymentRequestSummary } | undefined;
+    PaymentMethodSelect:
+        | { summary?: PaymentRequestSummary; token?: string }
+        | undefined;
     PaymentCardSelect: undefined;
     PaymentPin: PaymentPinRouteParams | undefined;
     // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정

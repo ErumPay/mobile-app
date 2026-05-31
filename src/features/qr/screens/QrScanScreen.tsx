@@ -45,8 +45,13 @@ export default function QrScanScreen({ navigation }: Props) {
         navigation.navigate('Guide');
     };
 
-    const validateScannedQr = async () => {
+    const validateScannedQr = async (token: string) => {
         if (scanLockRef.current || isValidating) {
+            return;
+        }
+
+        if (!token) {
+            showToast('QR 코드 정보를 읽지 못했습니다.', 'error');
             return;
         }
 
@@ -54,7 +59,7 @@ export default function QrScanScreen({ navigation }: Props) {
             scanLockRef.current = true;
             setIsValidating(true);
 
-            const qrResult = await validatePaymentQr();
+            const qrResult = await validatePaymentQr(token);
 
             if (qrResult.code !== 'VALID') {
                 showToast('유효하지 않은 QR 코드입니다.', 'error');
@@ -73,8 +78,8 @@ export default function QrScanScreen({ navigation }: Props) {
         }
     };
 
-    const handleBarcodeScanned = (_result: BarcodeScanningResult) => {
-        void validateScannedQr();
+    const handleBarcodeScanned = (result: BarcodeScanningResult) => {
+        void validateScannedQr(result.data);
     };
 
     const handlePressScan = () => {
