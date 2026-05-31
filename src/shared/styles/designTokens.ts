@@ -26,6 +26,7 @@ export const colors = {
     black3: '#00000080',
     grey1: '#E5E8EC',
     grey2: '#F3F9F9',
+    grey3: '#F1F1F1',
     disabled: '#B4B8BD',
     white: '#FFFFFF',
   },
@@ -36,22 +37,22 @@ export const typography = {
   heading1: {
     fontSize: 36,
     lineHeight: 43,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   heading2: {
     fontSize: 24,
     lineHeight: 29,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   heading3: {
     fontSize: 16,
     lineHeight: 19,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   largeBold: {
     fontSize: 15,
     lineHeight: 21,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   largeRegular: {
     fontSize: 15,
@@ -61,7 +62,7 @@ export const typography = {
   normalBold: {
     fontSize: 12,
     lineHeight: 14,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   normalRegular: {
     fontSize: 12,

@@ -21,7 +21,7 @@ type TabProps = {
 
 export function Tab({ items, value, onChange }: TabProps) {
   return (
-    <View className="w-full flex-row rounded-lg bg-neutral-grey1 p-1">
+    <View className="w-full flex-row rounded-lg bg-neutral-grey3 p-1">
       {items.map((item) => {
         const isSelected = item.value === value;
 
@@ -36,7 +36,7 @@ export function Tab({ items, value, onChange }: TabProps) {
           >
             <Text
               numberOfLines={1}
-              className={`font-pretendard text-large-bold ${
+              className={`font-pretendard text-normal-bold ${
                 isSelected ? 'text-erum-main' : 'text-neutral-black2'
               }`}
             >

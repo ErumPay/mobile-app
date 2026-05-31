@@ -5,5 +5,7 @@
  * Created: 2026-05-30
  ******************************************************************************/
 
-export * from './RejectConfirmModal';
-export { default } from './RejectConfirmModal';
+export * from "./Modal";
+export { default } from "./Modal";
+export * from "./RejectConfirmModal";
+export { default as RejectConfirmModal } from "./RejectConfirmModal";
