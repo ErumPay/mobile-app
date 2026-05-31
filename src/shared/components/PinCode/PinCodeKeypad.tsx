@@ -47,6 +47,10 @@ export default function PinCodeKeypad({
                                 <Pressable
                                     key={`${rowIndex}-${columnIndex}`}
                                     accessibilityRole="button"
+                                    accessibilityLabel={isDelete ? '삭제' : `${item} 입력`}
+                                    accessibilityHint={
+                                        isDelete ? '입력한 숫자 한 자리를 삭제합니다.' : undefined
+                                    }
                                     className="flex-1 items-center justify-center rounded-xl bg-neutral-white shadow-sm"
                                     onPress={isDelete ? onPressDelete : () => onPressNumber(item)}
                                 >

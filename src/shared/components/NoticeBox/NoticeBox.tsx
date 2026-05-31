@@ -22,7 +22,7 @@ type NoticeBoxProps = {
 const boxClassNameByTone: Record<NoticeBoxTone, string> = {
   info: 'border-state-sky bg-neutral-grey2',
   success: 'border-state-success bg-neutral-grey2',
-  warning: 'border-state-error bg-neutral-grey2',
+  warning: 'border-state-orange bg-neutral-grey2',
   error: 'border-state-error bg-neutral-grey2',
 };
 
