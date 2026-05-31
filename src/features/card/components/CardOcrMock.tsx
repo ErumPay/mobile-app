@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { Button } from '../../../shared/components/Button';
+import { Card } from '../../../shared/components/Card';
+import { Header } from '../../../shared/components/Header';
+
+import { mockOcrCard } from '../mocks/cardMockData';
+
 interface CardOcrMockProps {
   onClose?: () => void;
   onRegister: () => void;
@@ -27,32 +33,22 @@ export function CardOcrMock({
             OCR로 확인된 카드입니다!
           </Text>
 
-          <View className="mt-7 w-full gap-4 rounded-xl bg-zinc-50 px-4 py-4">
-            <OcrInfo label="카드사" value="신한카드" />
-            <OcrInfo label="카드명" value="Deep Dream 카드" />
-            <OcrInfo label="카드번호" value="1234-5556-2432-5678" />
-          </View>
+          <Card>
+            <View className="gap-4">
+              <OcrInfo label="카드사" value={mockOcrCard.issuer} />
+              <OcrInfo label="카드명" value={mockOcrCard.name} />
+              <OcrInfo label="카드번호" value={mockOcrCard.number} />
+            </View>
+          </Card>
 
           <View className="mt-6 w-full gap-2">
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-[45px] w-full items-center justify-center rounded-lg bg-blue-700 px-4 py-3"
-              onPress={onRegister}
-            >
-              <Text className="text-base font-bold text-white">
-                카드 등록하기
-              </Text>
-            </Pressable>
+            <Button label="카드 등록하기" onPress={onRegister} />
 
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-[45px] items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-3"
+            <Button
+              label="다시 촬영하기"
+              variant="secondary"
               onPress={() => setIsScanned(false)}
-            >
-              <Text className="text-base font-bold text-slate-700">
-                다시 촬영하기
-              </Text>
-            </Pressable>
+            />
           </View>
         </View>
       </View>
@@ -61,16 +57,12 @@ export function CardOcrMock({
 
   return (
     <View className="w-full flex-1 bg-black">
-      <View className="h-[52px] flex-row items-center justify-center">
-        <Pressable
-          accessibilityRole="button"
-          className="absolute left-0 h-10 w-10 items-center justify-center"
-          onPress={onClose}
-        >
-          <Text className="text-4xl font-light leading-10 text-white">×</Text>
-        </Pressable>
-        <Text className="text-lg font-bold text-white">카드 촬영</Text>
-      </View>
+      <Header
+        title="카드 촬영"
+        type="close"
+        tone="dark"
+        onPressRight={onClose}
+      />
 
       <View className="flex-1">
         <View className="flex-1 justify-center">

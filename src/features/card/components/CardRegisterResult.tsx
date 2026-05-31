@@ -1,4 +1,9 @@
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+
+import { Button } from '../../../shared/components/Button';
+import { Card } from '../../../shared/components/Card';
+
+import { mockCardRegisterResult } from '../mocks/cardMockData';
 
 type CardRegisterResultStatus = 'success' | 'failure';
 
@@ -40,49 +45,37 @@ export function CardRegisterResult({
         </Text>
 
         {isSuccess ? (
-          <View className="mt-9 w-full rounded-xl bg-white px-4 py-4 shadow-sm">
-            <InfoRow label="카드사" value="신한카드" />
-            <InfoRow label="카드명" value="Deep Dream 카드" />
-            <InfoRow label="등록일" value="2026.05.11" />
+          <View className="mt-9 w-full">
+            <Card>
+              <InfoRow label="카드사" value={mockCardRegisterResult.issuer} />
+              <InfoRow label="카드명" value={mockCardRegisterResult.name} />
+              <InfoRow label="등록일" value={mockCardRegisterResult.registeredAt} />
+            </Card>
           </View>
         ) : (
-          <View className="mt-9 w-full rounded-xl bg-white px-4 py-5 shadow-sm">
-            <Text className="mb-4 text-base font-bold text-slate-950">
-              실패 원인
-            </Text>
-            <View className="flex-row items-center">
-              <Text className="mr-3 text-lg leading-5 text-red-500">•</Text>
-              <Text className="text-sm text-slate-500">
+          <View className="mt-9 w-full">
+            <Card>
+              <Text className="mb-4 font-pretendard text-large-bold text-neutral-black1">
+                실패 원인
+              </Text>
+              <Text className="font-pretendard text-large-regular text-neutral-black2">
                 카드 정보가 일치하지 않습니다
               </Text>
-            </View>
+            </Card>
           </View>
         )}
 
         <View className="mt-10 w-full gap-3">
-          <Pressable
-            accessibilityRole="button"
-            className={`min-h-[45px] w-full flex-row items-center justify-center rounded-lg px-4 py-3 ${
-              isSuccess ? 'bg-emerald-300' : 'bg-blue-700'
-            }`}
+          <Button
+            label={isSuccess ? '카드 관리로 이동' : '다시 시도하기'}
             onPress={isSuccess ? onGoCardManagement : onRetry}
-          >
-            {!isSuccess ? (
-              <Text className="mr-2 text-xl font-bold text-white">↻</Text>
-            ) : null}
-            <Text className="text-base font-bold text-white">
-              {isSuccess ? '카드 관리로 이동' : '다시 시도하기'}
-            </Text>
-          </Pressable>
+          />
 
-          <Pressable
-            accessibilityRole="button"
-            className="min-h-[45px] w-full flex-row items-center justify-center rounded-lg border border-zinc-200 bg-white px-4 py-3"
+          <Button
+            label="홈으로 이동"
+            variant="secondary"
             onPress={onGoHome}
-          >
-            <Text className="mr-2 text-base text-slate-500">🏠</Text>
-            <Text className="text-base font-bold text-slate-600">홈으로 이동</Text>
-          </Pressable>
+          />
         </View>
       </View>
     </View>
