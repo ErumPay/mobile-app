@@ -10,8 +10,8 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import GuideScreen from './src/app/screens/GuideScreen';
-import MainScreen from './src/app/screens/MainScreen';
 import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
+import MainScreen from "./src/features/main/screens/MainScreen";
 import QrScanScreen from './src/features/qr/screens/QrScanScreen';
 import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 import PaymentCardSelectScreen from './src/features/payment/screens/PaymentCardSelectScreen';
