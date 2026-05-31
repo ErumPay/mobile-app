@@ -15,6 +15,8 @@ import CardManualRegisterScreen from './src/features/card/screens/CardManualRegi
 import QrScanScreen from './src/features/qr/screens/QrScanScreen';
 import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 import PaymentCardSelectScreen from './src/features/payment/screens/PaymentCardSelectScreen';
+import PaymentPinScreen from './src/features/payment/screens/PaymentPinScreen';
+import type { PaymentPinRouteParams } from './src/features/payment/types/paymentPin.types';
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
@@ -24,6 +26,7 @@ export type RootStackParamList = {
     QrScan: undefined;
     PaymentMethodSelect: undefined;
     PaymentCardSelect: undefined;
+    PaymentPin: PaymentPinRouteParams | undefined;
     // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
     /*PaymentMethodSelect: undefined;*/
     CardManualRegister: undefined;
@@ -39,6 +42,7 @@ const linking: LinkingOptions<RootStackParamList> = {
             CardManualRegister: 'card-register',
             PaymentMethodSelect: 'payment/method-select',
             PaymentCardSelect: 'payment/card-select',
+            PaymentPin: 'payment/pin',
         },
     },
 };
@@ -109,6 +113,11 @@ export default function App() {
                         <Stack.Screen
                             name="PaymentCardSelect"
                             component={PaymentCardSelectScreen}
+                        />
+
+                        <Stack.Screen
+                            name="PaymentPin"
+                            component={PaymentPinScreen}
                         />
 
                         {/*

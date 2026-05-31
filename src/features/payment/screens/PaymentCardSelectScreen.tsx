@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -88,11 +88,11 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
         setPendingCardId(null);
         setIsBottomSheetVisible(false);
 
-        Alert.alert('간편비밀번호', '간편비밀번호 입력 화면으로 이동합니다.');
+        navigation.navigate('PaymentPin', { mode: 'PAYMENT_INPUT' });
     };
 
     const handlePressSubmit = () => {
-        Alert.alert('간편비밀번호', '간편비밀번호 입력 화면으로 이동합니다.');
+        navigation.navigate('PaymentPin', { mode: 'PAYMENT_INPUT' });
     };
 
     return (

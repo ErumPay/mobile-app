@@ -90,14 +90,6 @@ type ComponentPreview =
 
 const guidePages: GuidePage[] = [
   {
-    depth1: 'guide',
-    depth2: 'ia',
-    pageName: 'IA/컴포넌트 가이드',
-    routeName: 'Guide',
-    route: 'Guide',
-    status: 'progress',
-  },
-  {
     depth1: 'app',
     depth2: 'main',
     pageName: '메인',
@@ -121,7 +113,7 @@ const guidePages: GuidePage[] = [
     pageName: 'QR 스캔',
     routeName: 'QrScan',
     route: 'QrScan',
-    status: 'progress',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -130,7 +122,7 @@ const guidePages: GuidePage[] = [
     pageName: '카드결제 결제수단 선택',
     routeName: 'PaymentMethodSelect',
     route: 'PaymentMethodSelect',
-    status: 'progress',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -139,7 +131,34 @@ const guidePages: GuidePage[] = [
     pageName: '카드결제 카드 선택',
     routeName: 'PaymentCardSelect',
     route: 'PaymentCardSelect',
-    status: 'progress',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'pin-input',
+    pageName: '카드결제 간편비밀번호 입력',
+    routeName: 'PaymentPin',
+    route: 'PaymentPin',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'pin-register',
+    pageName: '카드결제 간편비밀번호 등록',
+    routeName: 'PaymentPin',
+    route: 'PaymentPin',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'pin-confirm',
+    pageName: '카드결제 간편비밀번호 확인',
+    routeName: 'PaymentPin',
+    route: 'PaymentPin',
+    status: 'done',
     note: '담당자 : 조보름',
   },
 ];
@@ -484,6 +503,20 @@ export default function GuideScreen({ navigation }: Props) {
                                 return;
                               }
 
+                              if (page.route === 'PaymentPin') {
+                                if (page.depth2 === 'pin-register') {
+                                  navigation.navigate('PaymentPin', { mode: 'REGISTER' });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'pin-confirm') {
+                                  navigation.navigate('PaymentPin', { mode: 'CONFIRM' });
+                                  return;
+                                }
+
+                                navigation.navigate('PaymentPin', { mode: 'PAYMENT_INPUT' });
+                                return;
+                              }
                             }
                           : undefined
                       }
