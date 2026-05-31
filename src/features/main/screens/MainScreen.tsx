@@ -79,15 +79,14 @@ const paymentHistories =
 const hasActivePaymentProgress = true;
 const hasNotification = false;
 const activePaymentProgressVariant: PaymentProgressVariant =
-  "DUTCHPAY_MEMBER_REQUEST_RECEIVED";
+  "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
 const isPaymentProgressLoading = false;
 const isMonthlyPaymentLoading = false;
 const isNotificationLoading = false;
 const isPaymentHistoryLoading = false;
 
 export default function MainScreen({ navigation }: Props) {
-  const [paymentProgressVariant, setPaymentProgressVariant] =
-    useState<PaymentProgressVariant>(activePaymentProgressVariant);
+  const paymentProgressVariant = activePaymentProgressVariant;
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
 
   const quickMenus: QuickMenu[] = [
@@ -121,7 +120,6 @@ export default function MainScreen({ navigation }: Props) {
 
   const confirmRejectPaymentProgress = () => {
     setIsRejectConfirmVisible(false);
-    setPaymentProgressVariant("REMOTE_INCOMING_REQUEST_REJECTED");
   };
 
   return (
