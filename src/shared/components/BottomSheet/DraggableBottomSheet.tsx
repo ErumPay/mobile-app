@@ -37,9 +37,13 @@ function DraggableBottomSheetComponent({
     const animatedHeight = useRef(new Animated.Value(minHeight)).current;
 
     useEffect(() => {
+        if (!visible) {
+            return;
+        }
+
         currentHeight.current = minHeight;
         animatedHeight.setValue(minHeight);
-    }, [animatedHeight, minHeight]);
+    }, [animatedHeight, minHeight, visible]);
 
     const animateToHeight = (nextHeight: number) => {
         currentHeight.current = Math.round(nextHeight);

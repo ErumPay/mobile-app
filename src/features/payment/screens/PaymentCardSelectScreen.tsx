@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../../../shared/components/Header/Header';
@@ -32,21 +33,7 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
         [data.cardCombinations, selectedCombinationType],
     );
 
-    const selectedRegisteredCard = useMemo(
-        () => data.registeredCards.find((card) => card.id === selectedCardId),
-        [data.registeredCards, selectedCardId],
-    );
-
-    const displayedRecommendedCard = useMemo(() => {
-        if (isDutchPay && selectedRegisteredCard) {
-            return {
-                ...data.recommendedCard,
-                card: selectedRegisteredCard,
-            };
-        }
-
-        return data.recommendedCard;
-    }, [data.recommendedCard, isDutchPay, selectedRegisteredCard]);
+    const displayedRecommendedCard = data.recommendedCard;
 
     const isRecommendedSelected =
         selectedCardId === displayedRecommendedCard.card.id;
@@ -93,10 +80,15 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
             return;
         }
 
-        setSelectedCardId(pendingCardId);
+        if (!isDutchPay) {
+            setSelectedCardId(pendingCardId);
+            setIsCombinationSelected(false);
+        }
+
         setPendingCardId(null);
-        setIsCombinationSelected(false);
         setIsBottomSheetVisible(false);
+
+        Alert.alert('간편비밀번호', '간편비밀번호 입력 화면으로 이동합니다.');
     };
 
     const handlePressSubmit = () => {
@@ -104,67 +96,69 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
     };
 
     return (
-        <View className="flex-1 bg-neutral-white">
-            <Header
-                title="결제 카드 선택"
-                type="close"
-                onPressRight={handlePressClose}
-            />
-
-            <View className="h-px bg-neutral-grey1" />
-
-            <ScrollView
-                className="flex-1"
-                contentContainerClassName="px-4 pb-6 pt-6"
-                showsVerticalScrollIndicator={false}
-            >
-                <RecommendedCardSection
-                    recommendedCard={displayedRecommendedCard}
-                    selected={isRecommendedSelected}
-                    showBenefitDescription={!isDutchPay}
-                    actionLabel={isDutchPay ? '다른 결제 카드 선택' : undefined}
-                    onPress={handlePressRecommendedCard}
-                    onPressAction={isDutchPay ? handleOpenBottomSheet : undefined}
+        <SafeAreaView className="flex-1 bg-neutral-white">
+            <View className="flex-1 bg-neutral-white">
+                <Header
+                    title="결제 카드 선택"
+                    type="close"
+                    onPressRight={handlePressClose}
                 />
 
-                {isDutchPay ? (
-                    <View className="mt-2">
-                        <Text className="text-small-regular text-neutral-black2">
-                            · {data.cardCombinations[0]?.benefitDescription}
-                        </Text>
-                    </View>
-                ) : (
-                    <CardCombinationSection
-                        combinations={data.cardCombinations}
-                        selectedType={selectedCombinationType}
-                        selectedCombination={selectedCombination}
-                        selected={isCombinationSelected}
-                        onSelectType={handleSelectCombinationType}
-                        onToggleSelect={handleToggleCombination}
-                        onOpenBottomSheet={handleOpenBottomSheet}
-                    />
-                )}
-            </ScrollView>
+                <View className="h-px bg-neutral-grey1" />
 
-            <View className="border-t border-neutral-grey1 bg-neutral-white px-4 pb-5 pt-3">
-                <PaymentCardActionButton
-                    disabled={isSubmitDisabled}
-                    onPress={handlePressSubmit}
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="px-4 pb-6 pt-6"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <RecommendedCardSection
+                        recommendedCard={displayedRecommendedCard}
+                        selected={isRecommendedSelected}
+                        showBenefitDescription={!isDutchPay}
+                        actionLabel={isDutchPay ? '다른 결제 카드 선택' : undefined}
+                        onPress={handlePressRecommendedCard}
+                        onPressAction={isDutchPay ? handleOpenBottomSheet : undefined}
+                    />
+
+                    {isDutchPay ? (
+                        <View className="mt-2">
+                            <Text className="text-small-regular text-neutral-black2">
+                                · {data.cardCombinations[0]?.benefitDescription}
+                            </Text>
+                        </View>
+                    ) : (
+                        <CardCombinationSection
+                            combinations={data.cardCombinations}
+                            selectedType={selectedCombinationType}
+                            selectedCombination={selectedCombination}
+                            selected={isCombinationSelected}
+                            onSelectType={handleSelectCombinationType}
+                            onToggleSelect={handleToggleCombination}
+                            onOpenBottomSheet={handleOpenBottomSheet}
+                        />
+                    )}
+                </ScrollView>
+
+                <View className="border-t border-neutral-grey1 bg-neutral-white px-4 pb-5 pt-3">
+                    <PaymentCardActionButton
+                        disabled={isSubmitDisabled}
+                        onPress={handlePressSubmit}
+                    />
+                </View>
+
+                <RegisteredCardBottomSheet
+                    visible={isBottomSheetVisible}
+                    cards={data.registeredCards}
+                    selectedCardId={pendingCardId}
+                    onSelectCard={handleSelectBottomSheetCard}
+                    onClose={handleCloseBottomSheet}
+                    onPressSubmit={handleSubmitBottomSheet}
+                    submitDisabled={!pendingCardId}
+                    notice={
+                        isDutchPay ? '이 결제는 가결제로 먼저 진행돼요!' : undefined
+                    }
                 />
             </View>
-
-            <RegisteredCardBottomSheet
-                visible={isBottomSheetVisible}
-                cards={data.registeredCards}
-                selectedCardId={pendingCardId}
-                onSelectCard={handleSelectBottomSheetCard}
-                onClose={handleCloseBottomSheet}
-                onPressSubmit={handleSubmitBottomSheet}
-                submitDisabled={!pendingCardId}
-                notice={
-                    isDutchPay ? '이 결제는 가결제로 먼저 진행돼요!' : undefined
-                }
-            />
-        </View>
+        </SafeAreaView>
     );
 }

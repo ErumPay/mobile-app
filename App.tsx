@@ -1,7 +1,8 @@
 import './global.css';
 
 import { useEffect, useRef } from 'react';
-import { Alert, useWindowDimensions } from 'react-native';
+import { Alert, useWindowDimensions, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
     NavigationContainer,
     type LinkingOptions,
@@ -64,59 +65,62 @@ export default function App() {
     }, [width]);
 
     return (
-        <NavigationContainer linking={linking}>
-            <Stack.Navigator initialRouteName="Main">
-                <Stack.Screen
-                    name="Main"
-                    component={MainScreen}
-                    options={{ title: '메인' }}
-                />
+        <SafeAreaProvider>
+            <View className="flex-1 bg-neutral-white">
+                <NavigationContainer linking={linking}>
+                    <Stack.Navigator
+                        initialRouteName="Main"
+                        screenOptions={{ headerShown: false }}
+                    >
+                        <Stack.Screen
+                            name="Main"
+                            component={MainScreen}
+                            options={{ title: '메인' }}
+                        />
 
-                <Stack.Screen
-                    name="Guide"
-                    component={GuideScreen}
-                    options={{ title: 'IA 가이드' }}
-                />
+                        <Stack.Screen
+                            name="Guide"
+                            component={GuideScreen}
+                            options={{ title: 'IA 가이드' }}
+                        />
 
-                {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
-                {/*<Stack.Screen*/}
-                {/*    name="PaymentMethodSelect"*/}
-                {/*    component={PaymentMethodSelectScreen}*/}
-                {/*.   options={{ headerShown: false }}*/}
-                {/*/>*/}
+                        {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
+                        {/*<Stack.Screen*/}
+                        {/*    name="PaymentMethodSelect"*/}
+                        {/*    component={PaymentMethodSelectScreen}*/}
+                        {/*.   options={{ headerShown: false }}*/}
+                        {/*/>*/}
 
-                <Stack.Screen
-                    name="CardManualRegister"
-                    component={CardManualRegisterScreen}
-                    options={{ headerShown: false }}
-                />
+                        <Stack.Screen
+                            name="CardManualRegister"
+                            component={CardManualRegisterScreen}
+                        />
 
-                <Stack.Screen
-                    name="QrScan"
-                    component={QrScanScreen}
-                    options={{ headerShown: false }}
-                />
+                        <Stack.Screen
+                            name="QrScan"
+                            component={QrScanScreen}
+                        />
 
-                <Stack.Screen
-                    name="PaymentMethodSelect"
-                    component={PaymentMethodSelectScreen}
-                    options={{ headerShown: false }}
-                />
+                        <Stack.Screen
+                            name="PaymentMethodSelect"
+                            component={PaymentMethodSelectScreen}
+                        />
 
-                <Stack.Screen
-                    name="PaymentCardSelect"
-                    component={PaymentCardSelectScreen}
-                    options={{ headerShown: false }}
-                />
+                        <Stack.Screen
+                            name="PaymentCardSelect"
+                            component={PaymentCardSelectScreen}
+                        />
 
-                {/*
-                // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
-                <Stack.Screen
-                    name="MypageHomeScreen"
-                    component={MypageHomeScreen}
-                    options={{ headerShown: false }}
-                />*/}
-            </Stack.Navigator>
-        </NavigationContainer>
+                        {/*
+                        // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
+                        <Stack.Screen
+                            name="MypageHomeScreen"
+                            component={MypageHomeScreen}
+                            options={{ headerShown: false }}
+                        />*/}
+                    </Stack.Navigator>
+                </NavigationContainer>
+            </View>
+        </SafeAreaProvider>
     );
 }

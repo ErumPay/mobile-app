@@ -19,7 +19,7 @@ export default function RegisteredCardListItem({
         <Pressable
             onPress={onPress}
             className={`mb-3 min-h-[80px] flex-row items-center rounded-2xl border bg-neutral-white px-4 py-3 ${
-                selected ? 'border-erum-main shadow-lg shadow-erum-main/20' : 'border-neutral-grey1'
+                selected ? 'border-erum-main' : 'border-neutral-grey1'
             }`}
         >
             <PaymentCardPreview card={card} size="small" />

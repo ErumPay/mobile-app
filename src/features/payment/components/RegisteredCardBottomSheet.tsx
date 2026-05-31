@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { DraggableBottomSheet } from '../../../shared/components/BottomSheet';
 import PaymentCardActionButton from './PaymentCardActionButton';
@@ -48,7 +48,10 @@ export default function RegisteredCardBottomSheet({
                     </Text>
                 )}
 
-                <View className="mt-5">
+                <ScrollView
+                    className="mt-5"
+                    showsVerticalScrollIndicator={false}
+                >
                     {cards.map((card) => (
                         <RegisteredCardListItem
                             key={card.id}
@@ -57,7 +60,7 @@ export default function RegisteredCardBottomSheet({
                             onPress={() => onSelectCard(card.id)}
                         />
                     ))}
-                </View>
+                </ScrollView>
 
                 <View className="mt-auto pt-4">
                     <PaymentCardActionButton

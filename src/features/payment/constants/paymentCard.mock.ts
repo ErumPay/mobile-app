@@ -52,7 +52,6 @@ export const mockNormalPaymentCardSelectData: PaymentCardSelectData = {
     flowType: 'NORMAL',
     recommendedCard: {
         title: '이룸페이가 추천해요!',
-        description: '이달 최고 캐시백 5%',
         badgeText: 'BEST',
         card: shinhanCard,
     },
@@ -107,8 +106,13 @@ export const mockDutchPayPaymentCardSelectData: PaymentCardSelectData = {
     ],
 };
 
-// [FE] 조보름 260531 14:50 | 일반 카드 선택 플로우 확인
-//export const mockPaymentCardSelectData = mockNormalPaymentCardSelectData;
+export const mockPaymentCardSelectDataMap = {
+    NORMAL: mockNormalPaymentCardSelectData,
+    DUTCH_PAY: mockDutchPayPaymentCardSelectData,
+} as const;
 
-// [FE] 조보름 260531 14:50 | 더치페  카드 선택 플로우 확인
-export const mockPaymentCardSelectData = mockDutchPayPaymentCardSelectData;
+// [FE] 조보름 260531 14:50 | 일반 카드 선택 플로우 확인
+export const mockPaymentCardSelectData = mockPaymentCardSelectDataMap.NORMAL;
+
+// [FE] 조보름 260531 14:50 | 더치페이 카드 선택 플로우 확인
+// export const mockPaymentCardSelectData = mockPaymentCardSelectDataMap.DUTCH_PAY;

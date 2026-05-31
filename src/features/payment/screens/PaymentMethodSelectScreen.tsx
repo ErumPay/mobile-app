@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, SafeAreaView, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';

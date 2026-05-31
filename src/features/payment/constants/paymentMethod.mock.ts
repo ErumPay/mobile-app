@@ -8,13 +8,11 @@ import type { PaymentRequestSummary } from '../types/paymentMethod.types';
  * 'REMOTE_RECIPIENT'
  * */
 
-/*
 export const mockPaymentRequestSummary: PaymentRequestSummary = {
     merchantName: '롯데시네마 홍대입구점',
     amount: 45000,
     type: 'ONLINE',
 };
-*/
 
 /*
 export const mockPaymentRequestSummary: PaymentRequestSummary = {
@@ -35,6 +33,7 @@ export const mockPaymentRequestSummary =
     mockRemoteRecipientPaymentRequestSummary;
 */
 
+/*
 export const mockDutchPayParticipantPaymentRequestSummary: PaymentRequestSummary = {
     merchantName: '롯데시네마 홍대입구점',
     amount: 45000,
@@ -43,3 +42,4 @@ export const mockDutchPayParticipantPaymentRequestSummary: PaymentRequestSummary
 };
 export const mockPaymentRequestSummary =
     mockDutchPayParticipantPaymentRequestSummary;
+*/

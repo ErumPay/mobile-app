@@ -383,7 +383,17 @@ export default function GuideScreen({ navigation }: Props) {
   };
 
   return (
-    <View className="flex-1">
+      <PageWrap
+          scroll={false}
+          padded={false}
+          header={
+            <Header
+                title="IA 가이드"
+                type="back"
+                onPressLeft={() => navigation.navigate('Main')}
+            />
+          }
+      >
       {isErrorPreviewVisible ? (
         <ErrorPage
           variant="notFound"
@@ -592,7 +602,7 @@ export default function GuideScreen({ navigation }: Props) {
         message="토스트 샘플입니다."
         type="success"
       />
-    </View>
+    </PageWrap>
   );
 }
 

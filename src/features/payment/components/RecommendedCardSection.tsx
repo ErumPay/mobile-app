@@ -51,11 +51,6 @@ export default function RecommendedCardSection({
                 )}
             </View>
 
-            {recommendedCard.description && (
-                <Text className="mt-2 text-small-regular text-neutral-black2">
-                    {recommendedCard.description}
-                </Text>
-            )}
 
             <Pressable
                 onPress={onPress}
