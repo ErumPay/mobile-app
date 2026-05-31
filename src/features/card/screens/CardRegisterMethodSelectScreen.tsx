@@ -29,7 +29,7 @@ export function CardRegisterMethodSelectScreen({
         <View className="gap-4">
           <RegisterMethodCard
             tone="blue"
-            title="OCR로 등록하기"
+            title="카드 스캔하기"
             description="카드를 촬영해주세요"
             onPress={onPressOcr}
           />
