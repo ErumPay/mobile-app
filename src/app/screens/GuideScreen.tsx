@@ -90,12 +90,21 @@ type ComponentPreview =
 
 const guidePages: GuidePage[] = [
   {
+    depth1: 'guide',
+    depth2: 'ia',
+    pageName: 'IA/컴포넌트 가이드',
+    routeName: 'Guide',
+    route: 'Guide',
+    status: 'progress',
+  },
+  {
     depth1: 'app',
     depth2: 'main',
     pageName: '메인',
     routeName: 'Main',
     route: 'Main',
     status: 'done',
+    note: '담당자 : 이준혁',
   },
   {
     depth1: 'card',
@@ -104,22 +113,34 @@ const guidePages: GuidePage[] = [
     routeName: 'CardManualRegister',
     route: 'CardManualRegister',
     status: 'done',
+    note: '담당자 : 나혜빈',
+  },
+  {
+    depth1: 'qr',
+    depth2: 'scan',
+    pageName: 'QR 스캔',
+    routeName: 'QrScan',
+    route: 'QrScan',
+    status: 'progress',
+    note: '담당자 : 조보름',
   },
   {
     depth1: 'payment',
     depth2: 'method-select',
     pageName: '카드결제 결제수단 선택',
     routeName: 'PaymentMethodSelect',
-    status: 'planned',
-    note: 'KAN-1151 작업 예정',
+    route: 'PaymentMethodSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
   },
   {
-    depth1: 'guide',
-    depth2: 'ia',
-    pageName: 'IA/컴포넌트 가이드',
-    routeName: 'Guide',
-    route: 'Guide',
+    depth1: 'payment',
+    depth2: 'card-select',
+    pageName: '카드결제 카드 선택',
+    routeName: 'PaymentCardSelect',
+    route: 'PaymentCardSelect',
     status: 'progress',
+    note: '담당자 : 조보름',
   },
 ];
 
@@ -272,42 +293,44 @@ const colorGroups = [
   {
     title: 'Main',
     items: [
-      { name: 'Main', value: colors.erum.main },
-      { name: 'Secondary', value: colors.erum.secondary },
-      { name: 'Primary', value: colors.erum.primary },
+      { name: 'Main', value: colors.erum.main, className: 'bg-erum-main' },
+      { name: 'Secondary', value: colors.erum.secondary, className: 'bg-erum-secondary' },
+      { name: 'Primary', value: colors.erum.primary, className: 'bg-erum-primary' },
     ],
   },
   {
     title: 'State',
     items: [
-      { name: 'Gold', value: colors.state.gold },
-      { name: 'Silver', value: colors.state.silver },
-      { name: 'Error', value: colors.state.error },
-      { name: 'Success', value: colors.state.success },
-      { name: 'Orange', value: colors.state.orange },
-      { name: 'Sky', value: colors.state.sky },
+      { name: 'Gold', value: colors.state.gold, className: 'bg-state-gold' },
+      { name: 'Silver', value: colors.state.silver, className: 'bg-state-silver' },
+      { name: 'Error', value: colors.state.error, className: 'bg-state-error' },
+      { name: 'Success', value: colors.state.success, className: 'bg-state-success' },
+      { name: 'Orange', value: colors.state.orange, className: 'bg-state-orange' },
+      { name: 'Sky', value: colors.state.sky, className: 'bg-state-sky' },
     ],
   },
   {
     title: 'Neutral',
     items: [
-      { name: 'Black 1', value: colors.neutral.black1 },
-      { name: 'Black 2', value: colors.neutral.black2 },
-      { name: 'Grey 1', value: colors.neutral.grey1 },
-      { name: 'Grey 2', value: colors.neutral.grey2 },
-      { name: 'White', value: colors.neutral.white },
+      { name: 'Black 1', value: colors.neutral.black1, className: 'bg-neutral-black1' },
+      { name: 'Black 2', value: colors.neutral.black2, className: 'bg-neutral-black2' },
+      { name: 'Grey 1', value: colors.neutral.grey1, className: 'bg-neutral-grey1' },
+      { name: 'Grey 2', value: colors.neutral.grey2, className: 'bg-neutral-grey2' },
+      { name: 'White', value: colors.neutral.white, className: 'bg-neutral-white' },
     ],
   },
 ];
 
 const typographyItems = [
-  { name: 'Heading 1', className: 'text-heading-1', spec: '36 / 43' },
-  { name: 'Heading 2', className: 'text-heading-2', spec: '24 / 29' },
-  { name: 'Heading 3', className: 'text-heading-3', spec: '16 / 19' },
-  { name: 'Large Bold', className: 'text-large-bold', spec: '15 / 21' },
-  { name: 'Large Regular', className: 'text-large-regular', spec: '15 / 21' },
-  { name: 'Normal Bold', className: 'text-normal-bold', spec: '12 / 14' },
-  { name: 'Normal Regular', className: 'text-normal-regular', spec: '12 / 14' },
+  { name: 'Heading 1', className: 'text-heading-1'},
+  { name: 'Heading 2', className: 'text-heading-2'},
+  { name: 'Heading 3', className: 'text-heading-3'},
+  { name: 'Large Bold', className: 'text-large-bold'},
+  { name: 'Large Regular', className: 'text-large-regular'},
+  { name: 'Normal Bold', className: 'text-normal-bold'},
+  { name: 'Normal Regular', className: 'text-normal-regular'},
+  { name: 'Small Bold', className: 'text-small-bold'},
+  { name: 'Small Regular', className: 'text-small-regular'},
 ];
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Guide'>;
@@ -381,7 +404,17 @@ export default function GuideScreen({ navigation }: Props) {
   };
 
   return (
-    <View className="flex-1">
+      <PageWrap
+          scroll={false}
+          padded={false}
+          header={
+            <Header
+                title="IA 가이드"
+                type="back"
+                onPressLeft={() => navigation.navigate('Main')}
+            />
+          }
+      >
       {isErrorPreviewVisible ? (
         <ErrorPage
           variant="notFound"
@@ -424,7 +457,7 @@ export default function GuideScreen({ navigation }: Props) {
                       description={`${page.pageName} · ${page.routeName}`}
                       note={page.note}
                       onPress={
-                        page.status === 'done' && page.route
+                        page.route
                           ? () => {
                               if (page.route === 'Main') {
                                 navigation.navigate('Main');
@@ -433,7 +466,24 @@ export default function GuideScreen({ navigation }: Props) {
 
                               if (page.route === 'CardManualRegister') {
                                 navigation.navigate('CardManualRegister');
+                                return;
                               }
+
+                              if (page.route === 'QrScan') {
+                                navigation.navigate('QrScan');
+                                return;
+                              }
+
+                              if (page.route === 'PaymentMethodSelect') {
+                                navigation.navigate('PaymentMethodSelect');
+                                return;
+                              }
+
+                              if (page.route === 'PaymentCardSelect') {
+                                navigation.navigate('PaymentCardSelect');
+                                return;
+                              }
+
                             }
                           : undefined
                       }
@@ -453,8 +503,7 @@ export default function GuideScreen({ navigation }: Props) {
                         {group.items.map((item) => (
                           <View key={`${group.title}-${item.name}`} className="w-[92px]">
                             <View
-                              style={{ backgroundColor: item.value }}
-                              className="mb-2 h-12 rounded-lg border border-neutral-grey1"
+                                className={`mb-2 h-12 rounded-lg border border-neutral-grey1 ${item.className}`}
                             />
                             <Text className="font-pretendard text-normal-bold text-neutral-black1">
                               {item.name}
@@ -478,12 +527,9 @@ export default function GuideScreen({ navigation }: Props) {
                       className="flex-row items-center justify-between gap-4"
                     >
                       <Text
-                        className={`min-w-0 flex-1 font-pretendard text-erum-secondary ${item.className}`}
+                        className={`min-w-0 flex-1 font-pretendard text-neutral-black1 ${item.className}`}
                       >
                         {item.name}
-                      </Text>
-                      <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                        {item.spec}
                       </Text>
                     </View>
                   ))}
@@ -607,7 +653,7 @@ export default function GuideScreen({ navigation }: Props) {
         message="토스트 샘플입니다."
         type="success"
       />
-    </View>
+    </PageWrap>
   );
 }
 
@@ -777,15 +823,16 @@ function ComponentPreviewArea({
 
   if (preview === 'floatingButton') {
     return (
-      <View className="min-h-[220px] overflow-hidden rounded-xl bg-neutral-grey2">
-        <Text className="font-pretendard text-large-regular text-neutral-black2">
-          앱 하단 플로팅 내비게이션 미리보기
-        </Text>
-        <FloatingButton
-          value={selectedFloatingItem}
-          onChange={onChangeFloatingItem}
-        />
-      </View>
+        <View className="min-h-[180px] overflow-hidden rounded-xl bg-neutral-grey2">
+          <Text className="font-pretendard text-large-regular text-neutral-black2">
+            앱 하단 플로팅 내비게이션 미리보기
+          </Text>
+
+          <FloatingButton
+              value={selectedFloatingItem}
+              onChange={onChangeFloatingItem}
+          />
+        </View>
     );
   }
 
