@@ -11,9 +11,13 @@ import RegisteredCardBottomSheet from '../components/RegisteredCardBottomSheet';
 import PaymentCardActionButton from '../components/PaymentCardActionButton';
 import type {
     CardCombinationType,
+    PaymentCard,
     PaymentCardSelectData,
 } from '../types/paymentCard.types';
-import { getPaymentCardRecommendations } from '../api/paymentCardRecommendationApi';
+import {
+    preparePayment,
+    subscribePaymentCardRecommendations,
+} from '../api/paymentCardRecommendationApi';
 import { toPaymentCardSelectData } from '../utils/paymentCardRecommendationAdapter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCardSelect'>;
@@ -24,12 +28,18 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         typeof routePaymentId === 'string'
             ? Number(routePaymentId)
             : routePaymentId;
+    const routeAmount = route.params?.amount;
+    const amount =
+        typeof routeAmount === 'string'
+            ? Number(routeAmount)
+            : routeAmount;
     const hasValidPaymentId =
         typeof paymentId === 'number' && Number.isFinite(paymentId);
+    const hasValidAmount = typeof amount === 'number' && Number.isFinite(amount);
     const [data, setData] = useState<PaymentCardSelectData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
-        hasValidPaymentId ? '' : '결제 ID가 없습니다.',
+        hasValidPaymentId && hasValidAmount ? '' : '결제 정보가 없습니다.',
     );
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [pendingCardId, setPendingCardId] = useState<string | null>(null);
@@ -50,15 +60,41 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const displayedRecommendedCard = data?.recommendedCard;
 
     const isRecommendedSelected =
-        !!displayedRecommendedCard &&
+        !!displayedRecommendedCard?.card &&
         selectedCardId === displayedRecommendedCard.card.id;
 
-    const isSubmitDisabled = !selectedCardId && !isCombinationSelected;
+    const isSubmitDisabled =
+        !data || (!selectedCardId && !isCombinationSelected);
+    const selectedPaymentCard = useMemo<PaymentCard | null>(() => {
+        if (!data) {
+            return null;
+        }
+
+        if (selectedCardId) {
+            return (
+                data.registeredCards.find((card) => card.id === selectedCardId) ??
+                displayedRecommendedCard?.card ??
+                null
+            );
+        }
+
+        if (isCombinationSelected) {
+            return selectedCombination?.cards[0] ?? null;
+        }
+
+        return null;
+    }, [
+        data,
+        displayedRecommendedCard?.card,
+        isCombinationSelected,
+        selectedCardId,
+        selectedCombination?.cards,
+    ]);
 
     useEffect(() => {
-        if (!hasValidPaymentId) {
+        if (!hasValidPaymentId || !hasValidAmount) {
             setData(null);
-            setErrorMessage('결제 ID가 없습니다.');
+            setErrorMessage('결제 정보가 없습니다.');
             return;
         }
 
@@ -69,15 +105,25 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 setIsLoading(true);
                 setErrorMessage('');
 
-                const response = await getPaymentCardRecommendations(paymentId);
+                await preparePayment({
+                    paymentId,
+                    amount,
+                });
+
+                const response = await subscribePaymentCardRecommendations(paymentId);
+                const nextData = toPaymentCardSelectData(response);
 
                 if (isMounted) {
-                    setData(toPaymentCardSelectData(response));
+                    setData(nextData);
                 }
-            } catch {
+            } catch (error) {
                 if (isMounted) {
                     setData(null);
-                    setErrorMessage('결제 카드 추천 정보를 불러오지 못했습니다.');
+                    setErrorMessage(
+                        error instanceof Error
+                            ? error.message
+                            : '결제 카드 추천 정보를 불러오지 못했습니다.',
+                    );
                 }
             } finally {
                 if (isMounted) {
@@ -91,7 +137,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         return () => {
             isMounted = false;
         };
-    }, [hasValidPaymentId, paymentId]);
+    }, [amount, hasValidAmount, hasValidPaymentId, paymentId]);
 
     const handlePressClose = () => {
         navigation.goBack();
@@ -141,6 +187,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             return;
         }
 
+        const selectedCard = data?.registeredCards.find(
+            (card) => card.id === pendingCardId,
+        );
+
+        if (!hasValidPaymentId || !selectedCard) {
+            return;
+        }
+
         if (!isDutchPay) {
             setSelectedCardId(pendingCardId);
             setIsCombinationSelected(false);
@@ -149,11 +203,25 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         setPendingCardId(null);
         setIsBottomSheetVisible(false);
 
-        navigation.navigate('PaymentPin', { mode: 'PAYMENT_INPUT' });
+        navigation.navigate('PaymentPin', {
+            mode: 'PAYMENT_INPUT',
+            paymentId,
+            cardId: Number(selectedCard.id),
+            amount: selectedCard.amount,
+        });
     };
 
     const handlePressSubmit = () => {
-        navigation.navigate('PaymentPin', { mode: 'PAYMENT_INPUT' });
+        if (!hasValidPaymentId || !selectedPaymentCard) {
+            return;
+        }
+
+        navigation.navigate('PaymentPin', {
+            mode: 'PAYMENT_INPUT',
+            paymentId,
+            cardId: Number(selectedPaymentCard.id),
+            amount: selectedPaymentCard.amount,
+        });
     };
 
     return (

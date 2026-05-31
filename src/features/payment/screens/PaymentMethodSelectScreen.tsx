@@ -98,6 +98,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
 
             navigation.navigate('PaymentCardSelect', {
                 paymentId: summary.paymentId,
+                amount: summary.amount,
             });
             return;
         }

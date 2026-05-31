@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
@@ -8,6 +8,7 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import type { PaymentPinMode } from '../types/paymentPin.types';
+import { requestPayment } from '../api/paymentRequestApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -19,6 +20,23 @@ type PaymentPinScreenText = {
 };
 
 const PIN_LENGTH = 6;
+
+const showAppAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    const browserAlert = (
+      globalThis as typeof globalThis & {
+        alert?: (message?: string) => void;
+      }
+    ).alert;
+
+    if (typeof browserAlert === 'function') {
+      browserAlert(`${title}\n${message}`);
+      return;
+    }
+  }
+
+  Alert.alert(title, message);
+};
 
 const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
   PAYMENT_INPUT: {
@@ -48,6 +66,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
   const handlePressClose = () => {
     navigation.goBack();
@@ -62,9 +82,50 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     setHasError(false);
   };
 
-  const handleCompletePin = () => {
+  const handleCompletePin = async (completedPin: string) => {
     if (mode === 'PAYMENT_INPUT') {
-      Alert.alert('간편비밀번호', '결제를 진행합니다.');
+      const { paymentId, cardId, amount } = route.params ?? {};
+
+      if (!paymentId || !cardId || !amount) {
+        setPin('');
+        setHasError(true);
+        showAppAlert('결제 요청', '결제 요청 정보가 없습니다.');
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+
+        const paymentResult = await requestPayment({
+          pin: completedPin,
+          paymentId,
+          totalAmount: amount,
+          cards: [
+            {
+              cardId,
+              amount,
+            },
+          ],
+        });
+
+        setPin('');
+        setHasError(false);
+        setPaymentStatus(paymentResult.paymentStatus);
+        showAppAlert(
+          '결제성공',
+          paymentResult.paymentStatus === 'PAID'
+            ? '결제가 완료되었습니다.'
+            : `결제 상태: ${paymentResult.paymentStatus}`,
+        );
+      } catch {
+        setPin('');
+        setHasError(true);
+        setFailCount((prev) => prev + 1);
+        showAppAlert('결제 요청', '결제 요청에 실패했습니다.');
+      } finally {
+        setIsSubmitting(false);
+      }
+
       return;
     }
 
@@ -74,11 +135,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    Alert.alert('간편비밀번호', '간편비밀번호 등록이 완료되었습니다.');
+    showAppAlert('간편비밀번호', '간편비밀번호 등록이 완료되었습니다.');
   };
 
   const handlePressNumber = (value: string) => {
-    if (pin.length >= PIN_LENGTH) {
+    if (pin.length >= PIN_LENGTH || isSubmitting || paymentStatus === 'PAID') {
       return;
     }
 
@@ -88,7 +149,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     setHasError(false);
 
     if (nextPin.length === PIN_LENGTH) {
-      handleCompletePin();
+      void handleCompletePin(nextPin);
     }
   };
 
@@ -110,11 +171,13 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       <View className="flex-1">
         <View className="flex-[0.42] items-center justify-center px-5">
           <Text className="font-pretendard text-heading-3 text-neutral-black1">
-            {screenText.title}
+            {paymentStatus === 'PAID' ? '결제성공' : screenText.title}
           </Text>
 
           <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
-            {screenText.description}
+            {paymentStatus === 'PAID'
+              ? '결제가 완료되었습니다.'
+              : screenText.description}
           </Text>
 
           <View className="mt-8">
@@ -155,8 +218,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         </View>
 
         <PinCodeKeypad
-          onPressNumber={handlePressNumber}
-          onPressDelete={handlePressDelete}
+          onPressNumber={isSubmitting ? () => {} : handlePressNumber}
+          onPressDelete={isSubmitting ? () => {} : handlePressDelete}
         />
       </View>
     </PageWrap>

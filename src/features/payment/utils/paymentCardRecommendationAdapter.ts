@@ -57,6 +57,7 @@ const getCardTheme = (cardCompany: string): PaymentCardTheme => {
 
 const toPaymentCard = (card: PaymentCardRecommendationCard): PaymentCard => ({
     id: String(card.cardId),
+    amount: card.amount,
     cardName: card.cardName,
     cardCompany: card.cardCompany,
     maskedNumber: card.maskedNumber,
@@ -79,10 +80,14 @@ const getUniqueCards = (cards: PaymentCard[]): PaymentCard[] => {
 export function toPaymentCardSelectData(
     response: PaymentCardRecommendationResponse,
 ): PaymentCardSelectData {
+    if (!response.results?.length) {
+        throw new Error('추천 카드 결과가 없습니다.');
+    }
+
     const combinations = response.results.map((result) => {
         const type = strategyTypeToCombinationType[result.strategyType];
         const meta = combinationMeta[type];
-        const cards = result.cards.map(toPaymentCard);
+        const cards = result.cards?.map(toPaymentCard) ?? [];
 
         return {
             type,
@@ -94,9 +99,13 @@ export function toPaymentCardSelectData(
     });
 
     const registeredCards = getUniqueCards(
-        response.results.flatMap((result) => result.cards.map(toPaymentCard)),
+        response.results.flatMap((result) => result.cards?.map(toPaymentCard) ?? []),
     );
     const recommendedCard = combinations[0]?.cards[0] ?? registeredCards[0];
+
+    if (!recommendedCard) {
+        throw new Error('추천 카드 정보가 없습니다.');
+    }
 
     return {
         flowType: 'NORMAL',

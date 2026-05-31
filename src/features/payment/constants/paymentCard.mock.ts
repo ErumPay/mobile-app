@@ -2,6 +2,7 @@ import type { PaymentCardSelectData } from '../types/paymentCard.types';
 
 const shinhanCard = {
     id: 'card-shinhan-1',
+    amount: 45000,
     cardName: '신한카드',
     cardCompany: '신한은행',
     maskedNumber: '**** **** **** 1234',
@@ -16,6 +17,7 @@ const shinhanCard = {
 
 const samsungCard = {
     id: 'card-samsung-1',
+    amount: 45000,
     cardName: '삼성카드',
     cardCompany: '삼성카드',
     maskedNumber: '**** **** **** 5678',
@@ -27,6 +29,7 @@ const samsungCard = {
 
 const kbCard = {
     id: 'card-kb-1',
+    amount: 45000,
     cardName: 'KB국민카드',
     cardCompany: 'KB국민카드',
     maskedNumber: '**** **** **** 9012',
@@ -38,6 +41,7 @@ const kbCard = {
 
 const shinhanSubCard = {
     id: 'card-shinhan-2',
+    amount: 45000,
     cardName: '신한카드',
     cardCompany: '신한은행',
     maskedNumber: '**** **** **** 1234',

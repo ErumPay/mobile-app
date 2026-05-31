@@ -12,6 +12,7 @@ export type PaymentCardImageOrientation = 'HORIZONTAL' | 'VERTICAL';
 
 export type PaymentCard = {
     id: string;
+    amount: number;
     cardName: string;
     cardCompany: string;
     maskedNumber: string;
