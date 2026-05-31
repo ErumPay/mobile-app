@@ -12,8 +12,9 @@ import type { PaymentActionType } from '../types/paymentMethod.types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentMethodSelect'>;
 
-export default function PaymentMethodSelectScreen({ navigation }: Props) {
-    const options = getPaymentActionOptions(mockPaymentRequestSummary.type);
+export default function PaymentMethodSelectScreen({ navigation, route }: Props) {
+    const summary = route.params?.summary ?? mockPaymentRequestSummary;
+    const options = getPaymentActionOptions(summary.type);
 
     const handlePressClose = () => {
         if (navigation.canGoBack()) {
@@ -44,7 +45,7 @@ export default function PaymentMethodSelectScreen({ navigation }: Props) {
 
                 <View className="h-px bg-neutral-grey1" />
 
-                <PaymentRequestSummary summary={mockPaymentRequestSummary} />
+                <PaymentRequestSummary summary={summary} />
 
                 <PaymentActionOptionList
                     options={options}
