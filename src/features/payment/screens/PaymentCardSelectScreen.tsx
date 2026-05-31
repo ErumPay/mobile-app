@@ -96,7 +96,7 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-neutral-white">
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
             <View className="flex-1 bg-neutral-white">
                 <Header
                     title="결제 카드 선택"

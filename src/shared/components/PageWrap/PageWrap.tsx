@@ -28,20 +28,22 @@ export function PageWrap({
   const contentClassName = `flex-1 ${padded ? 'px-5 py-6' : ''}`;
 
   return (
-      <SafeAreaView className={`flex-1 ${backgroundClassName}`}>
-        {header}
+      <SafeAreaView style={{ flex: 1 }}>
+          <View className={`flex-1 ${backgroundClassName}`}>
+              {header}
 
-        {scroll ? (
-            <ScrollView
-                className="flex-1"
-                contentContainerClassName={`flex-grow ${padded ? 'px-5 py-6' : ''}`}
-                keyboardShouldPersistTaps="handled"
-            >
-              {children}
-            </ScrollView>
-        ) : (
-            <View className={contentClassName}>{children}</View>
-        )}
+              {scroll ? (
+                  <ScrollView
+                      className="flex-1"
+                      contentContainerClassName={`flex-grow ${padded ? 'px-5 py-6' : ''}`}
+                      keyboardShouldPersistTaps="handled"
+                  >
+                      {children}
+                  </ScrollView>
+              ) : (
+                  <View className={contentClassName}>{children}</View>
+              )}
+          </View>
       </SafeAreaView>
   );
 }
