@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../../../shared/components/Header/Header';
@@ -15,6 +15,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCardSelect'>;
 
 export default function PaymentCardSelectScreen({ navigation }: Props) {
     const data = mockPaymentCardSelectData;
+    const isDutchPay = data.flowType === 'DUTCH_PAY';
 
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [pendingCardId, setPendingCardId] = useState<string | null>(null);
@@ -31,7 +32,25 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
         [data.cardCombinations, selectedCombinationType],
     );
 
-    const isRecommendedSelected = selectedCardId === data.recommendedCard.card.id;
+    const selectedRegisteredCard = useMemo(
+        () => data.registeredCards.find((card) => card.id === selectedCardId),
+        [data.registeredCards, selectedCardId],
+    );
+
+    const displayedRecommendedCard = useMemo(() => {
+        if (isDutchPay && selectedRegisteredCard) {
+            return {
+                ...data.recommendedCard,
+                card: selectedRegisteredCard,
+            };
+        }
+
+        return data.recommendedCard;
+    }, [data.recommendedCard, isDutchPay, selectedRegisteredCard]);
+
+    const isRecommendedSelected =
+        selectedCardId === displayedRecommendedCard.card.id;
+
     const isSubmitDisabled = !selectedCardId && !isCombinationSelected;
 
     const handlePressClose = () => {
@@ -39,7 +58,7 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
     };
 
     const handlePressRecommendedCard = () => {
-        setSelectedCardId(data.recommendedCard.card.id);
+        setSelectedCardId(displayedRecommendedCard.card.id);
         setPendingCardId(null);
         setIsCombinationSelected(false);
     };
@@ -100,20 +119,31 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
                 showsVerticalScrollIndicator={false}
             >
                 <RecommendedCardSection
-                    recommendedCard={data.recommendedCard}
+                    recommendedCard={displayedRecommendedCard}
                     selected={isRecommendedSelected}
+                    showBenefitDescription={!isDutchPay}
+                    actionLabel={isDutchPay ? '다른 결제 카드 선택' : undefined}
                     onPress={handlePressRecommendedCard}
+                    onPressAction={isDutchPay ? handleOpenBottomSheet : undefined}
                 />
 
-                <CardCombinationSection
-                    combinations={data.cardCombinations}
-                    selectedType={selectedCombinationType}
-                    selectedCombination={selectedCombination}
-                    selected={isCombinationSelected}
-                    onSelectType={handleSelectCombinationType}
-                    onToggleSelect={handleToggleCombination}
-                    onOpenBottomSheet={handleOpenBottomSheet}
-                />
+                {isDutchPay ? (
+                    <View className="mt-2">
+                        <Text className="text-small-regular text-neutral-black2">
+                            · {data.cardCombinations[0]?.benefitDescription}
+                        </Text>
+                    </View>
+                ) : (
+                    <CardCombinationSection
+                        combinations={data.cardCombinations}
+                        selectedType={selectedCombinationType}
+                        selectedCombination={selectedCombination}
+                        selected={isCombinationSelected}
+                        onSelectType={handleSelectCombinationType}
+                        onToggleSelect={handleToggleCombination}
+                        onOpenBottomSheet={handleOpenBottomSheet}
+                    />
+                )}
             </ScrollView>
 
             <View className="border-t border-neutral-grey1 bg-neutral-white px-4 pb-5 pt-3">
@@ -132,9 +162,7 @@ export default function PaymentCardSelectScreen({ navigation }: Props) {
                 onPressSubmit={handleSubmitBottomSheet}
                 submitDisabled={!pendingCardId}
                 notice={
-                    data.flowType === 'DUTCH_PAY'
-                        ? '이 결제는 가결제로 먼저 진행돼요!'
-                        : undefined
+                    isDutchPay ? '이 결제는 가결제로 먼저 진행돼요!' : undefined
                 }
             />
         </View>

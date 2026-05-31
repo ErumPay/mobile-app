@@ -31,7 +31,7 @@ module.exports = {
       },
       fontFamily: {
         pretendard: ['Pretendard'],
-      },
+      }이,
       fontSize: {
         'heading-1': ['1.4rem', { lineHeight: '150%', fontWeight: '600' }],
         'heading-2': ['1.3rem', { lineHeight: '150%', fontWeight: '600' }],

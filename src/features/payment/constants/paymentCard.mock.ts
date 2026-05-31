@@ -48,7 +48,7 @@ const shinhanSubCard = {
     benefitDescription: '온라인 쇼핑 5% 캐시백',
 };
 
-export const mockPaymentCardSelectData: PaymentCardSelectData = {
+export const mockNormalPaymentCardSelectData: PaymentCardSelectData = {
     flowType: 'NORMAL',
     recommendedCard: {
         title: '이룸페이가 추천해요!',
@@ -86,3 +86,29 @@ export const mockPaymentCardSelectData: PaymentCardSelectData = {
         },
     ],
 };
+
+export const mockDutchPayPaymentCardSelectData: PaymentCardSelectData = {
+    flowType: 'DUTCH_PAY',
+    recommendedCard: {
+        title: '대표카드로 결제할게요!',
+        description: undefined,
+        badgeText: undefined,
+        card: shinhanCard,
+    },
+    registeredCards: [shinhanCard, samsungCard, kbCard],
+    cardCombinations: [
+        {
+            type: 'SINGLE_BENEFIT',
+            label: '대표카드',
+            description: '가결제 진행',
+            benefitDescription: '이 결제는 가결제로 먼저 진행돼요!',
+            cards: [shinhanCard],
+        },
+    ],
+};
+
+// [FE] 조보름 260531 14:50 | 일반 카드 선택 플로우 확인
+//export const mockPaymentCardSelectData = mockNormalPaymentCardSelectData;
+
+// [FE] 조보름 260531 14:50 | 더치페  카드 선택 플로우 확인
+export const mockPaymentCardSelectData = mockDutchPayPaymentCardSelectData;
