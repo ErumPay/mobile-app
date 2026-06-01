@@ -9,6 +9,8 @@ import type { CardRegisterFormValues} from '../types/card';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 
+import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
+
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
 
@@ -17,9 +19,14 @@ export function CardRegisterScreen({ navigation }: Props) {
   const [ocrInitialValues, setOcrInitialValues] =
   useState<Partial<CardRegisterFormValues> | null>(null);
 
-  const handleSubmitManualCard = (_values: CardRegisterFormValues) => {
-    // TODO: 카드 등록 API 연결
-  // await registerCard(values);
+  const addCard = useManagedCardsStore((state) => state.addCard);
+
+  const handleSubmitManualCard = (values: CardRegisterFormValues) => {
+    addCard({
+      cardNumber: values.cardNumber,
+      alias: values.cardNickname,
+    });
+
     setMode('success');
   };
 
@@ -37,11 +44,8 @@ export function CardRegisterScreen({ navigation }: Props) {
   };
 
   const handleGoCardManagement = () => {
-    // TODO: 카드 관리 페이지 라우트 생기면 아래처럼 변경
-    // navigation.navigate('CardManagement');
-
-    navigation.navigate('Main');
-  };
+  navigation.navigate('CardManagementScreen');
+};
 
   
 

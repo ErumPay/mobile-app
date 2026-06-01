@@ -71,6 +71,7 @@ export const mockCardBenefits: CardBenefit[] = [
 export const mockPaymentHistories: PaymentHistoryItem[] = [
   {
     id: 'payment-1',
+    cardId: 'card-1',
     method: 'dutchpay',
     status: 'completed',
     title: 'Luxury Hotel Stay',
@@ -79,6 +80,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   },
   {
     id: 'payment-2',
+    cardId: 'card-1',
     method: 'remote',
     status: 'cancelRequested',
     title: '코드보안 양성소',
@@ -87,6 +89,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   },
   {
     id: 'payment-3',
+    cardId: 'card-2',
     method: 'singleBenefit',
     status: 'canceled',
     title: '서울순대국',
@@ -95,6 +98,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   },
   {
     id: 'payment-4',
+    cardId: 'card-2',
     method: 'singlePerformance',
     status: 'completed',
     title: '스타벅스 코리아 양성점',
@@ -103,6 +107,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   },
   {
     id: 'payment-5',
+    cardId: 'card-1',
     method: 'splitBenefit',
     status: 'canceled',
     title: '유니클로 양동포점',
@@ -111,6 +116,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   },
   {
     id: 'payment-6',
+    cardId: 'card-2',
     method: 'splitPerformance',
     status: 'completed',
     title: '무인양품 청담센타운',

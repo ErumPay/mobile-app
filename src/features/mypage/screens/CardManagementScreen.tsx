@@ -11,13 +11,13 @@ import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
-import { mockManagedCards } from '../mocks/mypageMockData';
+import { useManagedCardsStore } from '../stores/useManagedCardsStore';
 import type { ManagedCard } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardManagementScreen'>;
 
 export function CardManagementScreen({ navigation }: Props) {
-  const cards = mockManagedCards;
+  const cards = useManagedCardsStore((state) => state.cards);
 
   return (
     <>
@@ -78,49 +78,56 @@ function ManagedCardItem({
   onPress: () => void;
 }) {
   return (
-    <Card onPress={onPress}>
-      <View className="flex-row items-center">
-        <View className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${card.colorClassName}`}>
-          <Text className="font-pretendard text-normal-regular text-neutral-white">
-            {card.issuer}
-          </Text>
-          <Text className="mt-1 font-pretendard text-normal-bold text-neutral-white">
-            ****
-          </Text>
-        </View>
-
-        <View className="min-w-0 flex-1">
-          <View className="flex-row items-center">
-            {card.isDefault ? (
-              <Text className="mr-2 rounded bg-erum-main px-2 py-0.5 font-pretendard text-normal-bold text-neutral-white">
-                대표
-              </Text>
-            ) : null}
-            <Text
-              numberOfLines={1}
-              className="min-w-0 flex-1 font-pretendard text-large-bold text-neutral-black1"
-            >
-              {card.title}
+    <Card onPress={card.disabled ? undefined : onPress}>
+      <View className="relative">
+        <View className="flex-row items-center">
+          <View className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${card.colorClassName}`}>
+            <Text className="font-pretendard text-[9px] text-neutral-white">
+              {card.issuer}
+            </Text>
+            <Text className="mt-1 font-pretendard text-[10px] font-bold text-neutral-white">
+              ****
             </Text>
           </View>
-          <Text className="mt-1 font-pretendard text-large-regular text-neutral-black1">
-            {card.name}
-          </Text>
-          <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
-            {card.alias}
-          </Text>
+
+          <View className="min-w-0 flex-1">
+            <View className="flex-row items-center">
+              {card.isDefault ? (
+                <Text className="mr-2 rounded bg-erum-main px-2 py-0.5 font-pretendard text-normal-bold text-neutral-white">
+                  대표
+                </Text>
+              ) : null}
+
+              <Text
+                numberOfLines={1}
+                className="min-w-0 flex-1 font-pretendard text-large-bold text-neutral-black1"
+              >
+                {card.title}
+              </Text>
+            </View>
+
+            <Text className="mt-1 font-pretendard text-large-regular text-neutral-black1">
+              {card.name}
+            </Text>
+
+            <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
+              {card.alias}
+            </Text>
+          </View>
+
+          <Text className="ml-2 text-heading-3 text-neutral-black2">›</Text>
         </View>
 
-        <Text className="ml-2 text-heading-3 text-neutral-black2">›</Text>
+        {card.disabled ? (
+          <View className="absolute inset-0 flex-row items-center justify-center rounded-xl bg-neutral-black3/40">
+            <View className="rounded-full bg-state-error px-4 py-2">
+              <Text className="font-pretendard text-normal-bold text-neutral-white">
+                사용불가
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </View>
-
-      {card.disabled ? (
-        <View className="mt-3 rounded-lg bg-state-error px-3 py-2">
-          <Text className="text-center font-pretendard text-normal-bold text-neutral-white">
-            사용불가
-          </Text>
-        </View>
-      ) : null}
     </Card>
   );
 }

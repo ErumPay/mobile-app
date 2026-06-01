@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
@@ -13,22 +13,56 @@ import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import {
   mockCardBenefits,
-  mockManagedCards,
   mockPaymentHistories,
 } from '../mocks/mypageMockData';
+import { useManagedCardsStore } from '../stores/useManagedCardsStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
+type PaymentDetailTab = 'all' | 'completed' | 'canceled';
+
+const statusLabel = {
+  completed: '결제완료',
+  canceled: '결제취소',
+  cancelRequested: '결제취소요청',
+};
 
 export function CardDetailScreen({ navigation, route }: Props) {
   const [dialog, setDialog] = useState<
     'default' | 'alias' | 'delete' | 'deleteComplete' | null
   >(null);
+  const [activePaymentTab, setActivePaymentTab] =
+    useState<PaymentDetailTab>('all');
   const [expandedBenefitIndex, setExpandedBenefitIndex] = useState<number | null>(
     null,
   );
-  const card =
-    mockManagedCards.find((item) => item.id === route.params.cardId) ??
-    mockManagedCards[0];
+
+  const cards = useManagedCardsStore((state) => state.cards);
+  const setDefaultCard = useManagedCardsStore((state) => state.setDefaultCard);
+  const deleteCard = useManagedCardsStore((state) => state.deleteCard);
+  const updateCardAlias = useManagedCardsStore((state) => state.updateCardAlias);
+
+  const card = cards.find((item) => item.id === route.params.cardId) ?? cards[0];
+  const cardPayments = mockPaymentHistories.filter(
+    (payment) => payment.cardId === card.id,
+  );
+
+  const filteredCardPayments = cardPayments.filter((payment) => {
+    if (activePaymentTab === 'all') {
+      return true;
+    }
+
+    if (activePaymentTab === 'completed') {
+      return payment.status === 'completed';
+    }
+
+    return payment.status === 'canceled' || payment.status === 'cancelRequested';
+  });
+
+  const [aliasValue, setAliasValue] = useState(card.alias);
+
+  useEffect(() => {
+    setAliasValue(card.alias);
+  }, [card.alias]);
 
   return (
     <>
@@ -48,6 +82,13 @@ export function CardDetailScreen({ navigation, route }: Props) {
           ) : null}
 
           <Card title="카드 정보">
+             {card.isDefault ? (
+              <View className="mb-3 self-start rounded bg-erum-main px-2 py-1">
+                <Text className="font-pretendard text-normal-bold text-neutral-white">
+                  대표
+                </Text>
+              </View>
+            ) : null}
             <InfoRow label="카드사" value={card.issuer} />
             <InfoRow label="카드명" value={card.name} />
             <InfoRow label="카드번호" value={card.cardNumber} />
@@ -87,20 +128,42 @@ export function CardDetailScreen({ navigation, route }: Props) {
             </View>
           </Card>
 
-          <Card title="결제내역">
-            {card.hasPayments ? (
-              mockPaymentHistories.slice(0, 3).map((payment, index) => (
+          <Card>
+            <View className="mb-3 flex-row border-b border-neutral-grey1">
+              <PaymentHistoryTab
+                label="전체"
+                active={activePaymentTab === 'all'}
+                onPress={() => setActivePaymentTab('all')}
+              />
+
+              <PaymentHistoryTab
+                label="결제완료"
+                active={activePaymentTab === 'completed'}
+                onPress={() => setActivePaymentTab('completed')}
+              />
+
+              <PaymentHistoryTab
+                label="결제취소"
+                active={activePaymentTab === 'canceled'}
+                onPress={() => setActivePaymentTab('canceled')}
+              />
+            </View>
+
+            {filteredCardPayments.length > 0 ? (
+              filteredCardPayments.map((payment, index) => (
                 <View key={payment.id}>
                   {index > 0 ? <Divider /> : null}
+
                   <PaymentMiniRow
                     title={payment.title}
+                    status={statusLabel[payment.status]}
                     date={payment.date}
                     amount={payment.amount}
                   />
                 </View>
               ))
             ) : (
-              <Text className="font-pretendard text-large-regular text-neutral-black2">
+              <Text className="py-4 text-center font-pretendard text-large-regular text-neutral-black2">
                 결제 내역이 없습니다.
               </Text>
             )}
@@ -111,7 +174,10 @@ export function CardDetailScreen({ navigation, route }: Props) {
             <Button
               label="카드 별칭 수정"
               variant="secondary"
-              onPress={() => setDialog('alias')}
+              onPress={() => {
+                setAliasValue(card.alias);
+                setDialog('alias');
+              }}
             />
             <Button
               label="카드 삭제하기"
@@ -154,21 +220,23 @@ export function CardDetailScreen({ navigation, route }: Props) {
         description="결제 시 우선으로 사용됩니다"
         confirmLabel="대표카드 설정하기"
         cancelLabel="닫기"
-        onConfirm={() => setDialog(null)}
+        onConfirm={() => {
+          setDefaultCard(card.id);
+          setDialog(null);
+        }}
         onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
       />
 
-      <Modal
+      <AliasEditModal
         visible={dialog === 'alias'}
-        type="two"
-        icon={<Text className="text-[52px]">✏️</Text>}
-        title={'Nany My 카드 별칭을\n수정하시겠습니까?'}
-        confirmLabel="별칭 수정하기"
-        cancelLabel="닫기"
-        onConfirm={() => setDialog(null)}
+        value={aliasValue}
+        onChangeText={setAliasValue}
         onCancel={() => setDialog(null)}
-        onClose={() => setDialog(null)}
+        onConfirm={() => {
+          updateCardAlias(card.id, aliasValue);
+          setDialog(null);
+        }}
       />
 
       <Modal
@@ -178,7 +246,10 @@ export function CardDetailScreen({ navigation, route }: Props) {
         title={'Nany My 카드를\n삭제하시겠습니까?'}
         confirmLabel="삭제하기"
         cancelLabel="닫기"
-        onConfirm={() => setDialog('deleteComplete')}
+        onConfirm={() => {
+          deleteCard(card.id);
+          setDialog('deleteComplete');
+        }}
         onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
       />
@@ -189,35 +260,77 @@ export function CardDetailScreen({ navigation, route }: Props) {
         icon={<Text className="text-[52px]">✅</Text>}
         title="카드 삭제가 완료되었습니다."
         confirmLabel="확인"
-        onConfirm={() => navigation.navigate('CardManagementScreen')}
-        onClose={() => setDialog(null)}
+        onConfirm={() => {
+          setDialog(null);
+          navigation.navigate('CardManagementScreen');
+        }}
+        onClose={() => {
+          setDialog(null);
+          navigation.navigate('CardManagementScreen');
+        }}
       />
     </>
   );
 }
 
+function PaymentHistoryTab({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className={`flex-1 pb-3 ${
+        active ? 'border-b-2 border-erum-secondary' : ''
+      }`}
+      onPress={onPress}
+    >
+      <Text
+        className={`text-center font-pretendard text-large-bold ${
+          active ? 'text-erum-secondary' : 'text-neutral-black2'
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function PaymentMiniRow({
   title,
+  status,
   date,
   amount,
 }: {
   title: string;
+  status: string;
   date: string;
   amount: string;
 }) {
   return (
-    <View className="flex-row items-center justify-between py-2">
-      <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="font-pretendard text-large-bold text-neutral-black1">
+    <View className="py-3">
+      <View className="flex-row items-center">
+        <Text className="font-pretendard text-large-bold text-neutral-black1">
           {title}
         </Text>
-        <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
-          {date}
+        <Text className="ml-2 font-pretendard text-normal-regular text-neutral-black2">
+          {status}
         </Text>
       </View>
-      <Text className="font-pretendard text-large-bold text-neutral-black1">
-        {amount}
-      </Text>
+
+      <View className="mt-2 flex-row items-center justify-between">
+        <Text className="font-pretendard text-normal-regular text-neutral-black2">
+          {date}
+        </Text>
+        <Text className="font-pretendard text-large-bold text-neutral-black1">
+          {amount}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -248,6 +361,46 @@ function InfoRow({
 
 function Divider() {
   return <View className="my-2 h-px w-full bg-neutral-grey1" />;
+}
+
+function AliasEditModal({
+  visible,
+  value,
+  onChangeText,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  value: string;
+  onChangeText: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <RNModal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
+      <View className="flex-1 items-center justify-center bg-neutral-black3 px-9">
+        <Pressable className="absolute inset-0" onPress={onCancel} />
+
+        <View className="w-full max-w-[320px] rounded-3xl bg-neutral-white px-6 pb-6 pt-8">
+          <Text className="text-center font-pretendard text-heading-3 text-neutral-black1">
+            카드 별칭 수정
+          </Text>
+
+          <TextInput
+            className="mt-6 h-12 rounded-xl border border-neutral-grey1 px-4 font-pretendard text-large-regular text-neutral-black1"
+            value={value}
+            onChangeText={onChangeText}
+            placeholder="별칭을 입력해주세요."
+          />
+
+          <View className="mt-7 gap-3">
+            <Button label="저장하기" size="medium" onPress={onConfirm} />
+            <Button label="닫기" variant="secondary" size="medium" onPress={onCancel} />
+          </View>
+        </View>
+      </View>
+    </RNModal>
+  );
 }
 
 export default CardDetailScreen;

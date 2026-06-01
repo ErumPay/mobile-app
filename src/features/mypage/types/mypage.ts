@@ -31,6 +31,7 @@ export type PaymentStatus = 'completed' | 'canceled' | 'cancelRequested';
 
 export type PaymentHistoryItem = {
   id: string;
+  cardId: string;
   method: PaymentMethodType;
   status: PaymentStatus;
   title: string;
