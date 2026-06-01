@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
@@ -78,55 +78,105 @@ export function MypageHomeScreen({ navigation }: Props) {
           </Card>
 
           <View className="flex-row gap-3">
-            <ShortcutCard title="친구관리" icon="👥" />
-            <ShortcutCard title="알림" icon="🔔" />
+            <View className="flex-1">
+              <ShortcutCard title="친구관리" icon="👥" />
+            </View>
+
+            <View className="flex-1">
+              <ShortcutCard title="알림" icon="🔔" />
+            </View>
           </View>
 
-          <Card title="나의 관리">
-            <ListItem
-              title="결제내역"
-              left={<MenuIcon value="💳" />}
-              right={<Chevron />}
+          <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-3">
+            <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
+              나의 관리
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-[48px] flex-row items-center justify-between"
               onPress={() => navigation.navigate('PaymentHistoryScreen')}
-            />
+            >
+              <View className="flex-row items-center">
+                <MenuIcon value="💳" />
+                <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
+                  결제내역
+                </Text>
+              </View>
+
+              <Chevron />
+            </Pressable>
             <Divider />
-            <ListItem
-              title="카드관리"
-              left={<MenuIcon value="💼" />}
-              right={<Chevron />}
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-[48px] flex-row items-center justify-between"
               onPress={() => navigation.navigate('CardManagementScreen')}
-            />
+            >
+              <View className="flex-row items-center">
+                <MenuIcon value="💼" />
+                <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
+                  카드관리
+                </Text>
+              </View>
+
+              <Chevron />
+            </Pressable>
             <Divider />
-            <ListItem
-              title="간편 비밀번호 수정"
-              left={<MenuIcon value="🔐" />}
-              right={<Text className="text-neutral-black2">›</Text>}
-              //onPress={() => navigation.navigate('문자인증라우트이름')}
-            />
-          </Card>
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-[48px] flex-row items-center justify-between"
+              //onPress={() => navigation.navigate(''문자인증라우트이름'')}
+            >
+              <View className="flex-row items-center">
+                <MenuIcon value="🔐" />
+                <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
+                  간편 비밀번호 수정
+                </Text>
+              </View>
+
+              <Chevron />
+            </Pressable>
+          </View>
           
 
-          <Card title="설정">
-            <ListItem title="알림 설정" right={<Text className="text-neutral-black2">›</Text>} />
-            <Divider />
-            <ListItem title="보안 설정" right={<Text className="text-neutral-black2">›</Text>} />
-            <Divider />
-            <ListItem title="약관 및 정책" right={<Text className="text-neutral-black2">›</Text>} />
-            <Divider />
-            <ListItem title="앱 버전" right={<Text className="font-pretendard text-normal-regular text-neutral-black2">v1.0.0</Text>} />
-          </Card>
+          <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-3">
+            <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
+              설정
+            </Text>
 
-          <View className="flex-row justify-center gap-6">
-            <Button
-              label="회원탈퇴"
-              variant="ghost"
+            <MenuActionRow title="알림 설정" />
+            <Divider />
+            <MenuActionRow title="보안 설정" />
+            <Divider />
+            <MenuActionRow title="약관 및 정책" />
+            <Divider />
+            <MenuActionRow
+              title="앱 버전"
+              right={
+                <Text className="font-pretendard text-normal-regular text-neutral-black2">
+                  v1.0.0
+                </Text>
+              }
+            />
+          </View>
+
+          <View className="flex-row items-center justify-center gap-6">
+            <Pressable
+              accessibilityRole="button"
               onPress={() => setIsWithdrawVisible(true)}
-            />
-            <Button
-              label="로그아웃"
-              variant="ghost"
+            >
+              <Text className="font-pretendard text-normal-regular text-neutral-black2 underline">
+                회원탈퇴
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
               onPress={() => setIsLogoutVisible(true)}
-            />
+            >
+              <Text className="font-pretendard text-normal-regular text-neutral-black2 underline">
+                로그아웃
+              </Text>
+            </Pressable>
           </View>
         </View>
       </PageWrap>
@@ -162,14 +212,14 @@ export function MypageHomeScreen({ navigation }: Props) {
 
 function ShortcutCard({ title, icon }: { title: string; icon: string }) {
   return (
-    <Card>
-      <View className="min-h-[48px] flex-row items-center">
+    <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-3 py-3">
+      <View className="min-h-[40px] flex-row items-center">
         <MenuIcon value={icon} />
-        <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
+        <Text className="ml-2 font-pretendard text-large-bold text-neutral-black1">
           {title}
         </Text>
       </View>
-    </Card>
+    </View>
   );
 }
 
@@ -187,6 +237,39 @@ function Chevron() {
 
 function Divider() {
   return <View className="my-2 h-px w-full bg-neutral-grey1" />;
+}
+
+function MenuActionRow({
+  title,
+  icon,
+  right = <Chevron />,
+  onPress,
+}: {
+  title: string;
+  icon?: string;
+  right?: React.ReactNode;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="min-h-[48px] flex-row items-center justify-between"
+      onPress={onPress}
+    >
+      <View className="min-w-0 flex-1 flex-row items-center">
+        {icon ? <MenuIcon value={icon} /> : null}
+
+        <Text
+          numberOfLines={1}
+          className={`${icon ? 'ml-3' : ''} font-pretendard text-large-bold text-neutral-black1`}
+        >
+          {title}
+        </Text>
+      </View>
+
+      {right}
+    </Pressable>
+  );
 }
 
 export default MypageHomeScreen;
