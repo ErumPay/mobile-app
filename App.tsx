@@ -10,7 +10,7 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import GuideScreen from "./src/app/screens/GuideScreen";
-import CardManualRegisterScreen from "./src/features/card/screens/CardManualRegisterScreen";
+import CardRegisterScreen from "./src/features/card/screens/CardRegisterScreen";
 import MainScreen from "./src/features/main/screens/MainScreen";
 import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
 import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMethodSelectScreen";
@@ -29,7 +29,7 @@ export type RootStackParamList = {
   PaymentPin: PaymentPinRouteParams | undefined;
   // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
   /*PaymentMethodSelect: undefined;*/
-  CardManualRegister: undefined;
+  CardRegister: undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -39,7 +39,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Main: "",
       Guide: "guide",
       QrScan: "qr-scan",
-      CardManualRegister: "card-register",
+      CardRegister: "card-register",
       PaymentMethodSelect: "payment/method-select",
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
@@ -96,8 +96,8 @@ export default function App() {
             {/*/>*/}
 
             <Stack.Screen
-              name="CardManualRegister"
-              component={CardManualRegisterScreen}
+              name="CardRegister"
+              component={CardRegisterScreen}
             />
 
             <Stack.Screen name="QrScan" component={QrScanScreen} />

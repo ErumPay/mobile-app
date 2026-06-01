@@ -165,7 +165,7 @@ export default function MainScreen({ navigation }: Props) {
               <Pressable
                 accessibilityRole="button"
                 className="mt-5 h-10 flex-row items-center justify-center rounded-lg bg-[#5CA28E]"
-                onPress={() => navigation.navigate("CardManualRegister")}
+                onPress={() => navigation.navigate("CardRegister")}
               >
                 <Text className="mr-1.5 text-[18px] leading-[22px]">💳</Text>
                 <Text className="font-pretendard text-normal-bold text-neutral-white">
