@@ -1,19 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-
+import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
 import { Card } from '../../../shared/components/Card';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { Tab } from '../../../shared/components/Tab';
 import { BottomSheet } from '../../../shared/components/BottomSheet';
-import {
-  MypageBottomNav,
-  MypageFrame,
-} from '../components/MypageLayout';
+
 import { mockPaymentHistories } from '../mocks/mypageMockData';
 import type { PaymentHistoryItem, PaymentStatus } from '../types/mypage';
+
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { PageWrap } from '../../../shared/components/PageWrap';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentHistoryScreen'>;
 type PaymentTab = 'all' | 'completed' | 'canceled';
@@ -36,10 +37,15 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
   return (
     <>
-      <MypageFrame
-        title="결제내역"
-        onBack={() => navigation.goBack()}
+      <PageWrap
         backgroundClassName="bg-neutral-grey2"
+        header={
+          <Header
+            title="결제내역"
+            type="back"
+            onPressLeft={() => navigation.goBack()}
+          />
+        }
       >
         <View className="gap-4 pb-28">
           <Tab
@@ -79,12 +85,14 @@ export function PaymentHistoryScreen({ navigation }: Props) {
             <EmptyState title="결제 내역이 없습니다." />
           )}
         </View>
-      </MypageFrame>
+      </PageWrap>
 
-      <MypageBottomNav
-        active="my"
+      <FloatingButton
+        value="my"
         onChange={(value) => {
           if (value === 'home') navigation.navigate('Main');
+          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'my') navigation.navigate('MypageHomeScreen');
         }}
       />
 

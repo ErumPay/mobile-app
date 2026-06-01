@@ -1,24 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-
+import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
 import { Accordion } from '../../../shared/components/Accordion';
 import { Button } from '../../../shared/components/Button';
 import { Card } from '../../../shared/components/Card';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
-import {
-  DeleteCardCompleteDialog,
-  DeleteCardDialog,
-  EditCardAliasDialog,
-  SetDefaultCardDialog,
-} from '../components/MypageDialogs';
-import {
-  Divider,
-  InfoRow,
-  MypageBottomNav,
-  MypageFrame,
-} from '../components/MypageLayout';
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { Modal } from '../../../shared/components/Modal';
+import { PageWrap } from '../../../shared/components/PageWrap';
 import {
   mockCardBenefits,
   mockManagedCards,
@@ -40,10 +32,15 @@ export function CardDetailScreen({ navigation, route }: Props) {
 
   return (
     <>
-      <MypageFrame
-        title="카드 상세"
-        onBack={() => navigation.goBack()}
+      <PageWrap
         backgroundClassName="bg-neutral-white"
+        header={
+          <Header
+            title="카드 상세"
+            type="back"
+            onPressLeft={() => navigation.goBack()}
+          />
+        }
       >
         <View className="gap-5 pb-28">
           {card.disabled ? (
@@ -128,32 +125,70 @@ export function CardDetailScreen({ navigation, route }: Props) {
             description="카드를 삭제하면 모든 결제 내역은 유지되지만 해당 카드로는 더 이상 결제할 수 없습니다."
           />
         </View>
-      </MypageFrame>
+      </PageWrap>
 
-      <MypageBottomNav
-        active="my"
+      <FloatingButton
+        value="my"
         onChange={(value) => {
-          if (value === 'home') navigation.navigate('Main');
+          if (value === 'home') {
+            navigation.navigate('Main');
+            return;
+          }
+
+          if (value === 'payment') {
+            navigation.navigate('PaymentMethodSelect');
+            return;
+          }
+
+          if (value === 'my') {
+            navigation.navigate('MypageHomeScreen');
+          }
         }}
       />
 
-      <SetDefaultCardDialog
+      <Modal
         visible={dialog === 'default'}
+        type="two"
+        icon={<Text className="text-[52px]">⭐</Text>}
+        title={'Nany My 카드를\n대표카드로 지정 하시겠습니까?'}
+        description="결제 시 우선으로 사용됩니다"
+        confirmLabel="대표카드 설정하기"
+        cancelLabel="닫기"
         onConfirm={() => setDialog(null)}
+        onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
       />
-      <EditCardAliasDialog
+
+      <Modal
         visible={dialog === 'alias'}
+        type="two"
+        icon={<Text className="text-[52px]">✏️</Text>}
+        title={'Nany My 카드 별칭을\n수정하시겠습니까?'}
+        confirmLabel="별칭 수정하기"
+        cancelLabel="닫기"
         onConfirm={() => setDialog(null)}
+        onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
       />
-      <DeleteCardDialog
+
+      <Modal
         visible={dialog === 'delete'}
+        type="two"
+        icon={<Text className="text-[52px]">🗑️</Text>}
+        title={'Nany My 카드를\n삭제하시겠습니까?'}
+        confirmLabel="삭제하기"
+        cancelLabel="닫기"
         onConfirm={() => setDialog('deleteComplete')}
+        onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
       />
-      <DeleteCardCompleteDialog
+
+      <Modal
         visible={dialog === 'deleteComplete'}
+        type="one"
+        icon={<Text className="text-[52px]">✅</Text>}
+        title="카드 삭제가 완료되었습니다."
+        confirmLabel="확인"
         onConfirm={() => navigation.navigate('CardManagementScreen')}
         onClose={() => setDialog(null)}
       />
@@ -185,6 +220,34 @@ function PaymentMiniRow({
       </Text>
     </View>
   );
+}
+
+function InfoRow({
+  label,
+  value,
+  valueClassName = 'text-neutral-black1',
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <View className="flex-row items-center justify-between py-2">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <Text
+        numberOfLines={2}
+        className={`min-w-0 flex-1 text-right font-pretendard text-large-bold ${valueClassName}`}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function Divider() {
+  return <View className="my-2 h-px w-full bg-neutral-grey1" />;
 }
 
 export default CardDetailScreen;

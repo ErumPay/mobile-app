@@ -6,16 +6,11 @@ import type { RootStackParamList } from '../../../../App';
 import { Card } from '../../../shared/components/Card';
 import { Button } from '../../../shared/components/Button';
 import { ListItem } from '../../../shared/components/ListItem';
-import {
-  LogoutDialog,
-  WithdrawDialog,
-} from '../components/MypageDialogs';
-import {
-  Divider,
-  MenuRow,
-  MypageBottomNav,
-  MypageFrame,
-} from '../components/MypageLayout';
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { Modal } from '../../../shared/components/Modal';
+import { PageWrap } from '../../../shared/components/PageWrap';
+
 import { mockUserProfile } from '../mocks/mypageMockData';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MypageHomeScreen'>;
@@ -36,12 +31,25 @@ export function MypageHomeScreen({ navigation }: Props) {
   const handleChangeBottomNav = (value: string) => {
     if (value === 'home') {
       navigation.navigate('Main');
+      return;
+    }
+
+    if (value === 'payment') {
+      navigation.navigate('PaymentMethodSelect');
+      return;
+    }
+
+    if (value === 'my') {
+      navigation.navigate('MypageHomeScreen');
     }
   };
 
   return (
     <>
-      <MypageFrame title="마이페이지" onBack={handleGoBack} backgroundClassName="bg-neutral-white">
+      <PageWrap
+        backgroundClassName="bg-neutral-white"
+        header={<Header title="마이페이지" type="back" onPressLeft={handleGoBack} />}
+      >
         <View className="gap-5 pb-28">
           <Card>
             <View className="flex-row items-center">
@@ -75,18 +83,28 @@ export function MypageHomeScreen({ navigation }: Props) {
           </View>
 
           <Card title="나의 관리">
-            <MenuRow
+            <ListItem
               title="결제내역"
               left={<MenuIcon value="💳" />}
+              right={<Chevron />}
               onPress={() => navigation.navigate('PaymentHistoryScreen')}
             />
             <Divider />
-            <MenuRow
+            <ListItem
               title="카드관리"
               left={<MenuIcon value="💼" />}
+              right={<Chevron />}
               onPress={() => navigation.navigate('CardManagementScreen')}
             />
+            <Divider />
+            <ListItem
+              title="간편 비밀번호 수정"
+              left={<MenuIcon value="🔐" />}
+              right={<Text className="text-neutral-black2">›</Text>}
+              //onPress={() => navigation.navigate('문자인증라우트이름')}
+            />
           </Card>
+          
 
           <Card title="설정">
             <ListItem title="알림 설정" right={<Text className="text-neutral-black2">›</Text>} />
@@ -111,18 +129,31 @@ export function MypageHomeScreen({ navigation }: Props) {
             />
           </View>
         </View>
-      </MypageFrame>
+      </PageWrap>
 
-      <MypageBottomNav active="my" onChange={handleChangeBottomNav} />
+      <FloatingButton value="my" onChange={handleChangeBottomNav} />
 
-      <LogoutDialog
+      <Modal
         visible={isLogoutVisible}
+        type="two"
+        icon={<Text className="text-[52px]">👋</Text>}
+        title="로그아웃 하시겠습니까?"
+        confirmLabel="로그아웃하기"
+        cancelLabel="닫기"
         onConfirm={() => setIsLogoutVisible(false)}
+        onCancel={() => setIsLogoutVisible(false)}
         onClose={() => setIsLogoutVisible(false)}
       />
-      <WithdrawDialog
+      <Modal
         visible={isWithdrawVisible}
+        type="two"
+        icon={<Text className="text-[52px]">⚠️</Text>}
+        title="정말 회원 탈퇴를 하시겠습니까?"
+        description={'탈퇴 후 모든 데이터가 삭제되며\n복구할 수 없습니다'}
+        confirmLabel="회원탈퇴하기"
+        cancelLabel="닫기"
         onConfirm={() => setIsWithdrawVisible(false)}
+        onCancel={() => setIsWithdrawVisible(false)}
         onClose={() => setIsWithdrawVisible(false)}
       />
     </>
@@ -148,6 +179,14 @@ function MenuIcon({ value }: { value: string }) {
       <Text className="text-heading-3">{value}</Text>
     </View>
   );
+}
+
+function Chevron() {
+  return <Text className="text-heading-3 text-neutral-black2">›</Text>;
+}
+
+function Divider() {
+  return <View className="my-2 h-px w-full bg-neutral-grey1" />;
 }
 
 export default MypageHomeScreen;

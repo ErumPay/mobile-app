@@ -47,6 +47,7 @@ export type RootStackParamList = {
   CardDetailScreen: { cardId: string };
   PaymentHistoryScreen: undefined;
   PaymentDetailScreen: { paymentId: string };
+  PhoneVerificationScreen: undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -66,6 +67,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       CardDetailScreen: "mypage/cards/:cardId",
       PaymentHistoryScreen: "mypage/payments",
       PaymentDetailScreen: "mypage/payments/:paymentId",
+      PhoneVerificationScreen: "mypage/phone-verification",
     },
   },
 };

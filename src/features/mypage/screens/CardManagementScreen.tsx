@@ -1,15 +1,16 @@
 import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-
+import { useEffect, useState } from 'react';
+import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
 import { Card } from '../../../shared/components/Card';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
-import {
-  MypageBottomNav,
-  MypageFrame,
-} from '../components/MypageLayout';
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { PageWrap } from '../../../shared/components/PageWrap';
+
 import { mockManagedCards } from '../mocks/mypageMockData';
 import type { ManagedCard } from '../types/mypage';
 
@@ -20,10 +21,15 @@ export function CardManagementScreen({ navigation }: Props) {
 
   return (
     <>
-      <MypageFrame
-        title="카드관리"
-        onBack={() => navigation.goBack()}
+      <PageWrap
         backgroundClassName="bg-neutral-white"
+        header={
+          <Header
+            title="카드관리"
+            type="back"
+            onPressLeft={() => navigation.goBack()}
+          />
+        }
       >
         <View className="gap-4 pb-28">
           {cards.length === 0 ? (
@@ -51,11 +57,13 @@ export function CardManagementScreen({ navigation }: Props) {
             description="등록한 카드는 결제 시 선택하여 사용할 수 있습니다. 대표카드는 자동으로 우선 선택됩니다."
           />
         </View>
-      </MypageFrame>
-      <MypageBottomNav
-        active="my"
+      </PageWrap>
+      <FloatingButton
+        value="my"
         onChange={(value) => {
           if (value === 'home') navigation.navigate('Main');
+          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'my') navigation.navigate('MypageHomeScreen');
         }}
       />
     </>
