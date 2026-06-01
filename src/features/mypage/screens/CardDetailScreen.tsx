@@ -7,6 +7,7 @@ import { Accordion } from '../../../shared/components/Accordion';
 import { Button } from '../../../shared/components/Button';
 import { Card } from '../../../shared/components/Card';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { Modal } from '../../../shared/components/Modal';
@@ -51,7 +52,33 @@ export function CardDetailScreen({ navigation, route }: Props) {
   const deleteCard = useManagedCardsStore((state) => state.deleteCard);
   const updateCardAlias = useManagedCardsStore((state) => state.updateCardAlias);
 
-  const card = cards.find((item) => item.id === route.params.cardId) ?? cards[0];
+  const card = cards.find((item) => item.id === route.params.cardId);
+
+  const [aliasValue, setAliasValue] = useState('');
+
+  useEffect(() => {
+    if (card) {
+      setAliasValue(card.alias);
+    }
+  }, [card?.alias]);
+
+  if (!card) {
+    return (
+      <PageWrap
+        backgroundClassName="bg-neutral-white"
+        header={
+          <Header
+            title="카드 상세"
+            type="back"
+            onPressLeft={() => navigation.navigate('CardManagementScreen')}
+          />
+        }
+      >
+        <EmptyState title="카드 정보를 찾을 수 없습니다." />
+      </PageWrap>
+    );
+  }
+
   const cardPayments = mockPaymentHistories.filter(
     (payment) => payment.cardId === card.id,
   );
@@ -68,11 +95,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
     return payment.status === 'canceled' || payment.status === 'cancelRequested';
   });
 
-  const [aliasValue, setAliasValue] = useState(card.alias);
-
-  useEffect(() => {
-    setAliasValue(card.alias);
-  }, [card.alias]);
+  
 
   return (
     <>
@@ -246,7 +269,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
         visible={dialog === 'default'}
         type="two"
         icon={<Text className="text-[52px]">⭐</Text>}
-        title={'Nany My 카드를\n대표카드로 지정 하시겠습니까?'}
+        title={`${card.name} 카드를\n대표카드로 지정 하시겠습니까?`}
         description="결제 시 우선으로 사용됩니다"
         confirmLabel="대표카드 설정하기"
         cancelLabel="닫기"
@@ -273,7 +296,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
         visible={dialog === 'delete'}
         type="two"
         icon={<Text className="text-[52px]">🗑️</Text>}
-        title={'Nany My 카드를\n삭제하시겠습니까?'}
+        title={`${card.name} 카드를\n삭제하시겠습니까?`}
         confirmLabel="삭제하기"
         cancelLabel="닫기"
         onConfirm={() => {

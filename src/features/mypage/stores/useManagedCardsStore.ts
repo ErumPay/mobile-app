@@ -47,22 +47,44 @@ export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
     }),
 
   setDefaultCard: (cardId) =>
-    set((state) => ({
-      cards: state.cards.map((card) => ({
-        ...card,
-        isDefault: card.id === cardId,
-      })),
-    })),
+    set((state) => {
+      const targetCard = state.cards.find((card) => card.id === cardId);
+
+      if (!targetCard) {
+        return state;
+      }
+
+      return {
+        cards: state.cards.map((card) => ({
+          ...card,
+          isDefault: card.id === cardId,
+        })),
+      };
+    }),
 
   deleteCard: (cardId) =>
-    set((state) => ({
-      cards: state.cards.filter((card) => card.id !== cardId),
-    })),
+    set((state) => {
+      const deletedCard = state.cards.find((card) => card.id === cardId);
+      const nextCards = state.cards.filter((card) => card.id !== cardId);
+
+      if (!deletedCard?.isDefault || nextCards.length === 0) {
+        return { cards: nextCards };
+      }
+
+      return {
+        cards: nextCards.map((card, index) => ({
+          ...card,
+          isDefault: index === 0,
+        })),
+      };
+    }),
 
   updateCardAlias: (cardId, alias) =>
     set((state) => ({
       cards: state.cards.map((card) =>
-        card.id === cardId ? { ...card, alias } : card,
+        card.id === cardId
+          ? { ...card, alias: alias.trim() || '별칭미설정' }
+          : card
       ),
     })),
 }));
