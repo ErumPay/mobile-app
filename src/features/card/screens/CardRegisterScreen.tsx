@@ -4,50 +4,51 @@ import { CardOcrScreen } from './CardOcrScreen';
 import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
 import { CardRegisterResultScreen } from './CardRegisterResultScreen';
-import { mockRegisteredCard } from '../mocks/cardMockData';
-import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
-import { onlyDigits } from '../types/cardFormat';
+import type { CardRegisterFormValues} from '../types/card';
+
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../../../App';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
+type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
 
-interface CardRegisterScreenProps {
-  onClose?: () => void;
-  onCardRegistered?: (card: RegisteredCard) => void;
-}
-
-export function CardRegisterScreen({
-  onClose,
-  onCardRegistered,
-}: CardRegisterScreenProps) {
+export function CardRegisterScreen({ navigation }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
   const [ocrInitialValues, setOcrInitialValues] =
   useState<Partial<CardRegisterFormValues> | null>(null);
 
-  const handleSubmitManualCard = (values: CardRegisterFormValues) => {
-    const digits = onlyDigits(values.cardNumber);
-
-    onCardRegistered?.({
-      ...mockRegisteredCard,
-      id: `card-${Date.now()}`,
-      last4: digits.slice(-4),
-      cardNickname: values.cardNickname || mockRegisteredCard.cardNickname,
-    });
-
+  const handleSubmitManualCard = (_values: CardRegisterFormValues) => {
+    // TODO: 카드 등록 API 연결
+  // await registerCard(values);
     setMode('success');
   };
 
-  const handleGoCardManagement = () => {
-    // TODO: 카드 관리 화면으로 이동
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Main');
   };
 
   const handleGoHome = () => {
-    onClose?.();
+    navigation.navigate('Main');
   };
+
+  const handleGoCardManagement = () => {
+    // TODO: 카드 관리 페이지 라우트 생기면 아래처럼 변경
+    // navigation.navigate('CardManagement');
+
+    navigation.navigate('Main');
+  };
+
+  
 
   if (mode === 'ocr') {
     return (
       <CardOcrScreen
-        onClose={onClose}
+        onClose={handleGoBack}
         onConfirmOcrResult={(values) => {
           setOcrInitialValues(values);
           setMode('manual');
@@ -59,7 +60,7 @@ export function CardRegisterScreen({
   if (mode === 'manual') {
     return (
       <CardRegisterFormScreen
-        onClose={onClose}
+        onClose={handleGoBack}
         initialValues={ocrInitialValues}
         onSubmit={handleSubmitManualCard}
       />
@@ -70,7 +71,7 @@ export function CardRegisterScreen({
     return (
       <CardRegisterResultScreen
         status="success"
-        onClose={onClose}
+        onClose={handleGoBack}
         onGoCardManagement={handleGoCardManagement}
         onGoHome={handleGoHome}
       />
@@ -81,7 +82,7 @@ export function CardRegisterScreen({
     return (
       <CardRegisterResultScreen
         status="failure"
-        onClose={onClose}
+        onClose={handleGoBack}
         onRetry={() => setMode('manual')}
         onGoHome={handleGoHome}
       />
@@ -90,7 +91,7 @@ export function CardRegisterScreen({
 
   return (
     <CardRegisterMethodSelectScreen
-      onClose={onClose}
+      onClose={handleGoBack}
       onPressOcr={() => setMode('ocr')}
       onPressManual={() => setMode('manual')}
     />
