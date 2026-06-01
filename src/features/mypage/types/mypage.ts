@@ -1,3 +1,11 @@
+export type PaymentMethodType =
+  | 'dutchpay'
+  | 'remote'
+  | 'singleBenefit'
+  | 'singlePerformance'
+  | 'splitBenefit'
+  | 'splitPerformance';
+
 export type ManagedCard = {
   id: string;
   issuer: string;
@@ -23,7 +31,7 @@ export type PaymentStatus = 'completed' | 'canceled' | 'cancelRequested';
 
 export type PaymentHistoryItem = {
   id: string;
-  method: string;
+  method: PaymentMethodType;
   status: PaymentStatus;
   title: string;
   date: string;
@@ -48,3 +56,5 @@ export type CardBenefit = {
   title: string;
   description: string;
 };
+
+

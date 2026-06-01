@@ -71,7 +71,7 @@ export const mockCardBenefits: CardBenefit[] = [
 export const mockPaymentHistories: PaymentHistoryItem[] = [
   {
     id: 'payment-1',
-    method: '터치페이',
+    method: 'dutchpay',
     status: 'completed',
     title: 'Luxury Hotel Stay',
     date: '2026.04.23',
@@ -79,27 +79,43 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   },
   {
     id: 'payment-2',
-    method: '원격결제',
+    method: 'remote',
     status: 'cancelRequested',
-    title: '코드보안 작성소',
+    title: '코드보안 양성소',
     date: '2026.04.18',
     amount: '34,000원',
   },
   {
     id: 'payment-3',
-    method: '일시불',
+    method: 'singleBenefit',
     status: 'canceled',
-    title: '서울서부구',
+    title: '서울순대국',
     date: '2026.04.16',
     amount: '8,000원',
   },
   {
     id: 'payment-4',
-    method: '일시적립',
+    method: 'singlePerformance',
     status: 'completed',
-    title: '스타벅스 코리아 작성소',
+    title: '스타벅스 코리아 양성점',
     date: '2026.04.05',
     amount: '18,300원',
+  },
+  {
+    id: 'payment-5',
+    method: 'splitBenefit',
+    status: 'canceled',
+    title: '유니클로 양동포점',
+    date: '2026.04.02',
+    amount: '52,900원',
+  },
+  {
+    id: 'payment-6',
+    method: 'splitPerformance',
+    status: 'completed',
+    title: '무인양품 청담센타운',
+    date: '2026.04.01',
+    amount: '3,334,000원',
   },
 ];
 
