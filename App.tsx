@@ -20,12 +20,17 @@ import type { PaymentPinRouteParams } from "./src/features/payment/types/payment
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
-import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
-import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
-import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
-import PaymentDetailScreen from "./src/features/mypage/screens/PaymentDetailScreen";
-import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistoryScreen";
-import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
+import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
+
+
+import CardDetailScreen from './src/features/mypage/screens/CardDetailScreen';
+import CardManagementScreen, {
+  mockManagedCards,
+  type ManagedCard,
+} from './src/features/mypage/screens/CardManagementScreen';
+import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
+import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
+import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
 
 
 
@@ -38,9 +43,8 @@ export type RootStackParamList = {
   PaymentMethodSelect: undefined;
   PaymentCardSelect: undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
-  // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
-  /*PaymentMethodSelect: undefined;*/
   CardRegister: undefined;
+  PaymentResult: PaymentResultRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -61,6 +65,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentMethodSelect: "payment/method-select",
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
+      PaymentResult: 'payment/result',
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -113,13 +118,6 @@ export default function App() {
               options={{ title: "IA 가이드" }}
             />
 
-            {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
-            {/*<Stack.Screen*/}
-            {/*    name="PaymentMethodSelect"*/}
-            {/*    component={PaymentMethodSelectScreen}*/}
-            {/*.   options={{ headerShown: false }}*/}
-            {/*/>*/}
-
             <Stack.Screen
               name="CardRegister"
               component={CardRegisterScreen}
@@ -138,6 +136,11 @@ export default function App() {
             />
 
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
+
+            <Stack.Screen
+                name="PaymentResult"
+                component={PaymentResultScreen}
+            />
 
             <Stack.Screen
               name="MypageHomeScreen"
