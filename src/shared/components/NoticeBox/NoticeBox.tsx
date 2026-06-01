@@ -7,6 +7,7 @@
  ******************************************************************************/
 
 import { Feather } from '@expo/vector-icons';
+import type { ViewStyle } from 'react-native';
 import { Text, View } from 'react-native';
 
 import { colors } from '../../styles/designTokens';
@@ -20,10 +21,10 @@ type NoticeBoxProps = {
 };
 
 const boxClassNameByTone: Record<NoticeBoxTone, string> = {
-  info: 'border-state-sky bg-neutral-grey2',
-  success: 'border-state-success bg-neutral-grey2',
-  warning: 'border-state-orange bg-neutral-grey2',
-  error: 'border-state-error bg-neutral-grey2',
+  info: 'border-state-sky',
+  success: 'border-state-success',
+  warning: 'border-state-orange',
+  error: 'border-state-error',
 };
 
 const textClassNameByTone: Record<NoticeBoxTone, string> = {
@@ -40,13 +41,31 @@ const iconColorByTone: Record<NoticeBoxTone, string> = {
   error: colors.state.error,
 };
 
+const boxStyleByTone: Record<NoticeBoxTone, ViewStyle> = {
+  info: {
+    backgroundColor: '#F1FBFF',
+  },
+  success: {
+    backgroundColor: '#F2FBF4',
+  },
+  warning: {
+    backgroundColor: '#FFF5F2',
+  },
+  error: {
+    backgroundColor: '#FFF3F3',
+  },
+};
+
 export function NoticeBox({
   title,
   description,
   tone = 'info',
 }: NoticeBoxProps) {
   return (
-    <View className={`flex-row gap-2 rounded-lg items-center border px-4 py-3 ${boxClassNameByTone[tone]}`}>
+    <View
+      className={`flex-row items-center gap-2 rounded-lg border px-4 py-3 ${boxClassNameByTone[tone]}`}
+      style={boxStyleByTone[tone]}
+    >
       <Feather
         name="alert-circle"
         size={16}

@@ -163,6 +163,51 @@ const guidePages: GuidePage[] = [
     status: "done",
     note: "담당자 : 조보름",
   },
+  {
+    depth1: 'payment',
+    depth2: 'result-normal-success',
+    pageName: '일반결제 결제 완료',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-normal-failure',
+    pageName: '일반결제 결제 실패',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-dutch-preauth-success',
+    pageName: '더치페이 가결제 완료',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-dutch-preauth-failure',
+    pageName: '더치페이 가결제 실패',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-dutch-final-success',
+    pageName: '더치페이 최종결제 완료',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
 ];
 
 const componentGuideItems: ComponentGuideItem[] = [
@@ -585,6 +630,46 @@ export default function GuideScreen({ navigation }: Props) {
 
                                 navigation.navigate("PaymentPin", {
                                   mode: "PAYMENT_INPUT",
+                                });
+                                return;
+                              }
+
+                              if (page.route === 'PaymentResult') {
+                                if (page.depth2 === 'result-normal-failure') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'FAILURE',
+                                    flow: 'NORMAL',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'result-dutch-preauth-success') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'SUCCESS',
+                                    flow: 'DUTCH_PAY_PRE_AUTH',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'result-dutch-preauth-failure') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'FAILURE',
+                                    flow: 'DUTCH_PAY_PRE_AUTH',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'result-dutch-final-success') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'SUCCESS',
+                                    flow: 'DUTCH_PAY_FINAL',
+                                  });
+                                  return;
+                                }
+
+                                navigation.navigate('PaymentResult', {
+                                  status: 'SUCCESS',
+                                  flow: 'NORMAL',
                                 });
                                 return;
                               }
