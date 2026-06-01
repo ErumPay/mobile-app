@@ -1,3 +1,5 @@
+import type { PaymentCardFlowType } from './paymentCard.types';
+
 export type PaymentPinMode = 'PAYMENT_INPUT' | 'REGISTER' | 'CONFIRM';
 
 export type PaymentPinRouteParams = {
@@ -5,4 +7,5 @@ export type PaymentPinRouteParams = {
   paymentId?: number;
   cardId?: number;
   amount?: number;
+  flow?: PaymentCardFlowType;
 };

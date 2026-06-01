@@ -9,6 +9,7 @@ import RecommendedCardSection from '../components/RecommendedCardSection';
 import CardCombinationSection from '../components/CardCombinationSection';
 import RegisteredCardBottomSheet from '../components/RegisteredCardBottomSheet';
 import PaymentCardActionButton from '../components/PaymentCardActionButton';
+import { Skeleton } from '../../../shared/components/Skeleton';
 import type {
     CardCombinationType,
     PaymentCard,
@@ -21,6 +22,37 @@ import {
 import { toPaymentCardSelectData } from '../utils/paymentCardRecommendationAdapter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCardSelect'>;
+
+function PaymentCardSelectSkeleton() {
+    return (
+        <ScrollView
+            className="flex-1"
+            contentContainerClassName="px-4 pb-6 pt-6"
+            showsVerticalScrollIndicator={false}
+        >
+            <View className="rounded-lg border border-neutral-grey1 bg-neutral-white p-4">
+                <Skeleton width="42%" height={14} />
+                <View className="mt-3">
+                    <Skeleton width="64%" height={18} />
+                </View>
+                <View className="mt-5">
+                    <Skeleton height={148} rounded="lg" />
+                </View>
+                <View className="mt-5 gap-2">
+                    <Skeleton width="78%" height={14} />
+                    <Skeleton width="48%" height={14} />
+                </View>
+            </View>
+
+            <View className="mt-6 gap-3">
+                <Skeleton width="36%" height={18} />
+                <Skeleton height={64} rounded="lg" />
+                <Skeleton height={64} rounded="lg" />
+                <Skeleton height={64} rounded="lg" />
+            </View>
+        </ScrollView>
+    );
+}
 
 export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const routePaymentId = route.params?.paymentId;
@@ -208,6 +240,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId,
             cardId: Number(selectedCard.id),
             amount: selectedCard.amount,
+            flow: isDutchPay ? 'DUTCH_PAY' : 'NORMAL',
         });
     };
 
@@ -221,6 +254,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId,
             cardId: Number(selectedPaymentCard.id),
             amount: selectedPaymentCard.amount,
+            flow: isDutchPay ? 'DUTCH_PAY' : 'NORMAL',
         });
     };
 
@@ -235,17 +269,13 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
                 <View className="h-px bg-neutral-grey1" />
 
-                {isLoading ? (
-                    <Text className="px-4 pt-4 font-pretendard text-normal-regular text-neutral-black2">
-                        결제 카드 추천 정보를 확인 중입니다.
-                    </Text>
-                ) : null}
-
                 {errorMessage ? (
                     <Text className="px-4 pt-4 font-pretendard text-normal-regular text-state-error">
                         {errorMessage}
                     </Text>
                 ) : null}
+
+                {isLoading ? <PaymentCardSelectSkeleton /> : null}
 
                 {data && displayedRecommendedCard && selectedCombination ? (
                     <ScrollView

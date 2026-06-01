@@ -19,6 +19,7 @@ import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
 import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
 import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
+import type { PaymentRequestSummary } from './src/features/payment/types/paymentMethod.types';
 import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
 
 
@@ -39,11 +40,31 @@ export type RootStackParamList = {
   Main: undefined;
   Guide: undefined;
   QrScan: undefined;
-  PaymentMethodSelect: undefined;
-  PaymentCardSelect: undefined;
+  PaymentMethodSelect:
+    | {
+        summary?: PaymentRequestSummary;
+        token?: string;
+      }
+    | undefined;
+  PaymentCardSelect:
+    | {
+        paymentId?: number | string;
+        amount?: number | string;
+      }
+    | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
+  MypageHomeScreen: undefined;
+  ProfileConfirmScreen: undefined;
+  PaymentHistoryScreen: undefined;
+  PaymentDetailScreen: {
+    paymentId: string;
+  };
+  CardManagementScreen: undefined;
+  CardDetailScreen: {
+    cardId: string;
+  };
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -57,6 +78,13 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentMethodSelect: "payment/method-select",
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
+      PaymentResult: "payment/result",
+      MypageHomeScreen: "mypage",
+      ProfileConfirmScreen: "mypage/profile-confirm",
+      PaymentHistoryScreen: "mypage/payment-history",
+      PaymentDetailScreen: "mypage/payment-detail",
+      CardManagementScreen: "mypage/card-management",
+      CardDetailScreen: "mypage/card-detail",
     },
   },
 };
@@ -126,13 +154,36 @@ export default function App() {
                 component={PaymentResultScreen}
             />
 
-            {/*
-                        // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
-                        <Stack.Screen
-                            name="MypageHomeScreen"
-                            component={MypageHomeScreen}
-                            options={{ headerShown: false }}
-                        />*/}
+            <Stack.Screen
+              name="MypageHomeScreen"
+              component={MypageHomeScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="ProfileConfirmScreen"
+              component={ProfileConfirmScreen}
+            />
+
+            <Stack.Screen
+              name="PaymentHistoryScreen"
+              component={PaymentHistoryScreen}
+            />
+
+            <Stack.Screen
+              name="PaymentDetailScreen"
+              component={PaymentDetailScreen}
+            />
+
+            <Stack.Screen
+              name="CardManagementScreen"
+              component={CardManagementScreen}
+            />
+
+            <Stack.Screen
+              name="CardDetailScreen"
+              component={CardDetailScreen}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </View>
