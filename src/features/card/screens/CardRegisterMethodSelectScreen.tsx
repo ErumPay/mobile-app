@@ -6,7 +6,7 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
 interface CardRegisterMethodSelectScreenProps {
-  onClose?: () => void;
+  onClose: () => void;
   onPressOcr: () => void;
   onPressManual: () => void;
 }

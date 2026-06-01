@@ -36,7 +36,7 @@ export const mockCardRegisterResult = {
 };
 
 export const mockOcrResult: OcrCardResult = {
-  issuer: '신한카드',
+  issuer: 'SHINHAN',
   cardName: 'Deep Dream 카드',
   cardNumber: '1234555624325678',
   expiry: '05/28',

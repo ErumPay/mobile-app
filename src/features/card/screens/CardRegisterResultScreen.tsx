@@ -12,7 +12,7 @@ type CardRegisterResultStatus = 'success' | 'failure';
 
 interface CardRegisterResultScreenProps {
   status: CardRegisterResultStatus;
-  onClose?: () => void;
+  onClose: () => void;
   onRetry?: () => void;
   onGoCardManagement?: () => void;
   onGoHome?: () => void;

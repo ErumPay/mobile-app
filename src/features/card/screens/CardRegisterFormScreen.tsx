@@ -12,7 +12,7 @@ import type { CardRegisterFormValues } from '../types/card';
 import { formatExpiry, isValidExpiry, onlyDigits } from '../types/cardFormat';
 
 interface CardRegisterFormScreenProps {
-  onClose?: () => void;
+  onClose: () => void;
   initialValues?: Partial<CardRegisterFormValues> | null;
   onSubmit: (values: CardRegisterFormValues) => void;
 }

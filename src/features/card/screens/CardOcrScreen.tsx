@@ -10,9 +10,10 @@ import { PageWrap } from '../../../shared/components/PageWrap';
 
 import { mockOcrResult } from '../mocks/cardMockData';
 import type { OcrCardResult } from '../types/card';
+import { getIssuerLabel } from '../types/cardFormat';
 
 interface CardOcrScreenProps {
-  onClose?: () => void;
+  onClose: () => void;
   onConfirmOcrResult: (values: {
     cardNumber: string;
     expiry: string;
@@ -178,7 +179,7 @@ export function CardOcrScreen({
           </Text>
 
           <View className="mt-8 rounded-2xl bg-neutral-grey2 px-5 py-6">
-            <OcrInfo label="카드사" value={ocrResult.issuer} />
+            <OcrInfo label="카드사" value={getIssuerLabel(ocrResult.issuer)} />
             <OcrInfo label="카드명" value={ocrResult.cardName} />
             <OcrInfo
               label="카드번호"
