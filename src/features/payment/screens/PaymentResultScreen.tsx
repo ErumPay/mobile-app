@@ -23,6 +23,7 @@ type PaymentResultContent = {
     notice?: string;
     linkLabel?: string;
     buttonAction: 'MAIN' | 'CARD_SELECT' | 'CREATE_GROUP';
+    noticeTone?: 'info' | 'success' | 'warning' | 'error';
     linkAction?: 'MAIN' | 'RECEIPT';
 };
 
@@ -53,6 +54,7 @@ function getPaymentResultContent({
             iconType: 'SUCCESS',
             buttonAction: 'CREATE_GROUP',
             notice: '30분 내 더치페이 결제가 완료되지 않으면,\n대표자의 주카드로 결제돼요.',
+            noticeTone: 'warning',
         };
     }
 
@@ -66,6 +68,7 @@ function getPaymentResultContent({
             linkLabel: '전자영수증 보러가기',
             linkAction: 'RECEIPT',
             notice: '가결제는 취소 되었습니다.',
+            noticeTone: 'warning',
         };
     }
 
@@ -143,7 +146,7 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                     <View className="w-full max-w-sm self-center">
                         {content.notice ? (
                             <View className="mb-10 items-center">
-                                <NoticeBox tone="error" description={content.notice} />
+                                <NoticeBox tone={content.noticeTone ?? 'info'} description={content.notice} />
                             </View>
                         ) : null}
 

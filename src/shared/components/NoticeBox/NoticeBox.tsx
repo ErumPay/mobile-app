@@ -43,16 +43,16 @@ const iconColorByTone: Record<NoticeBoxTone, string> = {
 
 const boxStyleByTone: Record<NoticeBoxTone, ViewStyle> = {
   info: {
-    backgroundColor: '#F1FBFF',
+    backgroundColor: colors.notice.info,
   },
   success: {
-    backgroundColor: '#F2FBF4',
+    backgroundColor: colors.notice.success,
   },
   warning: {
-    backgroundColor: '#FFF5F2',
+    backgroundColor: colors.notice.warning,
   },
   error: {
-    backgroundColor: '#FFF3F3',
+    backgroundColor: colors.notice.error,
   },
 };
 
