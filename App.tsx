@@ -19,6 +19,8 @@ import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
 import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
 import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
+import PaymentCancelScreen from './src/features/payment/screens/PaymentCancelScreen';
+import type { PaymentCancelRouteParams } from './src/features/payment/types/paymentCancel.types';
 import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
 
 
@@ -44,6 +46,7 @@ export type RootStackParamList = {
   PaymentPin: PaymentPinRouteParams | undefined;
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
+  PaymentCancel: PaymentCancelRouteParams | undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -58,6 +61,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
       PaymentResult: 'payment/result',
+      PaymentCancel: 'payment/cancel',
     },
   },
 };
@@ -125,6 +129,11 @@ export default function App() {
             <Stack.Screen
                 name="PaymentResult"
                 component={PaymentResultScreen}
+            />
+
+            <Stack.Screen
+                name="PaymentCancel"
+                component={PaymentCancelScreen}
             />
 
             {/*
