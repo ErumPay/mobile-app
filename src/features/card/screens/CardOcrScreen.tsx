@@ -1,0 +1,275 @@
+import { useRef, useState } from 'react';
+import { Alert, Pressable, Text, View } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImageManipulator from 'expo-image-manipulator';
+import type { Action } from 'expo-image-manipulator';
+
+import { Button } from '../../../shared/components/Button';
+import { Header } from '../../../shared/components/Header';
+import { PageWrap } from '../../../shared/components/PageWrap';
+
+import { mockOcrResult } from '../mocks/cardMockData';
+import type { OcrCardResult } from '../types/card';
+import { getIssuerLabel } from '../types/cardFormat';
+
+interface CardOcrScreenProps {
+  onClose: () => void;
+  onConfirmOcrResult: (values: {
+    cardNumber: string;
+    expiry: string;
+  }) => void;
+}
+
+const MAX_IMAGE_SIDE = 1024;
+const CARD_FRAME_ASPECT_RATIO = 1.58;
+
+function getCardFrameImageActions(width: number, height: number): Action[] {
+  const imageAspectRatio = width / height;
+
+  let cropWidth = width;
+  let cropHeight = height;
+
+  if (imageAspectRatio > CARD_FRAME_ASPECT_RATIO) {
+    cropWidth = height * CARD_FRAME_ASPECT_RATIO;
+  } else {
+    cropHeight = width / CARD_FRAME_ASPECT_RATIO;
+  }
+
+  cropWidth = Math.round(cropWidth);
+  cropHeight = Math.round(cropHeight);
+
+  const originX = Math.round((width - cropWidth) / 2);
+  const originY = Math.round((height - cropHeight) / 2);
+
+  const actions: Action[] = [
+    {
+      crop: {
+        originX,
+        originY,
+        width: cropWidth,
+        height: cropHeight,
+      },
+    },
+  ];
+
+  const longSide = Math.max(cropWidth, cropHeight);
+
+  if (longSide > MAX_IMAGE_SIDE) {
+    actions.push(
+      cropWidth >= cropHeight
+        ? { resize: { width: MAX_IMAGE_SIDE } }
+        : { resize: { height: MAX_IMAGE_SIDE } },
+    );
+  }
+
+  return actions;
+}
+
+export function CardOcrScreen({
+  onClose,
+  onConfirmOcrResult,
+}: CardOcrScreenProps) {
+  const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isTakingPicture, setIsTakingPicture] = useState(false);
+  const [ocrResult, setOcrResult] = useState<OcrCardResult | null>(null);
+
+
+  const handleTakePicture = async () => {
+    if (!cameraRef.current || isTakingPicture) {
+      return;
+    }
+
+    try {
+      setIsTakingPicture(true);
+
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 1,
+      });
+
+      if (!photo) {
+        return;
+      }
+
+      const cardFrameImageActions = getCardFrameImageActions(
+        photo.width,
+        photo.height,
+      );
+
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        cardFrameImageActions,
+        {
+          compress: 0.9,
+          format: ImageManipulator.SaveFormat.JPEG,
+        },
+      );
+
+      // TODO: 백엔드 OCR API 연결 시 여기서 JPEG 이미지 파일을 전송합니다.
+      // const ocrResult = await uploadCardImage(manipulatedImage.uri);
+      // setOcrResult(ocrResult);
+
+      // API 연결 전까지는 mock OCR 결과로 화면 흐름만 확인합니다.
+      setOcrResult(mockOcrResult);
+
+
+    } catch {
+      Alert.alert('안내', '카드 이미지를 촬영하지 못했습니다.');
+    } finally {
+      setIsTakingPicture(false);
+    }
+  };
+
+  if (!permission) {
+    return (
+      <PageWrap
+        scroll={false}
+        padded={false}
+        backgroundClassName="bg-black"
+        header={
+          <Header
+            title="카드 촬영"
+            type="close"
+            tone="dark"
+            onPressRight={onClose}
+          />
+        }
+      >
+        <View className="flex-1 bg-black" />
+      </PageWrap>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <PageWrap
+        scroll={false}
+        backgroundClassName="bg-black"
+        header={
+          <Header
+            title="카드 촬영"
+            type="close"
+            tone="dark"
+            onPressRight={onClose}
+          />
+        }
+      >
+        <View className="flex-1 items-center justify-center gap-5">
+          <Text className="text-center font-pretendard text-heading-3 text-neutral-white">
+            카드 스캔을 위해 카메라 권한이 필요합니다.
+          </Text>
+
+          <Button label="카메라 권한 허용" onPress={requestPermission} />
+        </View>
+      </PageWrap>
+    );
+  }
+
+  if (ocrResult) {
+  return (
+    <PageWrap
+      scroll={false}
+      padded={false}
+      backgroundClassName="bg-neutral-black3"
+    >
+      <View className="flex-1 items-center justify-center px-6">
+        <View className="w-full rounded-3xl bg-neutral-white px-6 py-8">
+          <Text className="text-center font-pretendard text-heading-2 text-neutral-black1">
+            OCR로 확인된 카드입니다!
+          </Text>
+
+          <View className="mt-8 rounded-2xl bg-neutral-grey2 px-5 py-6">
+            <OcrInfo label="카드사" value={getIssuerLabel(ocrResult.issuer)} />
+            <OcrInfo label="카드명" value={ocrResult.cardName} />
+            <OcrInfo
+              label="카드번호"
+              value={formatOcrCardNumber(ocrResult.cardNumber)}
+            />
+            <OcrInfo label="유효기간" value={ocrResult.expiry} />
+          </View>
+
+          <View className="mt-8 gap-3">
+            <Button
+              label="카드 등록하기"
+              onPress={() =>
+                onConfirmOcrResult({
+                  cardNumber: ocrResult.cardNumber,
+                  expiry: ocrResult.expiry,
+                })
+              }
+            />
+
+            <Button
+              label="다시 촬영하기"
+              variant="secondary"
+              onPress={() => setOcrResult(null)}
+            />
+          </View>
+        </View>
+      </View>
+    </PageWrap>
+  );
+}
+
+  return (
+    <PageWrap
+      scroll={false}
+      padded={false}
+      backgroundClassName="bg-black"
+      header={
+        <Header
+          title="카드 촬영"
+          type="close"
+          tone="dark"
+          onPressRight={onClose}
+        />
+      }
+    >
+      <View className="flex-1 bg-black px-5 pb-8 pt-8">
+          <View className="flex-1 justify-center">
+            <View className="aspect-[1.58] w-full overflow-hidden rounded-2xl border-2 border-erum-primary">
+              <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+            </View>
+          </View>
+
+          <View className="items-center">
+            <Text className="text-center font-pretendard text-heading-3 text-neutral-white">
+              카드를 프레임 안에 맞춰주세요
+            </Text>
+
+            <Text className="mt-2 text-center font-pretendard text-normal-regular text-neutral-disabled">
+              프레임 안의 카드 이미지를 JPEG로 변환해 전송합니다
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              className="mt-6 h-16 w-16 items-center justify-center rounded-full border-4 border-neutral-white bg-erum-main"
+              disabled={isTakingPicture}
+              onPress={handleTakePicture}
+            >
+              <View className="h-11 w-11 rounded-full bg-neutral-white" />
+            </Pressable>
+          </View>
+        </View>
+    </PageWrap>
+  );
+}
+
+function OcrInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="mb-5">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <Text className="mt-2 font-pretendard text-heading-3 text-neutral-black1">
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function formatOcrCardNumber(value: string) {
+  return value.replace(/(\d{4})(?=\d)/g, '$1-');
+}
+
+export default CardOcrScreen;

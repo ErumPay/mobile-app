@@ -104,8 +104,8 @@ const guidePages: GuidePage[] = [
     depth1: "card",
     depth2: "register",
     pageName: "카드 등록",
-    routeName: "CardManualRegister",
-    route: "CardManualRegister",
+    routeName: "CardRegister",
+    route: "CardRegister",
     status: "done",
     note: "담당자 : 나혜빈",
   },
@@ -548,8 +548,8 @@ export default function GuideScreen({ navigation }: Props) {
                                 return;
                               }
 
-                              if (page.route === "CardManualRegister") {
-                                navigation.navigate("CardManualRegister");
+                              if (page.route === "CardRegister") {
+                                navigation.navigate("CardRegister");
                                 return;
                               }
 
