@@ -222,6 +222,10 @@ export default function MainScreen({ navigation }: Props) {
             if (value === "payment") {
               return;
             }
+
+            if (value === "my") {
+              navigation.navigate("MypageHomeScreen");
+            }
           }}
         />
       </View>

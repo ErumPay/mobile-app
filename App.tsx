@@ -17,8 +17,9 @@ import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMet
 import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
 import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
-import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
-import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
+// [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
+// import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
+
 import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
 
 
@@ -44,6 +45,13 @@ export type RootStackParamList = {
   PaymentPin: PaymentPinRouteParams | undefined;
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
+  MypageHomeScreen: undefined;
+  ProfileConfirmScreen: undefined;
+  CardManagementScreen: undefined;
+  CardDetailScreen: { cardId: string };
+  PaymentHistoryScreen: undefined;
+  PaymentDetailScreen: { paymentId: string };
+  PhoneVerificationScreen: undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -58,6 +66,13 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
       PaymentResult: 'payment/result',
+      MypageHomeScreen: "mypage",
+      ProfileConfirmScreen: "mypage/profile",
+      CardManagementScreen: "mypage/cards",
+      CardDetailScreen: "mypage/cards/:cardId",
+      PaymentHistoryScreen: "mypage/payments",
+      PaymentDetailScreen: "mypage/payments/:paymentId",
+      PhoneVerificationScreen: "mypage/phone-verification",
     },
   },
 };
@@ -125,6 +140,31 @@ export default function App() {
             <Stack.Screen
                 name="PaymentResult"
                 component={PaymentResultScreen}
+            />
+
+            <Stack.Screen
+              name="MypageHomeScreen"
+              component={MypageHomeScreen}
+            />
+            <Stack.Screen
+              name="ProfileConfirmScreen"
+              component={ProfileConfirmScreen}
+            />
+            <Stack.Screen
+              name="CardManagementScreen"
+              component={CardManagementScreen}
+            />
+            <Stack.Screen
+              name="CardDetailScreen"
+              component={CardDetailScreen}
+            />
+            <Stack.Screen
+              name="PaymentHistoryScreen"
+              component={PaymentHistoryScreen}
+            />
+            <Stack.Screen
+              name="PaymentDetailScreen"
+              component={PaymentDetailScreen}
             />
 
             {/*
