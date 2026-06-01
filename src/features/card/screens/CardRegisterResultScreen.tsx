@@ -25,7 +25,7 @@ export function CardRegisterResultScreen({
   onGoCardManagement,
   onGoHome,
 }: CardRegisterResultScreenProps) {
-  const isSuccess = status === 'failure';
+  const isSuccess = status === 'success';
 
   return (
     <PageWrap

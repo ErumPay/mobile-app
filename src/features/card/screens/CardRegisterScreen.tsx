@@ -20,6 +20,8 @@ export function CardRegisterScreen({
   onCardRegistered,
 }: CardRegisterScreenProps) {
   const [mode, setMode] = useState<RegisterMode>('select');
+  const [ocrInitialValues, setOcrInitialValues] =
+  useState<Partial<CardRegisterFormValues> | null>(null);
 
   const handleSubmitManualCard = (values: CardRegisterFormValues) => {
     const digits = onlyDigits(values.cardNumber);
@@ -43,13 +45,22 @@ export function CardRegisterScreen({
   };
 
   if (mode === 'ocr') {
-    return <CardOcrScreen onClose={onClose} />;
+    return (
+      <CardOcrScreen
+        onClose={onClose}
+        onConfirmOcrResult={(values) => {
+          setOcrInitialValues(values);
+          setMode('manual');
+        }}
+      />
+    );
   }
 
   if (mode === 'manual') {
     return (
       <CardRegisterFormScreen
         onClose={onClose}
+        initialValues={ocrInitialValues}
         onSubmit={handleSubmitManualCard}
       />
     );

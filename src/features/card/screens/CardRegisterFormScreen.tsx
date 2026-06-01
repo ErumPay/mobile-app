@@ -13,6 +13,7 @@ import { formatExpiry, isValidExpiry, onlyDigits } from '../types/cardFormat';
 
 interface CardRegisterFormScreenProps {
   onClose?: () => void;
+  initialValues?: Partial<CardRegisterFormValues> | null;
   onSubmit: (values: CardRegisterFormValues) => void;
 }
 
@@ -34,11 +35,14 @@ function formatCardNumber(value: string) {
 
 export function CardRegisterFormScreen({
   onClose,
+  initialValues,
   onSubmit,
 }: CardRegisterFormScreenProps) {
-  const [values, setValues] = useState<CardRegisterFormValues>(
-    initialCardRegisterFormValues,
-  );
+  const [values, setValues] = useState<CardRegisterFormValues>({
+    ...initialCardRegisterFormValues,
+    ...initialValues,
+  });
+
   const [isExpiryErrorModalVisible, setIsExpiryErrorModalVisible] =
     useState(false);
 

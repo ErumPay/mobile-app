@@ -38,3 +38,10 @@ export interface RegisteredCard {
   isDefault: boolean;
   createdAt: string;
 }
+
+export interface OcrCardResult {
+  issuer: string;
+  cardName: string;
+  cardNumber: string;
+  expiry: string;
+}

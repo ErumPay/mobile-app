@@ -1,44 +1,78 @@
 import { useRef, useState } from 'react';
-import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
+import type { Action } from 'expo-image-manipulator';
 
 import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
+import { mockOcrResult } from '../mocks/cardMockData';
+import type { OcrCardResult } from '../types/card';
+
 interface CardOcrScreenProps {
   onClose?: () => void;
+  onConfirmOcrResult: (values: {
+    cardNumber: string;
+    expiry: string;
+  }) => void;
 }
-
-type ProcessedCardImage = {
-  uri: string;
-  width: number;
-  height: number;
-};
 
 const MAX_IMAGE_SIDE = 1024;
+const CARD_FRAME_ASPECT_RATIO = 1.58;
 
-function getResizeAction(width: number, height: number) {
-  const longSide = Math.max(width, height);
+function getCardFrameImageActions(width: number, height: number): Action[] {
+  const imageAspectRatio = width / height;
 
-  if (longSide <= MAX_IMAGE_SIDE) {
-    return [];
+  let cropWidth = width;
+  let cropHeight = height;
+
+  if (imageAspectRatio > CARD_FRAME_ASPECT_RATIO) {
+    cropWidth = height * CARD_FRAME_ASPECT_RATIO;
+  } else {
+    cropHeight = width / CARD_FRAME_ASPECT_RATIO;
   }
 
-  if (width >= height) {
-    return [{ resize: { width: MAX_IMAGE_SIDE } }];
+  cropWidth = Math.round(cropWidth);
+  cropHeight = Math.round(cropHeight);
+
+  const originX = Math.round((width - cropWidth) / 2);
+  const originY = Math.round((height - cropHeight) / 2);
+
+  const actions: Action[] = [
+    {
+      crop: {
+        originX,
+        originY,
+        width: cropWidth,
+        height: cropHeight,
+      },
+    },
+  ];
+
+  const longSide = Math.max(cropWidth, cropHeight);
+
+  if (longSide > MAX_IMAGE_SIDE) {
+    actions.push(
+      cropWidth >= cropHeight
+        ? { resize: { width: MAX_IMAGE_SIDE } }
+        : { resize: { height: MAX_IMAGE_SIDE } },
+    );
   }
 
-  return [{ resize: { height: MAX_IMAGE_SIDE } }];
+  return actions;
 }
 
-export function CardOcrScreen({ onClose }: CardOcrScreenProps) {
+export function CardOcrScreen({
+  onClose,
+  onConfirmOcrResult,
+}: CardOcrScreenProps) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isTakingPicture, setIsTakingPicture] = useState(false);
-  const [processedImage, setProcessedImage] =
-    useState<ProcessedCardImage | null>(null);
+  const [ocrResult, setOcrResult] = useState<OcrCardResult | null>(null);
+
 
   const handleTakePicture = async () => {
     if (!cameraRef.current || isTakingPicture) {
@@ -56,24 +90,27 @@ export function CardOcrScreen({ onClose }: CardOcrScreenProps) {
         return;
       }
 
-      const resizeActions = getResizeAction(photo.width, photo.height);
+      const cardFrameImageActions = getCardFrameImageActions(
+        photo.width,
+        photo.height,
+      );
 
       const manipulatedImage = await ImageManipulator.manipulateAsync(
         photo.uri,
-        resizeActions,
+        cardFrameImageActions,
         {
           compress: 0.9,
           format: ImageManipulator.SaveFormat.JPEG,
         },
       );
 
-      setProcessedImage({
-        uri: manipulatedImage.uri,
-        width: manipulatedImage.width,
-        height: manipulatedImage.height,
-      });
+      // TODO: 백엔드 OCR API 연결 시 여기서 JPEG 이미지 파일을 전송합니다.
+      // const ocrResult = await uploadCardImage(manipulatedImage.uri);
+      // setOcrResult(ocrResult);
 
-      // 촬영된 이미지는 미리보기 화면에서 사용자가 확인한 뒤 전송합니다.
+      // API 연결 전까지는 mock OCR 결과로 화면 흐름만 확인합니다.
+      setOcrResult(mockOcrResult);
+
 
     } catch {
       Alert.alert('안내', '카드 이미지를 촬영하지 못했습니다.');
@@ -127,66 +164,51 @@ export function CardOcrScreen({ onClose }: CardOcrScreenProps) {
     );
   }
 
-  if (processedImage) {
-    return (
-      <PageWrap
-        scroll={false}
-        padded={false}
-        backgroundClassName="bg-black"
-        header={
-          <Header
-            title="카드 촬영"
-            type="close"
-            tone="dark"
-            onPressRight={onClose}
-          />
-        }
-      >
-        <View className="flex-1 bg-black px-5 py-6">
-          <View className="flex-1 justify-center">
-            <Image
-              source={{ uri: processedImage.uri }}
-              className="aspect-[1.58] w-full rounded-2xl"
-              resizeMode="contain"
+  if (ocrResult) {
+  return (
+    <PageWrap
+      scroll={false}
+      padded={false}
+      backgroundClassName="bg-neutral-black3"
+    >
+      <View className="flex-1 items-center justify-center px-6">
+        <View className="w-full rounded-3xl bg-neutral-white px-6 py-8">
+          <Text className="text-center font-pretendard text-heading-2 text-neutral-black1">
+            OCR로 확인된 카드입니다!
+          </Text>
+
+          <View className="mt-8 rounded-2xl bg-neutral-grey2 px-5 py-6">
+            <OcrInfo label="카드사" value={ocrResult.issuer} />
+            <OcrInfo label="카드명" value={ocrResult.cardName} />
+            <OcrInfo
+              label="카드번호"
+              value={formatOcrCardNumber(ocrResult.cardNumber)}
             />
+            <OcrInfo label="유효기간" value={ocrResult.expiry} />
           </View>
 
-          <View className="gap-3 pb-4">
-            <Text className="text-center font-pretendard text-normal-regular text-neutral-white">
-              변환 완료: {processedImage.width} x {processedImage.height}
-            </Text>
+          <View className="mt-8 gap-3">
+            <Button
+              label="카드 등록하기"
+              onPress={() =>
+                onConfirmOcrResult({
+                  cardNumber: ocrResult.cardNumber,
+                  expiry: ocrResult.expiry,
+                })
+              }
+            />
 
             <Button
               label="다시 촬영하기"
               variant="secondary"
-              onPress={() => setProcessedImage(null)}
-            />
-
-            <Button
-              label="이 이미지로 등록하기"
-              onPress={() => {
-                // TODO: 백엔드 OCR API 연결 시 여기서 JPEG 이미지 파일 전송
-                // - processedImage.uri: JPEG로 변환된 이미지 경로
-                // - processedImage.width / processedImage.height: 1024px 기준으로 조정된 이미지 크기
-                // - FormData에 image 필드로 담아서 multipart/form-data 방식으로 전송 예정
-                // 예시:
-                // const formData = new FormData();
-                // formData.append('image', {
-                //   uri: processedImage.uri,
-                //   name: 'card.jpeg',
-                //   type: 'image/jpeg',
-                // } as unknown as Blob);
-                // await fetch('백엔드_API_URL', {
-                //   method: 'POST',
-                //   body: formData,
-                // });
-              }}
+              onPress={() => setOcrResult(null)}
             />
           </View>
         </View>
-      </PageWrap>
-    );
-  }
+      </View>
+    </PageWrap>
+  );
+}
 
   return (
     <PageWrap
@@ -202,11 +224,11 @@ export function CardOcrScreen({ onClose }: CardOcrScreenProps) {
         />
       }
     >
-      <View className="flex-1 bg-black">
-      <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back">
-        <View className="flex-1 justify-between px-5 pb-8 pt-8">
+      <View className="flex-1 bg-black px-5 pb-8 pt-8">
           <View className="flex-1 justify-center">
-            <View className="aspect-[1.58] w-full rounded-2xl border-2 border-erum-primary" />
+            <View className="aspect-[1.58] w-full overflow-hidden rounded-2xl border-2 border-erum-primary">
+              <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+            </View>
           </View>
 
           <View className="items-center">
@@ -215,7 +237,7 @@ export function CardOcrScreen({ onClose }: CardOcrScreenProps) {
             </Text>
 
             <Text className="mt-2 text-center font-pretendard text-normal-regular text-neutral-disabled">
-              촬영한 이미지는 JPEG로 변환되어 전송됩니다
+              프레임 안의 카드 이미지를 JPEG로 변환해 전송합니다
             </Text>
 
             <Pressable
@@ -228,10 +250,25 @@ export function CardOcrScreen({ onClose }: CardOcrScreenProps) {
             </Pressable>
           </View>
         </View>
-      </CameraView>
-    </View>
     </PageWrap>
   );
+}
+
+function OcrInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="mb-5">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <Text className="mt-2 font-pretendard text-heading-3 text-neutral-black1">
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function formatOcrCardNumber(value: string) {
+  return value.replace(/(\d{4})(?=\d)/g, '$1-');
 }
 
 export default CardOcrScreen;

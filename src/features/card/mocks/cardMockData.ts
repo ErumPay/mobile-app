@@ -1,4 +1,8 @@
-import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
+import type {
+  CardRegisterFormValues,
+  OcrCardResult,
+  RegisteredCard,
+} from '../types/card';
 
 export const initialCardRegisterFormValues: CardRegisterFormValues = {
   cardNumber: '',
@@ -29,4 +33,11 @@ export const mockCardRegisterResult = {
   issuer: '신한카드',
   name: 'Deep Dream 카드',
   registeredAt: '2026.05.11',
+};
+
+export const mockOcrResult: OcrCardResult = {
+  issuer: '신한카드',
+  cardName: 'Deep Dream 카드',
+  cardNumber: '1234555624325678',
+  expiry: '05/28',
 };
