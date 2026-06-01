@@ -6,7 +6,10 @@
  * Note: 결제 안내, 보안 안내, 주의사항 영역에서 재사용합니다.
  ******************************************************************************/
 
+import { Feather } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
+
+import { colors } from '../../styles/designTokens';
 
 type NoticeBoxTone = 'info' | 'success' | 'warning' | 'error';
 
@@ -19,7 +22,7 @@ type NoticeBoxProps = {
 const boxClassNameByTone: Record<NoticeBoxTone, string> = {
   info: 'border-state-sky bg-neutral-grey2',
   success: 'border-state-success bg-neutral-grey2',
-  warning: 'border-state-gold bg-neutral-grey2',
+  warning: 'border-state-orange bg-neutral-grey2',
   error: 'border-state-error bg-neutral-grey2',
 };
 
@@ -30,21 +33,36 @@ const textClassNameByTone: Record<NoticeBoxTone, string> = {
   error: 'text-state-error',
 };
 
+const iconColorByTone: Record<NoticeBoxTone, string> = {
+  info: colors.erum.secondary,
+  success: colors.state.success,
+  warning: colors.state.orange,
+  error: colors.state.error,
+};
+
 export function NoticeBox({
   title,
   description,
   tone = 'info',
 }: NoticeBoxProps) {
   return (
-    <View className={`rounded-lg border px-4 py-3 ${boxClassNameByTone[tone]}`}>
-      {title ? (
-        <Text className={`font-pretendard text-large-bold ${textClassNameByTone[tone]}`}>
-          {title}
+    <View className={`flex-row gap-2 rounded-lg items-center border px-4 py-3 ${boxClassNameByTone[tone]}`}>
+      <Feather
+        name="alert-circle"
+        size={16}
+        color={iconColorByTone[tone]}
+      />
+
+      <View className="min-w-0 flex-1">
+        {title ? (
+          <Text className={`font-pretendard text-normal-bold ${textClassNameByTone[tone]}`}>
+            {title}
+          </Text>
+        ) : null}
+        <Text className={`font-pretendard text-normal-regular ${textClassNameByTone[tone]}`}>
+          {description}
         </Text>
-      ) : null}
-      <Text className={`font-pretendard text-large-regular ${textClassNameByTone[tone]}`}>
-        {description}
-      </Text>
+      </View>
     </View>
   );
 }

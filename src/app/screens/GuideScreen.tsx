@@ -6,9 +6,9 @@
  * Note: 운영 사용자 플로우가 아닌 내부 확인용 화면입니다.
  ******************************************************************************/
 
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -16,36 +16,37 @@ import {
   Text,
   useWindowDimensions,
   View,
-} from 'react-native';
+} from "react-native";
 
-import type { RootStackParamList } from '../../../App';
-import { Accordion } from '../../shared/components/Accordion';
+import type { RootStackParamList } from "../../../App";
+import { Accordion } from "../../shared/components/Accordion";
 import {
   BottomSheet,
   DraggableBottomSheet,
-} from '../../shared/components/BottomSheet';
-import { Button } from '../../shared/components/Button';
-import { Card } from '../../shared/components/Card';
-import { Checkbox } from '../../shared/components/Checkbox';
-import { EmptyState } from '../../shared/components/EmptyState';
-import { ErrorPage } from '../../shared/components/ErrorPage';
-import { FloatingButton } from '../../shared/components/FloatingButton';
-import { Header } from '../../shared/components/Header';
-import { ListItem } from '../../shared/components/ListItem';
-import { Loading } from '../../shared/components/Loading';
-import { NoticeBox } from '../../shared/components/NoticeBox';
-import { PageWrap } from '../../shared/components/PageWrap';
-import { Radio } from '../../shared/components/Radio';
-import { SkeletonCard } from '../../shared/components/Skeleton';
-import { Tab } from '../../shared/components/Tab';
-import { Toast } from '../../shared/components/Toast';
-import { Toggle } from '../../shared/components/Toggle';
-import { colors } from '../../shared/styles';
+} from "../../shared/components/BottomSheet";
+import { Button } from "../../shared/components/Button";
+import { Card } from "../../shared/components/Card";
+import { Checkbox } from "../../shared/components/Checkbox";
+import { EmptyState } from "../../shared/components/EmptyState";
+import { ErrorPage } from "../../shared/components/ErrorPage";
+import { FloatingButton } from "../../shared/components/FloatingButton";
+import { Header } from "../../shared/components/Header";
+import { ListItem } from "../../shared/components/ListItem";
+import { Loading } from "../../shared/components/Loading";
+import { RejectConfirmModal } from "../../shared/components/Modal";
+import { NoticeBox } from "../../shared/components/NoticeBox";
+import { PageWrap } from "../../shared/components/PageWrap";
+import { Radio } from "../../shared/components/Radio";
+import { SkeletonCard } from "../../shared/components/Skeleton";
+import { Tab } from "../../shared/components/Tab";
+import { Toast } from "../../shared/components/Toast";
+import { Toggle } from "../../shared/components/Toggle";
+import { colors } from "../../shared/styles";
 
-import { Input } from '../../shared/components/Input';
-import { Modal } from '../../shared/components/Modal';
+import { Input } from "../../shared/components/Input";
+import { Modal } from "../../shared/components/Modal";
 
-type GuideStatus = 'done' | 'progress' | 'planned';
+type GuideStatus = "done" | "progress" | "planned";
 
 type GuidePage = {
   depth1: string;
@@ -66,273 +67,368 @@ type ComponentGuideItem = {
 };
 
 type ComponentPreview =
-  | 'errorPage'
-  | 'bottomSheet'
-  | 'draggableBottomSheet'
-  | 'toast'
-  | 'loading'
-  | 'skeleton'
-  | 'header'
-  | 'button'
-  | 'floatingButton'
-  | 'tab'
-  | 'toggle'
-  | 'checkbox'
-  | 'radio'
-  | 'accordion'
-  | 'card'
-  | 'listItem'
-  | 'emptyState'
-  | 'noticeBox'
-  | 'pageWrap'
-  | 'input'
-  | 'modal';
+  | "errorPage"
+  | "rejectConfirmModal"
+  | "bottomSheet"
+  | "draggableBottomSheet"
+  | "toast"
+  | "loading"
+  | "skeleton"
+  | "header"
+  | "button"
+  | "floatingButton"
+  | "tab"
+  | "toggle"
+  | "checkbox"
+  | "radio"
+  | "accordion"
+  | "card"
+  | "listItem"
+  | "emptyState"
+  | "noticeBox"
+  | "pageWrap"
+  | "input"
+  | "modal";
 
 const guidePages: GuidePage[] = [
   {
-    depth1: 'app',
-    depth2: 'main',
-    pageName: '메인',
-    routeName: 'Main',
-    route: 'Main',
-    status: 'done',
+    depth1: "app",
+    depth2: "main",
+    pageName: "메인",
+    routeName: "Main",
+    route: "Main",
+    status: "done",
+    note: "담당자 : 이준혁",
   },
   {
-    depth1: 'card',
-    depth2: 'register',
-    pageName: '카드 등록',
-    routeName: 'CardManualRegister',
-    route: 'CardManualRegister',
-    status: 'done',
+    depth1: "card",
+    depth2: "register",
+    pageName: "카드 등록",
+    routeName: "CardRegister",
+    route: "CardRegister",
+    status: "done",
+    note: "담당자 : 나혜빈",
   },
   {
-    depth1: 'payment',
-    depth2: 'method-select',
-    pageName: '카드결제 결제수단 선택',
-    routeName: 'PaymentMethodSelect',
-    status: 'planned',
-    note: 'KAN-1151 작업 예정',
+    depth1: "qr",
+    depth2: "scan",
+    pageName: "QR 스캔",
+    routeName: "QrScan",
+    route: "QrScan",
+    status: "done",
+    note: "담당자 : 조보름",
   },
   {
-    depth1: 'guide',
-    depth2: 'ia',
-    pageName: 'IA/컴포넌트 가이드',
-    routeName: 'Guide',
-    route: 'Guide',
-    status: 'progress',
+    depth1: "payment",
+    depth2: "method-select",
+    pageName: "카드결제 결제수단 선택",
+    routeName: "PaymentMethodSelect",
+    route: "PaymentMethodSelect",
+    status: "done",
+    note: "담당자 : 조보름",
+  },
+  {
+    depth1: "payment",
+    depth2: "card-select",
+    pageName: "카드결제 카드 선택",
+    routeName: "PaymentCardSelect",
+    route: "PaymentCardSelect",
+    status: "done",
+    note: "담당자 : 조보름",
+  },
+  {
+    depth1: "payment",
+    depth2: "pin-input",
+    pageName: "카드결제 간편비밀번호 입력",
+    routeName: "PaymentPin",
+    route: "PaymentPin",
+    status: "done",
+    note: "담당자 : 조보름",
+  },
+  {
+    depth1: "payment",
+    depth2: "pin-register",
+    pageName: "카드결제 간편비밀번호 등록",
+    routeName: "PaymentPin",
+    route: "PaymentPin",
+    status: "done",
+    note: "담당자 : 조보름",
+  },
+  {
+    depth1: "payment",
+    depth2: "pin-confirm",
+    pageName: "카드결제 간편비밀번호 확인",
+    routeName: "PaymentPin",
+    route: "PaymentPin",
+    status: "done",
+    note: "담당자 : 조보름",
   },
 ];
 
 const componentGuideItems: ComponentGuideItem[] = [
   {
-    name: 'ErrorPage',
-    path: 'src/shared/components/ErrorPage',
-    status: 'done',
-    preview: 'errorPage',
-    note: '404/500',
+    name: "ErrorPage",
+    path: "src/shared/components/ErrorPage",
+    status: "done",
+    preview: "errorPage",
+    note: "404/500",
   },
   {
-    name: 'BottomSheet',
-    path: 'src/shared/components/BottomSheet',
-    status: 'done',
-    preview: 'bottomSheet',
+    name: "BottomSheet",
+    path: "src/shared/components/BottomSheet",
+    status: "done",
+    preview: "bottomSheet",
   },
   {
-    name: 'DraggableBottomSheet',
-    path: 'src/shared/components/BottomSheet',
-    status: 'done',
-    preview: 'draggableBottomSheet',
-    note: '드래그 높이 변경',
+    name: "RejectConfirmModal",
+    path: "src/shared/components/Modal",
+    status: "done",
+    preview: "rejectConfirmModal",
+    note: "결제 거절 확인",
   },
   {
-    name: 'Toast',
-    path: 'src/shared/components/Toast',
-    status: 'done',
-    preview: 'toast',
+    name: "DraggableBottomSheet",
+    path: "src/shared/components/BottomSheet",
+    status: "done",
+    preview: "draggableBottomSheet",
+    note: "드래그 높이 변경",
   },
   {
-    name: 'Loading',
-    path: 'src/shared/components/Loading',
-    status: 'done',
-    preview: 'loading',
+    name: "Toast",
+    path: "src/shared/components/Toast",
+    status: "done",
+    preview: "toast",
   },
   {
-    name: 'Skeleton',
-    path: 'src/shared/components/Skeleton',
-    status: 'done',
-    preview: 'skeleton',
+    name: "Loading",
+    path: "src/shared/components/Loading",
+    status: "done",
+    preview: "loading",
   },
   {
-    name: 'Header',
-    path: 'src/shared/components/Header',
-    status: 'done',
-    preview: 'header',
-    note: '뒤로가기형/닫기형',
+    name: "Skeleton",
+    path: "src/shared/components/Skeleton",
+    status: "done",
+    preview: "skeleton",
   },
   {
-    name: 'Button',
-    path: 'src/shared/components/Button',
-    status: 'done',
-    preview: 'button',
+    name: "Header",
+    path: "src/shared/components/Header",
+    status: "done",
+    preview: "header",
+    note: "뒤로가기형/닫기형",
   },
   {
-    name: 'FloatingButton',
-    path: 'src/shared/components/FloatingButton',
-    status: 'done',
-    preview: 'floatingButton',
+    name: "Button",
+    path: "src/shared/components/Button",
+    status: "done",
+    preview: "button",
   },
   {
-    name: 'Tab',
-    path: 'src/shared/components/Tab',
-    status: 'done',
-    preview: 'tab',
+    name: "FloatingButton",
+    path: "src/shared/components/FloatingButton",
+    status: "done",
+    preview: "floatingButton",
   },
   {
-    name: 'Toggle',
-    path: 'src/shared/components/Toggle',
-    status: 'done',
-    preview: 'toggle',
+    name: "Tab",
+    path: "src/shared/components/Tab",
+    status: "done",
+    preview: "tab",
   },
   {
-    name: 'Checkbox',
-    path: 'src/shared/components/Checkbox',
-    status: 'done',
-    preview: 'checkbox',
+    name: "Toggle",
+    path: "src/shared/components/Toggle",
+    status: "done",
+    preview: "toggle",
   },
   {
-    name: 'Radio',
-    path: 'src/shared/components/Radio',
-    status: 'done',
-    preview: 'radio',
+    name: "Checkbox",
+    path: "src/shared/components/Checkbox",
+    status: "done",
+    preview: "checkbox",
   },
   {
-    name: 'Accordion',
-    path: 'src/shared/components/Accordion',
-    status: 'done',
-    preview: 'accordion',
+    name: "Radio",
+    path: "src/shared/components/Radio",
+    status: "done",
+    preview: "radio",
   },
   {
-    name: 'Card',
-    path: 'src/shared/components/Card',
-    status: 'done',
-    preview: 'card',
+    name: "Accordion",
+    path: "src/shared/components/Accordion",
+    status: "done",
+    preview: "accordion",
   },
   {
-    name: 'ListItem',
-    path: 'src/shared/components/ListItem',
-    status: 'done',
-    preview: 'listItem',
+    name: "Card",
+    path: "src/shared/components/Card",
+    status: "done",
+    preview: "card",
   },
   {
-    name: 'EmptyState',
-    path: 'src/shared/components/EmptyState',
-    status: 'done',
-    preview: 'emptyState',
+    name: "ListItem",
+    path: "src/shared/components/ListItem",
+    status: "done",
+    preview: "listItem",
   },
   {
-    name: 'NoticeBox',
-    path: 'src/shared/components/NoticeBox',
-    status: 'done',
-    preview: 'noticeBox',
+    name: "EmptyState",
+    path: "src/shared/components/EmptyState",
+    status: "done",
+    preview: "emptyState",
   },
   {
-    name: 'PageWrap',
-    path: 'src/shared/components/PageWrap',
-    status: 'done',
-    preview: 'pageWrap',
-    note: '모바일/태블릿 공통 wrap',
+    name: "NoticeBox",
+    path: "src/shared/components/NoticeBox",
+    status: "done",
+    preview: "noticeBox",
   },
   {
-  name: 'Input',
-  path: 'src/shared/components/Input',
-  status: 'done',
-  preview: 'input',
-},
-{
-  name: 'Modal',
-  path: 'src/shared/components/Modal',
-  status: 'done',
-  preview: 'modal',
-},
+    name: "PageWrap",
+    path: "src/shared/components/PageWrap",
+    status: "done",
+    preview: "pageWrap",
+    note: "모바일/태블릿 공통 wrap",
+  },
+  {
+    name: "Input",
+    path: "src/shared/components/Input",
+    status: "done",
+    preview: "input",
+  },
+  {
+    name: "Modal",
+    path: "src/shared/components/Modal",
+    status: "done",
+    preview: "modal",
+  },
 ];
 
 const statusLabel: Record<GuideStatus, string> = {
-  done: '완료',
-  progress: '진행중',
-  planned: '예정',
+  done: "완료",
+  progress: "진행중",
+  planned: "예정",
 };
 
 const statusClassName: Record<GuideStatus, string> = {
-  done: 'bg-state-success',
-  progress: 'bg-erum-main',
-  planned: 'bg-neutral-black2',
+  done: "bg-state-success",
+  progress: "bg-erum-main",
+  planned: "bg-neutral-black2",
 };
 
 const colorGroups = [
   {
-    title: 'Main',
+    title: "Main",
     items: [
-      { name: 'Main', value: colors.erum.main },
-      { name: 'Secondary', value: colors.erum.secondary },
-      { name: 'Primary', value: colors.erum.primary },
+      { name: "Main", value: colors.erum.main, className: "bg-erum-main" },
+      {
+        name: "Secondary",
+        value: colors.erum.secondary,
+        className: "bg-erum-secondary",
+      },
+      {
+        name: "Primary",
+        value: colors.erum.primary,
+        className: "bg-erum-primary",
+      },
     ],
   },
   {
-    title: 'State',
+    title: "State",
     items: [
-      { name: 'Gold', value: colors.state.gold },
-      { name: 'Silver', value: colors.state.silver },
-      { name: 'Error', value: colors.state.error },
-      { name: 'Success', value: colors.state.success },
-      { name: 'Orange', value: colors.state.orange },
-      { name: 'Sky', value: colors.state.sky },
+      { name: "Gold", value: colors.state.gold, className: "bg-state-gold" },
+      {
+        name: "Silver",
+        value: colors.state.silver,
+        className: "bg-state-silver",
+      },
+      { name: "Error", value: colors.state.error, className: "bg-state-error" },
+      {
+        name: "Success",
+        value: colors.state.success,
+        className: "bg-state-success",
+      },
+      {
+        name: "Orange",
+        value: colors.state.orange,
+        className: "bg-state-orange",
+      },
+      { name: "Sky", value: colors.state.sky, className: "bg-state-sky" },
     ],
   },
   {
-    title: 'Neutral',
+    title: "Neutral",
     items: [
-      { name: 'Black 1', value: colors.neutral.black1 },
-      { name: 'Black 2', value: colors.neutral.black2 },
-      { name: 'Grey 1', value: colors.neutral.grey1 },
-      { name: 'Grey 2', value: colors.neutral.grey2 },
-      { name: 'White', value: colors.neutral.white },
+      {
+        name: "Black 1",
+        value: colors.neutral.black1,
+        className: "bg-neutral-black1",
+      },
+      {
+        name: "Black 2",
+        value: colors.neutral.black2,
+        className: "bg-neutral-black2",
+      },
+      {
+        name: "Grey 1",
+        value: colors.neutral.grey1,
+        className: "bg-neutral-grey1",
+      },
+      {
+        name: "Grey 2",
+        value: colors.neutral.grey2,
+        className: "bg-neutral-grey2",
+      },
+      {
+        name: "White",
+        value: colors.neutral.white,
+        className: "bg-neutral-white",
+      },
     ],
   },
 ];
 
 const typographyItems = [
-  { name: 'Heading 1', className: 'text-heading-1', spec: '36 / 43' },
-  { name: 'Heading 2', className: 'text-heading-2', spec: '24 / 29' },
-  { name: 'Heading 3', className: 'text-heading-3', spec: '16 / 19' },
-  { name: 'Large Bold', className: 'text-large-bold', spec: '15 / 21' },
-  { name: 'Large Regular', className: 'text-large-regular', spec: '15 / 21' },
-  { name: 'Normal Bold', className: 'text-normal-bold', spec: '12 / 14' },
-  { name: 'Normal Regular', className: 'text-normal-regular', spec: '12 / 14' },
+  { name: "Heading 1", className: "text-heading-1" },
+  { name: "Heading 2", className: "text-heading-2" },
+  { name: "Heading 3", className: "text-heading-3" },
+  { name: "Large Bold", className: "text-large-bold" },
+  { name: "Large Regular", className: "text-large-regular" },
+  { name: "Normal Bold", className: "text-normal-bold" },
+  { name: "Normal Regular", className: "text-normal-regular" },
+  { name: "Small Bold", className: "text-small-bold" },
+  { name: "Small Regular", className: "text-small-regular" },
 ];
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Guide'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Guide">;
 
 export default function GuideScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const horizontalPadding = 20;
-  const contentWidth = Math.max(0, Math.min(width - horizontalPadding * 2, 720));
+  const contentWidth = Math.max(
+    0,
+    Math.min(width - horizontalPadding * 2, 720),
+  );
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
   const [isDraggableBottomSheetVisible, setIsDraggableBottomSheetVisible] =
+    useState(false);
+  const [isRejectConfirmPreviewVisible, setIsRejectConfirmPreviewVisible] =
     useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isErrorPreviewVisible, setIsErrorPreviewVisible] = useState(false);
   const [selectedComponentPreview, setSelectedComponentPreview] =
-    useState<ComponentPreview>('skeleton');
-  const [selectedTab, setSelectedTab] = useState('first');
+    useState<ComponentPreview>("skeleton");
+  const [selectedTab, setSelectedTab] = useState("first");
   const [isToggleOn, setIsToggleOn] = useState(false);
   const [isCheckboxChecked, setIsCheckboxChecked] = useState(true);
-  const [selectedRadio, setSelectedRadio] = useState('card');
+  const [selectedRadio, setSelectedRadio] = useState("card");
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(true);
-  const [selectedFloatingItem, setSelectedFloatingItem] = useState('payment');
+  const [selectedFloatingItem, setSelectedFloatingItem] = useState("payment");
   const [isCardSelected, setIsCardSelected] = useState(true);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [guideInputText, setGuideInputText] = useState('');
-  const [guideInputNumber, setGuideInputNumber] = useState('');
+  const [guideInputText, setGuideInputText] = useState("");
+  const [guideInputNumber, setGuideInputNumber] = useState("");
   const [isOneButtonModalVisible, setIsOneButtonModalVisible] = useState(false);
   const [isTwoButtonModalVisible, setIsTwoButtonModalVisible] = useState(false);
 
@@ -345,19 +441,24 @@ export default function GuideScreen({ navigation }: Props) {
   }, []);
 
   const handlePressComponentPreview = (
-    preview: ComponentGuideItem['preview'],
+    preview: ComponentGuideItem["preview"],
   ) => {
-    if (preview === 'bottomSheet') {
+    if (preview === "rejectConfirmModal") {
+      setIsRejectConfirmPreviewVisible(true);
+      return;
+    }
+
+    if (preview === "bottomSheet") {
       setIsBottomSheetVisible(true);
       return;
     }
 
-    if (preview === 'draggableBottomSheet') {
+    if (preview === "draggableBottomSheet") {
       setIsDraggableBottomSheetVisible(true);
       return;
     }
 
-    if (preview === 'toast') {
+    if (preview === "toast") {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
       }
@@ -370,7 +471,7 @@ export default function GuideScreen({ navigation }: Props) {
       return;
     }
 
-    if (preview === 'errorPage') {
+    if (preview === "errorPage") {
       setIsErrorPreviewVisible(true);
       return;
     }
@@ -381,7 +482,17 @@ export default function GuideScreen({ navigation }: Props) {
   };
 
   return (
-    <View className="flex-1">
+    <PageWrap
+      scroll={false}
+      padded={false}
+      header={
+        <Header
+          title="IA 가이드"
+          type="back"
+          onPressLeft={() => navigation.navigate("Main")}
+        />
+      }
+    >
       {isErrorPreviewVisible ? (
         <ErrorPage
           variant="notFound"
@@ -396,8 +507,8 @@ export default function GuideScreen({ navigation }: Props) {
                 <View className="rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
                   <Image
                     resizeMode="contain"
-                    source={require('../../assets/images/erumpay-ci.png')}
-                    style={{ width: '100%', height: 120 }}
+                    source={require("../../assets/images/erumpay-ci.png")}
+                    style={{ width: "100%", height: 120 }}
                   />
                 </View>
               </GuideSection>
@@ -406,11 +517,17 @@ export default function GuideScreen({ navigation }: Props) {
                 <View className="gap-3 rounded-xl border border-neutral-grey1 bg-neutral-white p-4">
                   <Image
                     resizeMode="contain"
-                    source={require('../../assets/images/erumpay-grid.png')}
-                    style={{ width: '100%', height: 190 }}
+                    source={require("../../assets/images/erumpay-grid.png")}
+                    style={{ width: "100%", height: 190 }}
                   />
-                  <GuideGridRow label="Mobile" value="360 ~ 767 / 6 columns / gap 12" />
-                  <GuideGridRow label="Tablet" value="768 ~ 1200 / 6 columns / gap 12" />
+                  <GuideGridRow
+                    label="Mobile"
+                    value="360 ~ 767 / 6 columns / gap 12"
+                  />
+                  <GuideGridRow
+                    label="Tablet"
+                    value="768 ~ 1200 / 6 columns / gap 12"
+                  />
                 </View>
               </GuideSection>
 
@@ -424,15 +541,52 @@ export default function GuideScreen({ navigation }: Props) {
                       description={`${page.pageName} · ${page.routeName}`}
                       note={page.note}
                       onPress={
-                        page.status === 'done' && page.route
+                        page.route
                           ? () => {
-                              if (page.route === 'Main') {
-                                navigation.navigate('Main');
+                              if (page.route === "Main") {
+                                navigation.navigate("Main");
                                 return;
                               }
 
-                              if (page.route === 'CardManualRegister') {
-                                navigation.navigate('CardManualRegister');
+                              if (page.route === "CardRegister") {
+                                navigation.navigate("CardRegister");
+                                return;
+                              }
+
+                              if (page.route === "QrScan") {
+                                navigation.navigate("QrScan");
+                                return;
+                              }
+
+                              if (page.route === "PaymentMethodSelect") {
+                                navigation.navigate("PaymentMethodSelect");
+                                return;
+                              }
+
+                              if (page.route === "PaymentCardSelect") {
+                                navigation.navigate("PaymentCardSelect");
+                                return;
+                              }
+
+                              if (page.route === "PaymentPin") {
+                                if (page.depth2 === "pin-register") {
+                                  navigation.navigate("PaymentPin", {
+                                    mode: "REGISTER",
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === "pin-confirm") {
+                                  navigation.navigate("PaymentPin", {
+                                    mode: "CONFIRM",
+                                  });
+                                  return;
+                                }
+
+                                navigation.navigate("PaymentPin", {
+                                  mode: "PAYMENT_INPUT",
+                                });
+                                return;
                               }
                             }
                           : undefined
@@ -451,10 +605,12 @@ export default function GuideScreen({ navigation }: Props) {
                       </Text>
                       <View className="flex-row flex-wrap gap-3">
                         {group.items.map((item) => (
-                          <View key={`${group.title}-${item.name}`} className="w-[92px]">
+                          <View
+                            key={`${group.title}-${item.name}`}
+                            className="w-[92px]"
+                          >
                             <View
-                              style={{ backgroundColor: item.value }}
-                              className="mb-2 h-12 rounded-lg border border-neutral-grey1"
+                              className={`mb-2 h-12 rounded-lg border border-neutral-grey1 ${item.className}`}
                             />
                             <Text className="font-pretendard text-normal-bold text-neutral-black1">
                               {item.name}
@@ -478,12 +634,9 @@ export default function GuideScreen({ navigation }: Props) {
                       className="flex-row items-center justify-between gap-4"
                     >
                       <Text
-                        className={`min-w-0 flex-1 font-pretendard text-erum-secondary ${item.className}`}
+                        className={`min-w-0 flex-1 font-pretendard text-neutral-black1 ${item.className}`}
                       >
                         {item.name}
-                      </Text>
-                      <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                        {item.spec}
                       </Text>
                     </View>
                   ))}
@@ -500,7 +653,7 @@ export default function GuideScreen({ navigation }: Props) {
                       description={item.path}
                       note={item.note}
                       onPress={
-                        item.status === 'done' && item.preview
+                        item.status === "done" && item.preview
                           ? () => handlePressComponentPreview(item.preview)
                           : undefined
                       }
@@ -524,9 +677,13 @@ export default function GuideScreen({ navigation }: Props) {
                     guideInputNumber={guideInputNumber}
                     onChangeGuideInputText={setGuideInputText}
                     onChangeGuideInputNumber={setGuideInputNumber}
-                    onPressButton={() => handlePressComponentPreview('toast')}
-                    onPressOneButtonModal={() => setIsOneButtonModalVisible(true)}
-                    onPressTwoButtonModal={() => setIsTwoButtonModalVisible(true)}
+                    onPressButton={() => handlePressComponentPreview("toast")}
+                    onPressOneButtonModal={() =>
+                      setIsOneButtonModalVisible(true)
+                    }
+                    onPressTwoButtonModal={() =>
+                      setIsTwoButtonModalVisible(true)
+                    }
                     onChangeTab={setSelectedTab}
                     onChangeToggle={setIsToggleOn}
                     onChangeCheckbox={setIsCheckboxChecked}
@@ -536,7 +693,6 @@ export default function GuideScreen({ navigation }: Props) {
                     onToggleAccordion={() =>
                       setIsAccordionExpanded((currentValue) => !currentValue)
                     }
-                    
                   />
                 </View>
               </GuideSection>
@@ -578,7 +734,7 @@ export default function GuideScreen({ navigation }: Props) {
           />
         </View>
       </DraggableBottomSheet>
-      
+
       <Modal
         visible={isOneButtonModalVisible}
         type="one"
@@ -602,12 +758,18 @@ export default function GuideScreen({ navigation }: Props) {
         onClose={() => setIsTwoButtonModalVisible(false)}
       />
 
+      <RejectConfirmModal
+        visible={isRejectConfirmPreviewVisible}
+        onCancel={() => setIsRejectConfirmPreviewVisible(false)}
+        onConfirm={() => setIsRejectConfirmPreviewVisible(false)}
+      />
+
       <Toast
         visible={isToastVisible}
         message="토스트 샘플입니다."
         type="success"
       />
-    </View>
+    </PageWrap>
   );
 }
 
@@ -670,9 +832,7 @@ function GuideListRow({
         ) : null}
       </View>
 
-      <View
-        className={`rounded-full px-3 py-1 ${statusClassName[status]}`}
-      >
+      <View className={`rounded-full px-3 py-1 ${statusClassName[status]}`}>
         <Text className="font-pretendard text-normal-bold text-neutral-white">
           {statusLabel[status]}
         </Text>
@@ -722,7 +882,6 @@ function ComponentPreviewArea({
   onChangeFloatingItem,
   onChangeCardSelected,
   onToggleAccordion,
-  
 }: {
   preview: ComponentPreview;
   selectedTab: string;
@@ -747,15 +906,15 @@ function ComponentPreviewArea({
   onChangeCardSelected: (value: boolean) => void;
   onToggleAccordion: () => void;
 }) {
-  if (preview === 'loading') {
+  if (preview === "loading") {
     return <Loading message="결제 정보를 불러오는 중입니다." />;
   }
 
-  if (preview === 'skeleton') {
+  if (preview === "skeleton") {
     return <SkeletonCard />;
   }
 
-  if (preview === 'header') {
+  if (preview === "header") {
     return (
       <View className="gap-3">
         <Header title="뒤로가기 헤더" type="back" onPressLeft={() => {}} />
@@ -764,23 +923,28 @@ function ComponentPreviewArea({
     );
   }
 
-  if (preview === 'button') {
+  if (preview === "button") {
     return (
       <View className="gap-3">
         <Button label="Primary Button" onPress={onPressButton} />
-        <Button label="Secondary Button" variant="secondary" onPress={onPressButton} />
+        <Button
+          label="Secondary Button"
+          variant="secondary"
+          onPress={onPressButton}
+        />
         <Button label="Disabled Button" disabled onPress={onPressButton} />
         <Button label="Readonly Button" readOnly />
       </View>
     );
   }
 
-  if (preview === 'floatingButton') {
+  if (preview === "floatingButton") {
     return (
-      <View className="min-h-[220px] overflow-hidden rounded-xl bg-neutral-grey2">
+      <View className="min-h-[180px] overflow-hidden rounded-xl bg-neutral-grey2">
         <Text className="font-pretendard text-large-regular text-neutral-black2">
           앱 하단 플로팅 내비게이션 미리보기
         </Text>
+
         <FloatingButton
           value={selectedFloatingItem}
           onChange={onChangeFloatingItem}
@@ -789,13 +953,13 @@ function ComponentPreviewArea({
     );
   }
 
-  if (preview === 'tab') {
+  if (preview === "tab") {
     return (
       <Tab
         items={[
-          { label: '첫번째', value: 'first' },
-          { label: '두번째', value: 'second' },
-          { label: '세번째', value: 'third' },
+          { label: "첫번째", value: "first" },
+          { label: "두번째", value: "second" },
+          { label: "세번째", value: "third" },
         ]}
         value={selectedTab}
         onChange={onChangeTab}
@@ -803,17 +967,13 @@ function ComponentPreviewArea({
     );
   }
 
-  if (preview === 'toggle') {
+  if (preview === "toggle") {
     return (
-      <Toggle
-        label="알림 받기"
-        value={isToggleOn}
-        onChange={onChangeToggle}
-      />
+      <Toggle label="알림 받기" value={isToggleOn} onChange={onChangeToggle} />
     );
   }
 
-  if (preview === 'checkbox') {
+  if (preview === "checkbox") {
     return (
       <Checkbox
         checked={isCheckboxChecked}
@@ -823,65 +983,64 @@ function ComponentPreviewArea({
     );
   }
 
-  if (preview === 'radio') {
+  if (preview === "radio") {
     return (
       <Radio
         items={[
-          { label: '카드 결제', value: 'card' },
-          { label: '계좌 결제', value: 'account' },
-          { label: '포인트 결제', value: 'point' },
+          { label: "카드 결제", value: "card" },
+          { label: "계좌 결제", value: "account" },
+          { label: "포인트 결제", value: "point" },
         ]}
         value={selectedRadio}
         onChange={onChangeRadio}
       />
     );
   }
-  if (preview === 'input') {
-  return (
-    <View className="gap-4">
-      <Input
-        label="문자"
-        type="text"
-        placeholder="문자를 입력해주세요."
-        value={guideInputText}
-        onChangeText={onChangeGuideInputText}
-      />
+  if (preview === "input") {
+    return (
+      <View className="gap-4">
+        <Input
+          label="문자"
+          type="text"
+          placeholder="문자를 입력해주세요."
+          value={guideInputText}
+          onChangeText={onChangeGuideInputText}
+        />
 
-      <Input
-        label="숫자"
-        type="number"
-        placeholder="숫자를 입력해주세요."
-        value={guideInputNumber}
-        maxLength={16}
-        onChangeText={onChangeGuideInputNumber}
-      />
+        <Input
+          label="숫자"
+          type="number"
+          placeholder="숫자를 입력해주세요."
+          value={guideInputNumber}
+          maxLength={16}
+          onChangeText={onChangeGuideInputNumber}
+        />
 
-      <Input
-        label="읽기전용"
-        type="text"
-        placeholder="수정할 수 없는 입력값입니다."
-        value="읽기전용 상태"
-        readOnly
-      />
-    </View>
-  );
-}
+        <Input
+          label="읽기전용"
+          type="text"
+          placeholder="수정할 수 없는 입력값입니다."
+          value="읽기전용 상태"
+          readOnly
+        />
+      </View>
+    );
+  }
 
-if (preview === 'modal') {
-  return (
-    <View className="gap-3">
-      <Button label="1버튼 모달 확인" onPress={onPressOneButtonModal} />
-      <Button
-        label="2버튼 모달 확인"
-        variant="secondary"
-        onPress={onPressTwoButtonModal}
-      />
-    </View>
-  );
-}
+  if (preview === "modal") {
+    return (
+      <View className="gap-3">
+        <Button label="1버튼 모달 확인" onPress={onPressOneButtonModal} />
+        <Button
+          label="2버튼 모달 확인"
+          variant="secondary"
+          onPress={onPressTwoButtonModal}
+        />
+      </View>
+    );
+  }
 
-
-  if (preview === 'accordion') {
+  if (preview === "accordion") {
     return (
       <Accordion
         expanded={isAccordionExpanded}
@@ -895,7 +1054,7 @@ if (preview === 'modal') {
     );
   }
 
-  if (preview === 'card') {
+  if (preview === "card") {
     return (
       <Card
         selected={isCardSelected}
@@ -910,7 +1069,7 @@ if (preview === 'modal') {
     );
   }
 
-  if (preview === 'listItem') {
+  if (preview === "listItem") {
     return (
       <View className="gap-2 rounded-xl bg-neutral-grey2 p-3">
         <ListItem
@@ -966,7 +1125,7 @@ if (preview === 'modal') {
     );
   }
 
-  if (preview === 'emptyState') {
+  if (preview === "emptyState") {
     return (
       <EmptyState
         actionLabel="새로고침"
@@ -977,17 +1136,23 @@ if (preview === 'modal') {
     );
   }
 
-  if (preview === 'noticeBox') {
+  if (preview === "noticeBox") {
     return (
       <View className="gap-3">
-        <NoticeBox description="입력하신 정보는 안전하게 보호됩니다." tone="info" />
+        <NoticeBox
+          description="입력하신 정보는 안전하게 보호됩니다."
+          tone="info"
+        />
         <NoticeBox description="카드 등록이 완료되었습니다." tone="success" />
-        <NoticeBox description="결제 전 금액을 다시 확인해주세요." tone="warning" />
+        <NoticeBox
+          description="결제 전 금액을 다시 확인해주세요."
+          tone="warning"
+        />
       </View>
     );
   }
 
-  if (preview === 'pageWrap') {
+  if (preview === "pageWrap") {
     return (
       <View className="h-[220px] overflow-hidden rounded-lg border border-neutral-grey1">
         <PageWrap>
@@ -1001,8 +1166,6 @@ if (preview === 'modal') {
       </View>
     );
   }
-
-
 
   return (
     <Text className="font-pretendard text-large-regular text-neutral-black2">

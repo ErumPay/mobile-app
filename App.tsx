@@ -1,14 +1,22 @@
-import './global.css';
-import { useState } from 'react';
+import "./global.css";
 
-import { useEffect, useRef } from 'react';
-import { Alert, useWindowDimensions } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useEffect, useRef } from "react";
+import { Alert, useWindowDimensions, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  NavigationContainer,
+  type LinkingOptions,
+} from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import GuideScreen from './src/app/screens/GuideScreen';
-import MainScreen from './src/app/screens/MainScreen';
-import CardManualRegisterScreen from './src/features/card/screens/CardManualRegisterScreen';
+import GuideScreen from "./src/app/screens/GuideScreen";
+import CardRegisterScreen from "./src/features/card/screens/CardRegisterScreen";
+import MainScreen from "./src/features/main/screens/MainScreen";
+import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
+import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMethodSelectScreen";
+import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
+import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
+import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
@@ -29,140 +37,109 @@ import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmSc
 
 
 export type RootStackParamList = {
-    Main: undefined;
-    Guide: undefined;
-    // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
-    /*PaymentMethodSelect: undefined;*/
-    CardManualRegister: undefined;
-    CardDetailScreen: {
-        cardId: string;
-    };
-    CardManagementScreen: undefined;
-    MypageHomeScreen: undefined;
-    PaymentDetailScreen: {
-        paymentId: string;
-        };
-    PaymentHistoryScreen: undefined;
-    ProfileConfirmScreen: undefined;
+  Main: undefined;
+  Guide: undefined;
+  QrScan: undefined;
+  PaymentMethodSelect: undefined;
+  PaymentCardSelect: undefined;
+  PaymentPin: PaymentPinRouteParams | undefined;
+  // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
+  /*PaymentMethodSelect: undefined;*/
+  CardRegister: undefined;
+};
+
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ["http://localhost:19000"],
+  config: {
+    screens: {
+      Main: "",
+      Guide: "guide",
+      QrScan: "qr-scan",
+      CardRegister: "card-register",
+      PaymentMethodSelect: "payment/method-select",
+      PaymentCardSelect: "payment/card-select",
+      PaymentPin: "payment/pin",
+    },
+  },
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-    const { width } = useWindowDimensions();
-    const hasShownMobileOnlyAlert = useRef(false);
+  const { width } = useWindowDimensions();
+  const hasShownMobileOnlyAlert = useRef(false);
 
-    useEffect(() => {
-        if (width < 768) {
-            hasShownMobileOnlyAlert.current = false;
-            return;
-        }
+  useEffect(() => {
+    if (width < 768) {
+      hasShownMobileOnlyAlert.current = false;
+      return;
+    }
 
-        if (hasShownMobileOnlyAlert.current) {
-            return;
-        }
+    if (hasShownMobileOnlyAlert.current) {
+      return;
+    }
 
-        hasShownMobileOnlyAlert.current = true;
+    hasShownMobileOnlyAlert.current = true;
 
-        Alert.alert('안내', '모바일로 이용해주세요.');
-    }, [width]);
+    Alert.alert("안내", "모바일로 이용해주세요.");
+  }, [width]);
 
-    const [managedCards, setManagedCards] = useState<ManagedCard[]>(mockManagedCards);
-    
-    const handleDeleteCard = (deletedCardId: string) => {
-        setManagedCards((currentCards) =>
-            currentCards.filter((card) => card.id !== deletedCardId)
-        );
-    };
+  return (
+    <SafeAreaProvider>
+      <View className="flex-1 bg-neutral-white">
+        <NavigationContainer linking={linking}>
+          <Stack.Navigator
+            initialRouteName="Main"
+            screenOptions={{ headerShown: false }}
+          >
+            <Stack.Screen
+              name="Main"
+              component={MainScreen}
+              options={{ title: "메인" }}
+            />
 
-    return (
-        <NavigationContainer>
-            <Stack.Navigator initialRouteName="Main">
-                <Stack.Screen
-                    name="Main"
-                    component={MainScreen}
-                    options={{ title: '메인' }}
-                />
+            <Stack.Screen
+              name="Guide"
+              component={GuideScreen}
+              options={{ title: "IA 가이드" }}
+            />
 
-                <Stack.Screen
-                    name="Guide"
-                    component={GuideScreen}
-                    options={{ title: 'IA 가이드' }}
-                />
+            {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
+            {/*<Stack.Screen*/}
+            {/*    name="PaymentMethodSelect"*/}
+            {/*    component={PaymentMethodSelectScreen}*/}
+            {/*.   options={{ headerShown: false }}*/}
+            {/*/>*/}
 
-                {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
-                {/*<Stack.Screen*/}
-                {/*    name="PaymentMethodSelect"*/}
-                {/*    component={PaymentMethodSelectScreen}*/}
-                {/*    options={{ title: '카드결제' }}*/}
-                {/*/>*/}
+            <Stack.Screen
+              name="CardRegister"
+              component={CardRegisterScreen}
+            />
 
+            <Stack.Screen name="QrScan" component={QrScanScreen} />
 
-                <Stack.Screen name="CardManualRegister" options={{ title: '카드 등록' }}>
-                    {({ navigation }) => (
-                        <CardManualRegisterScreen
-                            onClose={() => navigation.goBack()}
-                            onGoCardManagement={() => navigation.navigate('CardManagementScreen')}
-                            onCardRegistered={(registeredCard) => {
-                                setManagedCards((currentCards) => [
-                                ...currentCards,
-                                {
-                                    id: registeredCard.id,
-                                    issuer: registeredCard.issuer,
-                                    title: `${registeredCard.issuer}카드 (${registeredCard.last4})`,
-                                    name: 'Simple Plan+',
-                                    alias: registeredCard.cardNickname || '별칭미설정',
-                                    colorClassName: 'bg-blue-600',
-                                    isDefault: currentCards.length === 0,
-                                },
-                            ]);
-                            }}
-                        />
-                    )}
-                    </Stack.Screen>
-                <Stack.Screen
-                    name="MypageHomeScreen"
-                    component={MypageHomeScreen}
-                    options={{ title: '마이페이지' }}
-                />
-                
-                <Stack.Screen
-                    name="CardDetailScreen"
-                    component={CardDetailScreen}
-                    options={{ title: '카드 상세' }}
-                    />
-                <Stack.Screen name="CardManagementScreen" options={{ title: '카드 관리' }}>
-                    {({ navigation }) => (
-                        <CardManagementScreen
-                        cards={managedCards}
-                        onAddCard={() => navigation.navigate('CardManualRegister')}
-                        onPressCard={(card: ManagedCard) =>
-                            navigation.navigate('CardDetailScreen', {
-                                cardId: card.id,
-                            })
-                        }
-                        />
-                    )}
-                    </Stack.Screen>
+            <Stack.Screen
+              name="PaymentMethodSelect"
+              component={PaymentMethodSelectScreen}
+            />
 
-                    <Stack.Screen
-                    name="PaymentDetailScreen"
-                    component={PaymentDetailScreen}
-                    options={{ title: '결제 상세' }}
-                    />
+            <Stack.Screen
+              name="PaymentCardSelect"
+              component={PaymentCardSelectScreen}
+            />
 
-                    <Stack.Screen
-                    name="PaymentHistoryScreen"
-                    component={PaymentHistoryScreen}
-                    options={{ title: '결제 내역' }}
-                    />
+            <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
 
-                    <Stack.Screen
-                    name="ProfileConfirmScreen"
-                    component={ProfileConfirmScreen}
-                    options={{ title: '내정보 확인' }}
-                    />
-            </Stack.Navigator>
+            {/*
+                        // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
+                        <Stack.Screen
+                            name="MypageHomeScreen"
+                            component={MypageHomeScreen}
+                            options={{ headerShown: false }}
+                        />*/}
+          </Stack.Navigator>
         </NavigationContainer>
-    );
+      </View>
+    </SafeAreaProvider>
+  );
 }

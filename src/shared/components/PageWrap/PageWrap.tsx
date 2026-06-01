@@ -7,39 +7,44 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
-import { SafeAreaView, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type PageWrapProps = {
   children: ReactNode;
+  header?: ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  backgroundClassName?: string;
 };
 
 export function PageWrap({
-  children,
-  scroll = true,
-  padded = true,
-}: PageWrapProps) {
-  const content = (
-    <View className={`flex-1 ${padded ? 'px-5 py-6' : ''}`}>
-      {children}
-    </View>
-  );
+                           children,
+                           header,
+                           scroll = true,
+                           padded = true,
+                           backgroundClassName = 'bg-neutral-grey2',
+                         }: PageWrapProps) {
+  const contentClassName = `flex-1 ${padded ? 'px-5 py-6' : ''}`;
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-grey2">
-      {scroll ? (
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="flex-grow"
-          keyboardShouldPersistTaps="handled"
-        >
-          {content}
-        </ScrollView>
-      ) : (
-        content
-      )}
-    </SafeAreaView>
+      <SafeAreaView style={{ flex: 1 }}>
+          <View className={`flex-1 ${backgroundClassName}`}>
+              {header}
+
+              {scroll ? (
+                  <ScrollView
+                      className="flex-1"
+                      contentContainerClassName={`flex-grow ${padded ? 'px-5 py-6' : ''}`}
+                      keyboardShouldPersistTaps="handled"
+                  >
+                      {children}
+                  </ScrollView>
+              ) : (
+                  <View className={contentClassName}>{children}</View>
+              )}
+          </View>
+      </SafeAreaView>
   );
 }
 
