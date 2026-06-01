@@ -161,7 +161,12 @@ export default function PaymentCancelScreen({ navigation, route }: Props) {
   const isComplete = mode === 'COMPLETE';
 
   const handlePressClose = () => {
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Main');
   };
 
   const handlePressMain = () => {
