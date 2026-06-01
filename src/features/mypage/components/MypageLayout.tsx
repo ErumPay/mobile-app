@@ -1,167 +1,95 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-interface MypageFrameProps {
-  children: ReactNode;
-  backgroundClassName?: string;
-}
-
-interface HeaderProps {
-  title: string;
-  onBack?: () => void;
-}
-
-interface BottomNavProps {
-  active?: 'home' | 'pay' | 'my';
-}
-
-interface MenuRowProps {
-  icon?: string;
-  iconBgClassName?: string;
-  iconTextClassName?: string;
-  title: string;
-  value?: string;
-  onPress?: () => void;
-}
+import { Card } from '../../../shared/components/Card';
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { ListItem } from '../../../shared/components/ListItem';
+import { PageWrap } from '../../../shared/components/PageWrap';
 
 export function MypageFrame({
   children,
-  backgroundClassName = 'bg-white',
-}: MypageFrameProps) {
-  return (
-    <View
-      className="flex-1 w-full bg-white"
-    >
-      {children}
-    </View>
-  );
-}
-
-export function MypageHeader({ title, onBack }: HeaderProps) {
-  return (
-    <View className="h-[54px] w-full flex-row items-center border-b border-zinc-100 bg-white px-5">
-      <Pressable
-        accessibilityRole="button"
-        className="mr-2 h-9 w-9"
-        onPress={onBack}
-      >
-        <Text className="text-3xl font-light leading-9 text-zinc-950">‹</Text>
-      </Pressable>
-      <Text className="text-xl font-bold text-zinc-950">{title}</Text>
-    </View>
-  );
-}
-
-export function BottomNav({ active = 'pay' }: BottomNavProps) {
-  return (
-    <View className="w-full items-center py-3">
-      <View className="h-[84px] w-[292px] flex-row items-center justify-between rounded-full bg-white px-6 shadow-2xl">
-        <NavItem icon="⌂" label="홈" active={active === 'home'} />
-        <View className="-mt-8 items-center">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-blue-800 shadow-lg">
-            <Text className="text-3xl font-bold leading-8 text-white">⌗</Text>
-          </View>
-          <Text className="mt-1 text-xs font-bold text-blue-800">결제</Text>
-        </View>
-        <NavItem icon="♙" label="MY" active={active === 'my'} />
-      </View>
-    </View>
-  );
-}
-
-function NavItem({
-  icon,
-  label,
-  active,
+  title,
+  onBack,
+  backgroundClassName = 'bg-neutral-grey2',
 }: {
-  icon: string;
-  label: string;
-  active: boolean;
+  children: ReactNode;
+  title: string;
+  onBack?: () => void;
+  backgroundClassName?: string;
 }) {
   return (
-    <View className="w-12 items-center">
-      <View
-        className={`h-11 w-11 items-center justify-center rounded-full ${
-          active ? 'bg-blue-50' : 'bg-zinc-100'
-        }`}
-      >
-        <Text
-          className={`text-2xl ${
-            active ? 'text-blue-800' : 'text-slate-500'
-          }`}
-        >
-          {icon}
-        </Text>
-      </View>
-      <Text
-        className={`mt-1 text-xs ${
-          active ? 'font-bold text-blue-800' : 'text-slate-500'
-        }`}
-      >
-        {label}
-      </Text>
-    </View>
+    <PageWrap
+      backgroundClassName={backgroundClassName}
+      header={<Header title={title} type="back" onPressLeft={onBack} />}
+    >
+      {children}
+    </PageWrap>
   );
+}
+
+export function MypageBottomNav({
+  active = 'my',
+  onChange,
+}: {
+  active?: 'home' | 'payment' | 'my';
+  onChange?: (value: string) => void;
+}) {
+  return <FloatingButton value={active} onChange={onChange} />;
 }
 
 export function MenuRow({
-  icon,
-  iconBgClassName = 'bg-blue-50',
-  iconTextClassName = 'text-blue-700',
   title,
-  value,
+  description,
+  left,
+  right,
   onPress,
-}: MenuRowProps) {
+}: {
+  title: string;
+  description?: string;
+  left?: ReactNode;
+  right?: ReactNode;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      className="h-12 w-full flex-row items-center justify-between"
+    <ListItem
+      title={title}
+      description={description}
+      left={left}
+      right={right ?? <Text className="text-heading-3 text-neutral-black2">›</Text>}
       onPress={onPress}
-    >
-      <View className="flex-1 flex-row items-center">
-        {icon ? (
-          <View
-            className={`mr-3 h-9 w-9 items-center justify-center rounded-full ${iconBgClassName}`}
-          >
-            <Text className={`text-lg ${iconTextClassName}`}>{icon}</Text>
-          </View>
-        ) : null}
-        <Text className="text-base font-semibold text-slate-950">{title}</Text>
-      </View>
-      <View className="min-w-[26px] items-end">
-        {value ? (
-          <Text className="text-sm text-slate-400">{value}</Text>
-        ) : (
-          <Text className="text-2xl font-light leading-7 text-slate-400">
-            ›
-          </Text>
-        )}
-      </View>
-    </Pressable>
+    />
   );
 }
 
-export function CardSection({ children }: { children: ReactNode }) {
-  return (
-    <View className="w-full rounded-2xl border border-zinc-100 bg-white px-4 py-4 shadow-sm">
-      {children}
-    </View>
-  );
+export function CardSection({
+  title,
+  children,
+}: {
+  title?: string;
+  children: ReactNode;
+}) {
+  return <Card title={title}>{children}</Card>;
 }
 
 export function InfoRow({
   label,
   value,
-  valueClassName = 'text-slate-950',
+  valueClassName = 'text-neutral-black1',
 }: {
   label: string;
   value: string;
   valueClassName?: string;
 }) {
   return (
-    <View className="w-full flex-row items-center justify-between py-2">
-      <Text className="text-sm text-slate-500">{label}</Text>
-      <Text className={`max-w-[220px] text-right text-base font-bold ${valueClassName}`}>
+    <View className="flex-row items-center justify-between py-2">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <Text
+        numberOfLines={2}
+        className={`min-w-0 flex-1 text-right font-pretendard text-large-bold ${valueClassName}`}
+      >
         {value}
       </Text>
     </View>
@@ -169,5 +97,5 @@ export function InfoRow({
 }
 
 export function Divider() {
-  return <View className="h-px w-full bg-zinc-100" />;
+  return <View className="my-2 h-px w-full bg-neutral-grey1" />;
 }

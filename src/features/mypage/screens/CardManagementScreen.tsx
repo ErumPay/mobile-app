@@ -1,176 +1,119 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
+import type { RootStackParamList } from '../../../../App';
+import { Button } from '../../../shared/components/Button';
+import { Card } from '../../../shared/components/Card';
+import { EmptyState } from '../../../shared/components/EmptyState';
+import { NoticeBox } from '../../../shared/components/NoticeBox';
+import {
+  MypageBottomNav,
+  MypageFrame,
+} from '../components/MypageLayout';
+import { mockManagedCards } from '../mocks/mypageMockData';
+import type { ManagedCard } from '../types/mypage';
 
+type Props = NativeStackScreenProps<RootStackParamList, 'CardManagementScreen'>;
 
-export interface ManagedCard {
-  id: string;
-  issuer: string;
-  title: string;
-  name: string;
-  alias: string;
-  colorClassName: string;
-  isDefault: boolean;
-  disabled?: boolean;
-}
-
-interface CardManagementScreenProps {
-  cards?: ManagedCard[];
-  onBack?: () => void;
-  onAddCard?: () => void;
-  onPressCard?: (card: ManagedCard) => void;
-}
-
-export const mockManagedCards: ManagedCard[] = [
-  {
-    id: 'card-1',
-    issuer: 'Shinhan',
-    title: '신한카드 (1234)',
-    name: 'Simple Plan+',
-    alias: '별칭미설정',
-    colorClassName: 'bg-blue-600',
-    isDefault: true,
-  },
-  {
-    id: 'card-2',
-    issuer: 'Samsung',
-    title: '삼성카드 (4444)',
-    name: 'taptap O',
-    alias: '탭탭타탑탑',
-    colorClassName: 'bg-indigo-600',
-    isDefault: false,
-  },
-  {
-    id: 'card-3',
-    issuer: 'KB',
-    title: '국민카드 (5893)',
-    name: '노리',
-    alias: '별칭미설정',
-    colorClassName: 'bg-amber-700',
-    isDefault: false,
-    disabled: true,
-  },
-];
-
-export function CardManagementScreen({
-  cards = [],
-  onBack,
-  onAddCard,
-  onPressCard,
-}: CardManagementScreenProps) {
-  const visibleCards = cards;
+export function CardManagementScreen({ navigation }: Props) {
+  const cards = mockManagedCards;
 
   return (
-      <MypageFrame backgroundClassName="bg-white">
-        <MypageHeader title="카드관리" onBack={onBack} />
-        <ScrollView
-          className="w-full flex-1"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="w-full max-w-[360px] self-center px-4 pb-44 pt-4">
-            {visibleCards.length === 0 ? (
-              <View className="h-12 w-full items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-sm">
-                <Text className="text-sm text-slate-500">
-                  등록된 카드가 없습니다.
-                </Text>
-              </View>
-            ) : (
-              <View className="w-full gap-3">
-                {visibleCards.map((card) => (
-                  <CardListItem
-                    key={card.id}
-                    {...card}
-                    onPress={() => onPressCard?.(card)}
-                  />
-                ))}
-              </View>
-            )}
+    <>
+      <MypageFrame
+        title="카드관리"
+        onBack={() => navigation.goBack()}
+        backgroundClassName="bg-neutral-white"
+      >
+        <View className="gap-4 pb-28">
+          {cards.length === 0 ? (
+            <EmptyState title="등록된 카드가 없습니다." />
+          ) : (
+            cards.map((card) => (
+              <ManagedCardItem
+                key={card.id}
+                card={card}
+                onPress={() =>
+                  navigation.navigate('CardDetailScreen', { cardId: card.id })
+                }
+              />
+            ))
+          )}
 
-            <Pressable
-              accessibilityRole="button"
-              className="mt-3 h-20 w-full items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white"
-              onPress={onAddCard}
-            >
-              <View className="h-8 w-8 items-center justify-center rounded-full bg-blue-700">
-                <Text className="text-2xl leading-7 text-white">+</Text>
-              </View>
-              <Text className="mt-2 text-base font-bold text-slate-950">
-                카드 추가하기
-              </Text>
-            </Pressable>
+          <Button
+            label="카드 추가하기"
+            variant="secondary"
+            onPress={() => navigation.navigate('CardRegister')}
+          />
 
-            <View className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4">
-              <Text className="text-sm leading-6 text-blue-900">
-                💳 등록된 카드는 결제 시 선택하여 사용할 수 있습니다.
-              </Text>
-              <Text className="text-sm leading-6 text-blue-900">
-                대표 카드는 자동으로 우선 선택됩니다.
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-        <BottomNav active="pay" />
+          <NoticeBox
+            tone="info"
+            description="등록한 카드는 결제 시 선택하여 사용할 수 있습니다. 대표카드는 자동으로 우선 선택됩니다."
+          />
+        </View>
       </MypageFrame>
+      <MypageBottomNav
+        active="my"
+        onChange={(value) => {
+          if (value === 'home') navigation.navigate('Main');
+        }}
+      />
+    </>
   );
 }
 
-function CardListItem({
-  issuer,
-  title,
-  name,
-  alias,
-  colorClassName,
-  isDefault,
-  disabled = false,
+function ManagedCardItem({
+  card,
   onPress,
 }: {
-  issuer: string;
-  title: string;
-  name: string;
-  alias: string;
-  colorClassName: string;
-  isDefault: boolean;
-  disabled?: boolean;
-  onPress?: () => void;
+  card: ManagedCard;
+  onPress: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      className={`relative h-[82px] w-full flex-row items-center overflow-hidden rounded-2xl border px-4 shadow-sm ${
-        disabled ? 'border-zinc-300 bg-white' : 'border-zinc-100 bg-white'
-      }`}
-      onPress={onPress}
-    >
-      <View
-        className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${colorClassName}`}
-      >
-        <Text className="text-[10px] text-white">{issuer}</Text>
-        <Text className="mt-2 text-xs font-bold tracking-widest text-white">
-          ••••
-        </Text>
-      </View>
-      <View className="flex-1">
-        <View className="flex-row items-center">
-          {isDefault ? (
-            <Text className="mr-2 rounded px-1.5 py-0.5 text-xs font-bold text-white bg-emerald-400">
-              대표
-            </Text>
-          ) : null}
-
-          <Text className="text-base font-bold text-slate-950">{title}</Text>
+    <Card onPress={onPress}>
+      <View className="flex-row items-center">
+        <View className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${card.colorClassName}`}>
+          <Text className="font-pretendard text-normal-regular text-neutral-white">
+            {card.issuer}
+          </Text>
+          <Text className="mt-1 font-pretendard text-normal-bold text-neutral-white">
+            ****
+          </Text>
         </View>
-        <Text className="mt-1 text-sm text-slate-950">{name}</Text>
-        <Text className="mt-1 text-xs text-slate-500">{alias}</Text>
+
+        <View className="min-w-0 flex-1">
+          <View className="flex-row items-center">
+            {card.isDefault ? (
+              <Text className="mr-2 rounded bg-erum-main px-2 py-0.5 font-pretendard text-normal-bold text-neutral-white">
+                대표
+              </Text>
+            ) : null}
+            <Text
+              numberOfLines={1}
+              className="min-w-0 flex-1 font-pretendard text-large-bold text-neutral-black1"
+            >
+              {card.title}
+            </Text>
+          </View>
+          <Text className="mt-1 font-pretendard text-large-regular text-neutral-black1">
+            {card.name}
+          </Text>
+          <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
+            {card.alias}
+          </Text>
+        </View>
+
+        <Text className="ml-2 text-heading-3 text-neutral-black2">›</Text>
       </View>
-      <Text className="text-3xl font-light text-slate-400">›</Text>
-      {disabled ? (
-        <View className="absolute inset-0 items-center justify-center bg-zinc-700/45">
-          <Text className="rounded-full bg-red-500 px-4 py-1.5 text-sm font-bold text-white">
+
+      {card.disabled ? (
+        <View className="mt-3 rounded-lg bg-state-error px-3 py-2">
+          <Text className="text-center font-pretendard text-normal-bold text-neutral-white">
             사용불가
           </Text>
         </View>
       ) : null}
-    </Pressable>
+    </Card>
   );
 }
 

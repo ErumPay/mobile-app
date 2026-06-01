@@ -6,3 +6,5 @@ export * from './screens/MypageHomeScreen';
 export * from './screens/PaymentDetailScreen';
 export * from './screens/PaymentHistoryScreen';
 export * from './screens/ProfileConfirmScreen';
+export * from './mocks/mypageMockData';
+export * from './types/mypage';

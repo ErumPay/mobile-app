@@ -1,180 +1,151 @@
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useState } from 'react';
+import { Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+
 import type { RootStackParamList } from '../../../../App';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Card } from '../../../shared/components/Card';
+import { Button } from '../../../shared/components/Button';
+import { ListItem } from '../../../shared/components/ListItem';
 import {
-  BottomNav,
-  CardSection,
+  LogoutDialog,
+  WithdrawDialog,
+} from '../components/MypageDialogs';
+import {
   Divider,
   MenuRow,
+  MypageBottomNav,
   MypageFrame,
-  MypageHeader,
 } from '../components/MypageLayout';
+import { mockUserProfile } from '../mocks/mypageMockData';
 
-interface MypageHomeScreenProps {
-  hasNotification?: boolean;
-  onBack?: () => void;
-  onPressProfile?: () => void;
-  onPressHistory?: () => void;
-  onPressCard?: () => void;
-  onPressLogout?: () => void;
-  onPressWithdraw?: () => void;
-}
+type Props = NativeStackScreenProps<RootStackParamList, 'MypageHomeScreen'>;
 
-export function MypageHomeScreen({
-  hasNotification = false,
-  onBack,
-  onPressProfile,
-  onPressHistory,
-  onPressCard,
-  onPressLogout,
-  onPressWithdraw,
-}: MypageHomeScreenProps) {
+export function MypageHomeScreen({ navigation }: Props) {
+  const [isLogoutVisible, setIsLogoutVisible] = useState(false);
+  const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
 
-  const navigation =
-      useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Main');
+  };
+
+  const handleChangeBottomNav = (value: string) => {
+    if (value === 'home') {
+      navigation.navigate('Main');
+    }
+  };
 
   return (
-      <MypageFrame backgroundClassName="bg-white">
-        <MypageHeader title="마이페이지" onBack={onBack} />
-
-        {/* ✅ flex-1로 남은 공간 전부 차지 */}
-        <ScrollView
-          className="flex-1 w-full bg-white"
-          contentContainerStyle={{ paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="w-full px-4 pt-4">
-            <CardSection>
-              <View className="w-full flex-row items-center">
-                <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-emerald-700 shadow">
-                  <Text className="text-3xl text-white">♙</Text>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-xl font-bold text-slate-950">
-                    조이훈 (3293)
-                  </Text>
-                  <Text className="mt-1 text-sm text-slate-500">
-                    010-0000-0000
-                  </Text>
-                </View>
+    <>
+      <MypageFrame title="마이페이지" onBack={handleGoBack} backgroundClassName="bg-neutral-white">
+        <View className="gap-5 pb-28">
+          <Card>
+            <View className="flex-row items-center">
+              <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-erum-main">
+                <Text className="font-pretendard text-heading-2 text-neutral-white">
+                  {mockUserProfile.name.slice(0, 1)}
+                </Text>
               </View>
 
-              <Pressable
-                accessibilityRole="button"
-                className="mt-4 h-11 w-full flex-row items-center justify-center rounded-xl bg-emerald-700"
+              <View className="min-w-0 flex-1">
+                <Text className="font-pretendard text-heading-3 text-neutral-black1">
+                  {mockUserProfile.name} ({mockUserProfile.maskedId})
+                </Text>
+                <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
+                  {mockUserProfile.phone}
+                </Text>
+              </View>
+            </View>
+
+            <View className="mt-4">
+              <Button
+                label="내 정보 확인"
                 onPress={() => navigation.navigate('ProfileConfirmScreen')}
-              >
-                <Text className="text-base font-bold text-white">
-                  내 정보 확인
-                </Text>
-                <Text className="ml-2 text-2xl font-light leading-6 text-white">
-                  ›
-                </Text>
-              </Pressable>
-            </CardSection>
-
-            <View className="mt-5 w-full flex-row">
-              <ShortcutCard
-                icon="♙"
-                iconBgClassName="bg-blue-50"
-                iconTextClassName="text-blue-700"
-                title="친구관리"
-              />
-              <View className="w-2" />
-              <ShortcutCard
-                icon="♧"
-                iconBgClassName="bg-orange-50"
-                iconTextClassName="text-orange-600"
-                title="알림"
-                hasBadge={hasNotification}
               />
             </View>
+          </Card>
 
-            <View className="mt-6 w-full">
-              <CardSection>
-                <Text className="mb-3 text-lg font-bold text-slate-950">
-                  나의 관리
-                </Text>
-                <MenuRow
-                  icon="▣"
-                  iconBgClassName="bg-purple-50"
-                  iconTextClassName="text-purple-600"
-                  title="결제내역"
-                  onPress={() => navigation.navigate('PaymentHistoryScreen')}
-                />
-                <Divider />
-                <MenuRow
-                  icon="▭"
-                  iconBgClassName="bg-orange-50"
-                  iconTextClassName="text-orange-600"
-                  title="카드관리"
-                  onPress={() => navigation.navigate('CardManagementScreen')}
-                />
-              </CardSection>
-            </View>
-
-            <View className="mt-6 w-full">
-              <CardSection>
-                <Text className="mb-3 text-lg font-bold text-slate-950">
-                  설정
-                </Text>
-                <MenuRow title="알림 설정" />
-                <Divider />
-                <MenuRow title="보안 설정" />
-                <Divider />
-                <MenuRow title="약관 및 정책" />
-                <Divider />
-                <MenuRow title="앱 버전" value="v1.0.0" />
-              </CardSection>
-            </View>
-
-            <View className="mt-6 w-full flex-row items-center justify-center">
-              <Pressable accessibilityRole="button" onPress={onPressWithdraw}>
-                <Text className="text-sm text-slate-500 underline">
-                  회원탈퇴
-                </Text>
-              </Pressable>
-              <View className="w-6" />
-              <Pressable accessibilityRole="button" onPress={onPressLogout}>
-                <Text className="text-sm text-slate-500 underline">
-                  로그아웃
-                </Text>
-              </Pressable>
-            </View>
+          <View className="flex-row gap-3">
+            <ShortcutCard title="친구관리" icon="👥" />
+            <ShortcutCard title="알림" icon="🔔" />
           </View>
-        </ScrollView>
 
-        {/* ✅ BottomNav를 absolute 대신 flex 흐름 안에 배치 */}
-        <BottomNav active="my" />
+          <Card title="나의 관리">
+            <MenuRow
+              title="결제내역"
+              left={<MenuIcon value="💳" />}
+              onPress={() => navigation.navigate('PaymentHistoryScreen')}
+            />
+            <Divider />
+            <MenuRow
+              title="카드관리"
+              left={<MenuIcon value="💼" />}
+              onPress={() => navigation.navigate('CardManagementScreen')}
+            />
+          </Card>
+
+          <Card title="설정">
+            <ListItem title="알림 설정" right={<Text className="text-neutral-black2">›</Text>} />
+            <Divider />
+            <ListItem title="보안 설정" right={<Text className="text-neutral-black2">›</Text>} />
+            <Divider />
+            <ListItem title="약관 및 정책" right={<Text className="text-neutral-black2">›</Text>} />
+            <Divider />
+            <ListItem title="앱 버전" right={<Text className="font-pretendard text-normal-regular text-neutral-black2">v1.0.0</Text>} />
+          </Card>
+
+          <View className="flex-row justify-center gap-6">
+            <Button
+              label="회원탈퇴"
+              variant="ghost"
+              onPress={() => setIsWithdrawVisible(true)}
+            />
+            <Button
+              label="로그아웃"
+              variant="ghost"
+              onPress={() => setIsLogoutVisible(true)}
+            />
+          </View>
+        </View>
       </MypageFrame>
+
+      <MypageBottomNav active="my" onChange={handleChangeBottomNav} />
+
+      <LogoutDialog
+        visible={isLogoutVisible}
+        onConfirm={() => setIsLogoutVisible(false)}
+        onClose={() => setIsLogoutVisible(false)}
+      />
+      <WithdrawDialog
+        visible={isWithdrawVisible}
+        onConfirm={() => setIsWithdrawVisible(false)}
+        onClose={() => setIsWithdrawVisible(false)}
+      />
+    </>
   );
 }
 
-function ShortcutCard({
-  icon,
-  iconBgClassName,
-  iconTextClassName,
-  title,
-  hasBadge = false,
-}: {
-  icon: string;
-  iconBgClassName: string;
-  iconTextClassName: string;
-  title: string;
-  hasBadge?: boolean;
-}) {
+function ShortcutCard({ title, icon }: { title: string; icon: string }) {
   return (
-    <View className="h-[72px] flex-1 flex-row items-center rounded-xl border border-zinc-100 bg-white px-4 shadow-sm">
-      <View
-        className={`mr-3 h-10 w-10 items-center justify-center rounded-full ${iconBgClassName}`}
-      >
-        <Text className={`text-xl ${iconTextClassName}`}>{icon}</Text>
+    <Card>
+      <View className="min-h-[48px] flex-row items-center">
+        <MenuIcon value={icon} />
+        <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
+          {title}
+        </Text>
       </View>
-      <Text className="text-base font-semibold text-slate-950">{title}</Text>
-      {hasBadge ? (
-        <View className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500" />
-      ) : null}
+    </Card>
+  );
+}
+
+function MenuIcon({ value }: { value: string }) {
+  return (
+    <View className="h-9 w-9 items-center justify-center rounded-full bg-neutral-grey2">
+      <Text className="text-heading-3">{value}</Text>
     </View>
   );
 }

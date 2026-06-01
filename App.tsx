@@ -20,17 +20,12 @@ import type { PaymentPinRouteParams } from "./src/features/payment/types/payment
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
-import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
-
-
-import CardDetailScreen from './src/features/mypage/screens/CardDetailScreen';
-import CardManagementScreen, {
-  mockManagedCards,
-  type ManagedCard,
-} from './src/features/mypage/screens/CardManagementScreen';
-import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
-import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
-import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
+import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
+import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
+import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
+import PaymentDetailScreen from "./src/features/mypage/screens/PaymentDetailScreen";
+import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistoryScreen";
+import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
 
 
 
@@ -46,6 +41,12 @@ export type RootStackParamList = {
   // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
   /*PaymentMethodSelect: undefined;*/
   CardRegister: undefined;
+  MypageHomeScreen: undefined;
+  ProfileConfirmScreen: undefined;
+  CardManagementScreen: undefined;
+  CardDetailScreen: { cardId: string };
+  PaymentHistoryScreen: undefined;
+  PaymentDetailScreen: { paymentId: string };
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -59,6 +60,12 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentMethodSelect: "payment/method-select",
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
+      MypageHomeScreen: "mypage",
+      ProfileConfirmScreen: "mypage/profile",
+      CardManagementScreen: "mypage/cards",
+      CardDetailScreen: "mypage/cards/:cardId",
+      PaymentHistoryScreen: "mypage/payments",
+      PaymentDetailScreen: "mypage/payments/:paymentId",
     },
   },
 };
@@ -129,6 +136,31 @@ export default function App() {
             />
 
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
+
+            <Stack.Screen
+              name="MypageHomeScreen"
+              component={MypageHomeScreen}
+            />
+            <Stack.Screen
+              name="ProfileConfirmScreen"
+              component={ProfileConfirmScreen}
+            />
+            <Stack.Screen
+              name="CardManagementScreen"
+              component={CardManagementScreen}
+            />
+            <Stack.Screen
+              name="CardDetailScreen"
+              component={CardDetailScreen}
+            />
+            <Stack.Screen
+              name="PaymentHistoryScreen"
+              component={PaymentHistoryScreen}
+            />
+            <Stack.Screen
+              name="PaymentDetailScreen"
+              component={PaymentDetailScreen}
+            />
 
             {/*
                         // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
