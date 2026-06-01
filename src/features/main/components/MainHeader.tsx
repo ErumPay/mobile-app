@@ -14,7 +14,7 @@ export function MainHeader({
   isNotificationLoading = false,
 }: MainHeaderProps) {
   return (
-    <View className="z-10 flex-row items-center justify-between bg-neutral-white px-5 pb-3 pt-5">
+    <View className="z-10 flex-row items-center justify-between border-b border-neutral-grey1 bg-neutral-white px-5 py-3">
       <Image
         resizeMode="contain"
         source={require("../../../assets/images/erumpay-ci.png")}

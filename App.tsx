@@ -17,24 +17,16 @@ import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMet
 import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
 import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
-// [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
-// import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
-
-import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
-
-
-import CardDetailScreen from './src/features/mypage/screens/CardDetailScreen';
-import CardManagementScreen, {
-  mockManagedCards,
-  type ManagedCard,
-} from './src/features/mypage/screens/CardManagementScreen';
-import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
-import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
-import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
-
-
-
-
+import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScreen";
+import type { PaymentResultRouteParams } from "./src/features/payment/types/paymentResult.types";
+import PaymentCancelScreen from "./src/features/payment/screens/PaymentCancelScreen";
+import type { PaymentCancelRouteParams } from "./src/features/payment/types/paymentCancel.types";
+import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
+import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
+import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
+import PaymentDetailScreen from "./src/features/mypage/screens/PaymentDetailScreen";
+import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistoryScreen";
+import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -45,6 +37,7 @@ export type RootStackParamList = {
   PaymentPin: PaymentPinRouteParams | undefined;
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
+  PaymentCancel: PaymentCancelRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -65,14 +58,14 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentMethodSelect: "payment/method-select",
       PaymentCardSelect: "payment/card-select",
       PaymentPin: "payment/pin",
-      PaymentResult: 'payment/result',
+      PaymentResult: "payment/result",
+      PaymentCancel: "payment/cancel",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
       CardDetailScreen: "mypage/cards/:cardId",
       PaymentHistoryScreen: "mypage/payments",
       PaymentDetailScreen: "mypage/payments/:paymentId",
-      PhoneVerificationScreen: "mypage/phone-verification",
     },
   },
 };
@@ -106,46 +99,24 @@ export default function App() {
             initialRouteName="Main"
             screenOptions={{ headerShown: false }}
           >
-            <Stack.Screen
-              name="Main"
-              component={MainScreen}
-              options={{ title: "메인" }}
-            />
-
-            <Stack.Screen
-              name="Guide"
-              component={GuideScreen}
-              options={{ title: "IA 가이드" }}
-            />
-
-            <Stack.Screen
-              name="CardRegister"
-              component={CardRegisterScreen}
-            />
-
+            <Stack.Screen name="Main" component={MainScreen} />
+            <Stack.Screen name="Guide" component={GuideScreen} />
+            <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
 
             <Stack.Screen
               name="PaymentMethodSelect"
               component={PaymentMethodSelectScreen}
             />
-
             <Stack.Screen
               name="PaymentCardSelect"
               component={PaymentCardSelectScreen}
             />
-
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
 
-            <Stack.Screen
-                name="PaymentResult"
-                component={PaymentResultScreen}
-            />
-
-            <Stack.Screen
-              name="MypageHomeScreen"
-              component={MypageHomeScreen}
-            />
+            <Stack.Screen name="MypageHomeScreen" component={MypageHomeScreen} />
             <Stack.Screen
               name="ProfileConfirmScreen"
               component={ProfileConfirmScreen}
@@ -154,10 +125,7 @@ export default function App() {
               name="CardManagementScreen"
               component={CardManagementScreen}
             />
-            <Stack.Screen
-              name="CardDetailScreen"
-              component={CardDetailScreen}
-            />
+            <Stack.Screen name="CardDetailScreen" component={CardDetailScreen} />
             <Stack.Screen
               name="PaymentHistoryScreen"
               component={PaymentHistoryScreen}
@@ -166,14 +134,6 @@ export default function App() {
               name="PaymentDetailScreen"
               component={PaymentDetailScreen}
             />
-
-            {/*
-                        // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
-                        <Stack.Screen
-                            name="MypageHomeScreen"
-                            component={MypageHomeScreen}
-                            options={{ headerShown: false }}
-                        />*/}
           </Stack.Navigator>
         </NavigationContainer>
       </View>

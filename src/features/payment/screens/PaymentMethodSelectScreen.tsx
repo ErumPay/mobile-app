@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, Text, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../../App';
@@ -44,12 +44,19 @@ export default function PaymentMethodSelectScreen({ navigation }: Props) {
 
                 <View className="h-px bg-neutral-grey1" />
 
-                <PaymentRequestSummary summary={mockPaymentRequestSummary} />
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="pb-6"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <PaymentRequestSummary summary={mockPaymentRequestSummary} />
 
-                <PaymentActionOptionList
-                    options={options}
-                    onPressOption={handlePressOption}
-                />
+                    <PaymentActionOptionList
+                        options={options}
+                        onPressOption={handlePressOption}
+                    />
+                </ScrollView>
             </View>
         </SafeAreaView>
     );
