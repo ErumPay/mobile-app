@@ -20,6 +20,22 @@ import type { PaymentPinRouteParams } from "./src/features/payment/types/payment
 // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
 // import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
 
+import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
+
+
+import CardDetailScreen from './src/features/mypage/screens/CardDetailScreen';
+import CardManagementScreen, {
+  mockManagedCards,
+  type ManagedCard,
+} from './src/features/mypage/screens/CardManagementScreen';
+import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
+import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
+import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
+
+
+
+
+
 export type RootStackParamList = {
   Main: undefined;
   Guide: undefined;
