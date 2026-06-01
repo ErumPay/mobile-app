@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { Modal as RNModal, Pressable, Text, View, ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useState } from 'react';
 
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
@@ -130,9 +130,9 @@ function ReceiptModal({
       visible={visible}
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-center bg-neutral-black3 px-4 py-10">
-        <View className="max-h-[82%] rounded-2xl bg-neutral-white overflow-hidden">
-          <View className="h-14 flex-row items-center justify-end border-b border-neutral-grey1 px-4">
+      <View className="flex-1 justify-center bg-neutral-black3 px-4 py-6">
+        <View className="max-h-[90%] rounded-2xl bg-neutral-white overflow-hidden">
+          <View className="h-12 flex-row items-center justify-end border-b border-neutral-grey1 px-4">
             <Pressable
               accessibilityRole="button"
               className="h-10 w-10 items-center justify-center"

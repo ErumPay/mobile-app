@@ -28,8 +28,18 @@ const statusLabel = {
 
 export function CardDetailScreen({ navigation, route }: Props) {
   const [dialog, setDialog] = useState<
-    'default' | 'alias' | 'delete' | 'deleteComplete' | null
+  'default' | 'alias' | 'delete' | 'deleteComplete' | null
   >(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    setIsLoading(false);
+  }, 700);
+
+  return () => clearTimeout(timer);
+}, []);
+
   const [activePaymentTab, setActivePaymentTab] =
     useState<PaymentDetailTab>('all');
   const [expandedBenefitIndex, setExpandedBenefitIndex] = useState<number | null>(
@@ -77,56 +87,74 @@ export function CardDetailScreen({ navigation, route }: Props) {
         }
       >
         <View className="gap-5 pb-28">
-          {card.disabled ? (
-            <NoticeBox tone="error" description="사용 정지된 카드입니다." />
-          ) : null}
+          {isLoading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              {card.disabled ? (
+                <NoticeBox tone="error" description="사용 정지된 카드입니다." />
+              ) : null}
 
-          <Card title="카드 정보">
-             {card.isDefault ? (
-              <View className="mb-3 self-start rounded bg-erum-main px-2 py-1">
-                <Text className="font-pretendard text-normal-bold text-neutral-white">
-                  대표
-                </Text>
-              </View>
-            ) : null}
-            <InfoRow label="카드사" value={card.issuer} />
-            <InfoRow label="카드명" value={card.name} />
-            <InfoRow label="카드번호" value={card.cardNumber} />
-            <InfoRow label="등록일" value={card.registeredAt} />
-          </Card>
+              <Card title="카드 정보">
+                {card.isDefault ? (
+                  <View className="mb-3 self-start rounded bg-erum-main px-2 py-1">
+                    <Text className="font-pretendard text-normal-bold text-neutral-white">
+                      대표
+                    </Text>
+                  </View>
+                ) : null}
 
-          <Card title="이번 달 실적">
-            <InfoRow label="사용금액" value="245,000원" valueClassName="text-erum-secondary" />
-            <InfoRow label="할인받은 금액" value="12,250원" valueClassName="text-erum-main" />
-            <View className="mt-3 h-2 w-full rounded-full bg-neutral-grey1">
-              <View className="h-2 w-[84%] rounded-full bg-erum-secondary" />
-            </View>
-          </Card>
+                <InfoRow label="카드사" value={card.issuer} />
+                <InfoRow label="카드명" value={card.name} />
+                <InfoRow label="카드번호" value={card.cardNumber} />
+                <InfoRow label="등록일" value={card.registeredAt} />
+              </Card>
 
-          <Card>
-            <InfoRow label="연회비" value="면제" />
-          </Card>
+              <Card title="이번 달 실적">
+                <InfoRow
+                  label="사용금액"
+                  value="245,000원"
+                  valueClassName="text-erum-secondary"
+                />
+                <InfoRow
+                  label="할인받은 금액"
+                  value="12,250원"
+                  valueClassName="text-erum-main"
+                />
+                <View className="mt-3 h-2 w-full rounded-full bg-neutral-grey1">
+                  <View className="h-2 w-[84%] rounded-full bg-erum-secondary" />
+                </View>
+              </Card>
 
-          <Card title="혜택">
-            <View className="gap-2">
-              {mockCardBenefits.map((benefit, index) => (
-                <Accordion
-                  key={benefit.title}
-                  title={benefit.title}
-                  expanded={expandedBenefitIndex === index}
-                  onToggle={() =>
-                    setExpandedBenefitIndex((currentIndex) =>
-                      currentIndex === index ? null : index,
-                    )
-                  }
-                >
-                  <Text className="font-pretendard text-large-regular text-neutral-black2">
-                    {benefit.description}
-                  </Text>
-                </Accordion>
-              ))}
-            </View>
-          </Card>
+              <Card>
+                <InfoRow label="연회비" value="면제" />
+              </Card>
+
+              <Card title="혜택">
+                <View className="gap-2">
+                  {mockCardBenefits.map((benefit, index) => (
+                    <Accordion
+                      key={benefit.title}
+                      title={benefit.title}
+                      expanded={expandedBenefitIndex === index}
+                      onToggle={() =>
+                        setExpandedBenefitIndex((currentIndex) =>
+                          currentIndex === index ? null : index,
+                        )
+                      }
+                    >
+                      <Text className="font-pretendard text-large-regular text-neutral-black2">
+                        {benefit.description}
+                      </Text>
+                    </Accordion>
+                  ))}
+                </View>
+              </Card>
 
           <Card>
             <View className="mb-3 flex-row border-b border-neutral-grey1">
@@ -190,6 +218,8 @@ export function CardDetailScreen({ navigation, route }: Props) {
             tone="error"
             description="카드를 삭제하면 모든 결제 내역은 유지되지만 해당 카드로는 더 이상 결제할 수 없습니다."
           />
+            </>
+          )}
         </View>
       </PageWrap>
 

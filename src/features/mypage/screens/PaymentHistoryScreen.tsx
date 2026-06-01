@@ -57,6 +57,15 @@ const methodClassName: Record<PaymentMethodType, string> = {
 export function PaymentHistoryScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
@@ -161,7 +170,13 @@ export function PaymentHistoryScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          {filteredPayments.length > 0 ? (
+          {isLoading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : filteredPayments.length > 0 ? (
             filteredPayments.map((payment) => (
               <PaymentItem
                 key={payment.id}

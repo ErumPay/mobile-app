@@ -18,6 +18,15 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CardManagementScreen'>;
 
 export function CardManagementScreen({ navigation }: Props) {
   const cards = useManagedCardsStore((state) => state.cards);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <>
@@ -32,7 +41,13 @@ export function CardManagementScreen({ navigation }: Props) {
         }
       >
         <View className="gap-4 pb-28">
-          {cards.length === 0 ? (
+          {isLoading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : cards.length === 0 ? (
             <EmptyState title="등록된 카드가 없습니다." />
           ) : (
             cards.map((card) => (
