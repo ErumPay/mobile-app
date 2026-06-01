@@ -17,9 +17,8 @@ import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMet
 import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
 import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
-// [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
-// import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
-
+import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
+import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
 import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
 
 
@@ -43,9 +42,8 @@ export type RootStackParamList = {
   PaymentMethodSelect: undefined;
   PaymentCardSelect: undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
-  // [fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정
-  /*PaymentMethodSelect: undefined;*/
-  CardManualRegister: undefined;
+  CardRegister: undefined;
+  PaymentResult: PaymentResultRouteParams | undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -104,13 +102,6 @@ export default function App() {
               options={{ title: "IA 가이드" }}
             />
 
-            {/*[fe] 조보름 260528 1050 |   KAN-1151 카드결제 화면 브랜치 병합 후 연결 예정*/}
-            {/*<Stack.Screen*/}
-            {/*    name="PaymentMethodSelect"*/}
-            {/*    component={PaymentMethodSelectScreen}*/}
-            {/*.   options={{ headerShown: false }}*/}
-            {/*/>*/}
-
             <Stack.Screen
               name="CardRegister"
               component={CardRegisterScreen}
@@ -129,6 +120,11 @@ export default function App() {
             />
 
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
+
+            <Stack.Screen
+                name="PaymentResult"
+                component={PaymentResultScreen}
+            />
 
             {/*
                         // [FE] 조보름 260529 0100 | 추후 마이페이지 연결
