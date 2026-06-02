@@ -1,3 +1,15 @@
+이건 `KAN-1348` 전체를 살리는 게 맞아. develop 쪽 `payment-prepare-${paymentId}`는 고정 문자열이라 멱등성 키 충돌 가능성이 있고, 결제 요청/취소 요청 키를 나눌 수도 없어.
+
+수정 포인트:
+
+- `KAN-1348`의 ULID 생성 로직 전체 유지
+- `createPaymentIdempotencyKey`
+- `createPaymentCancelIdempotencyKey`
+- develop 쪽 `payment-prepare-${paymentId}` 제거
+
+최종 코드:
+
+```ts
 const ULID_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const ULID_TIME_LENGTH = 10;
 const ULID_RANDOM_LENGTH = 16;
@@ -49,3 +61,4 @@ export function createPaymentIdempotencyKey(paymentId: number): string {
 export function createPaymentCancelIdempotencyKey(paymentId: number): string {
     return `pay:cancel:${paymentId}:${createUlid()}`;
 }
+```

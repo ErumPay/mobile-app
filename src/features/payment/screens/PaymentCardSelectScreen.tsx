@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../../../shared/components/Header/Header';
@@ -76,6 +76,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
         return route.params?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
     }, [hasValidPaymentId, paymentId, route.params?.idempotencyKey]);
+
     const [data, setData] = useState<PaymentCardSelectData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
@@ -105,6 +106,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
     const isSubmitDisabled =
         !data || (!selectedCardId && !isCombinationSelected);
+
     const selectedPaymentCard = useMemo<PaymentCard | null>(() => {
         if (!data) {
             return null;
