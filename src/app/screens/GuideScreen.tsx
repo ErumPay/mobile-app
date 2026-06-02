@@ -648,6 +648,10 @@ export default function GuideScreen({ navigation }: Props) {
 
                                 navigation.navigate("PaymentPin", {
                                   mode: "PAYMENT_INPUT",
+                                  paymentId: 1,
+                                  cardId: 1,
+                                  amount: 45000,
+                                  flow: "NORMAL",
                                 });
                                 return;
                               }

@@ -47,8 +47,10 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 export default function PaymentPinScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'PAYMENT_INPUT';
   const screenText = screenTextByMode[mode];
+  const paymentParams =
+    route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
   const paymentResultFlow: PaymentResultFlow =
-    route.params?.flow === 'DUTCH_PAY' ? 'DUTCH_PAY_PRE_AUTH' : 'NORMAL';
+    paymentParams?.flow === 'DUTCH_PAY' ? 'DUTCH_PAY_PRE_AUTH' : 'NORMAL';
 
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -70,9 +72,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
   const handleCompletePin = async (completedPin: string) => {
     if (mode === 'PAYMENT_INPUT') {
-      const { paymentId, cardId, amount } = route.params ?? {};
-
-      if (paymentId == null || cardId == null || amount == null) {
+      if (!paymentParams) {
         setPin('');
         setHasError(true);
         navigation.replace('PaymentResult', {
@@ -87,12 +87,12 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
         await requestPayment({
           pin: completedPin,
-          paymentId,
-          totalAmount: amount,
+          paymentId: paymentParams.paymentId,
+          totalAmount: paymentParams.amount,
           cards: [
             {
-              cardId,
-              amount,
+              cardId: paymentParams.cardId,
+              amount: paymentParams.amount,
             },
           ],
         });

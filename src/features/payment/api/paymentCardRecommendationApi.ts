@@ -22,7 +22,7 @@ const parsePaymentApiError = async (
     response: Response,
 ): Promise<PaymentApiErrorResponse> => {
     try {
-        return response.json();
+        return await response.json();
     } catch {
         return {};
     }

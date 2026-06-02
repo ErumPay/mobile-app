@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import {
@@ -25,6 +26,12 @@ export default function QrScanScreen({ navigation }: Props) {
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<ToastType>('info');
     const [isValidating, setIsValidating] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            scanLockRef.current = false;
+        }, []),
+    );
 
     const showToast = (message: string, type: ToastType) => {
         setToastMessage(message);
