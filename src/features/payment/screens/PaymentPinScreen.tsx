@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -11,6 +11,7 @@ import { Loading } from '../../../shared/components/Loading';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
+import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -54,6 +55,15 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const idempotencyKey = useMemo(() => {
+    const { paymentId } = route.params ?? {};
+
+    if (paymentId == null) {
+      return undefined;
+    }
+
+    return route.params?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
+  }, [route.params]);
 
   const handlePressClose = () => {
     navigation.goBack();
@@ -72,7 +82,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     if (mode === 'PAYMENT_INPUT') {
       const { paymentId, cardId, amount } = route.params ?? {};
 
-      if (paymentId == null || cardId == null || amount == null) {
+      if (paymentId == null || cardId == null || amount == null || !idempotencyKey) {
         setPin('');
         setHasError(true);
         navigation.replace('PaymentResult', {
@@ -85,17 +95,20 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       try {
         setIsSubmitting(true);
 
-        await requestPayment({
-          pin: completedPin,
-          paymentId,
-          totalAmount: amount,
-          cards: [
-            {
-              cardId,
-              amount,
-            },
-          ],
-        });
+        await requestPayment(
+          {
+            pin: completedPin,
+            paymentId,
+            totalAmount: amount,
+            cards: [
+              {
+                cardId,
+                amount,
+              },
+            ],
+          },
+          idempotencyKey,
+        );
 
         setPin('');
         setHasError(false);

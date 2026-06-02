@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,12 +14,14 @@ import type {
 } from '../types/paymentMethod.types';
 import { validatePaymentQr } from '../api/paymentQrApi';
 import { toPaymentRequestSummary } from '../utils/paymentQrAdapter';
+import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentMethodSelect'>;
 
 export default function PaymentMethodSelectScreen({ navigation, route }: Props) {
     const routeSummary = route.params?.summary;
     const routeToken = route.params?.token;
+    const paymentIdempotencyKeyMap = useRef(new Map<number, string>());
     const [summary, setSummary] = useState<PaymentRequestSummaryType | null>(
         routeSummary ?? null,
     );
@@ -96,9 +98,22 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 return;
             }
 
+            const existingIdempotencyKey = paymentIdempotencyKeyMap.current.get(
+                summary.paymentId,
+            );
+            const idempotencyKey =
+                existingIdempotencyKey ??
+                createPaymentIdempotencyKey(summary.paymentId);
+
+            paymentIdempotencyKeyMap.current.set(
+                summary.paymentId,
+                idempotencyKey,
+            );
+
             navigation.navigate('PaymentCardSelect', {
                 paymentId: summary.paymentId,
                 amount: summary.amount,
+                idempotencyKey,
             });
             return;
         }

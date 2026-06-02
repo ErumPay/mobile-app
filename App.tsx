@@ -45,6 +45,7 @@ export type RootStackParamList = {
     | {
         paymentId?: number | string;
         amount?: number | string;
+        idempotencyKey?: string;
       }
     | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
