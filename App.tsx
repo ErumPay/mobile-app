@@ -21,6 +21,8 @@ import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScr
 import type { PaymentResultRouteParams } from "./src/features/payment/types/paymentResult.types";
 import PaymentCancelScreen from "./src/features/payment/screens/PaymentCancelScreen";
 import type { PaymentCancelRouteParams } from "./src/features/payment/types/paymentCancel.types";
+import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
+import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -38,6 +40,7 @@ export type RootStackParamList = {
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
+  DutchPayGroup: DutchPayGroupRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -60,6 +63,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentPin: "payment/pin",
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
+      DutchPayGroup: "payment/dutch-pay-group",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -115,6 +119,7 @@ export default function App() {
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
+            <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
 
             <Stack.Screen name="MypageHomeScreen" component={MypageHomeScreen} />
             <Stack.Screen

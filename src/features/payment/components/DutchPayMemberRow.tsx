@@ -1,0 +1,189 @@
+import { Feather } from '@expo/vector-icons';
+import { Pressable, Text, TextInput, View } from 'react-native';
+
+import { colors } from '../../../shared/styles/designTokens';
+import type { DutchPayMember } from '../types/dutchPay.types';
+
+type Props = {
+  member: DutchPayMember;
+  isLast: boolean;
+  menuOpen?: boolean;
+  onPressMenu?: (memberId: string) => void;
+};
+
+function formatAmount(amount: number) {
+  return `${amount.toLocaleString('ko-KR')}원`;
+}
+
+function StatusCheck({ tone = 'success' }: { tone?: 'success' | 'error' }) {
+  return (
+    <View
+      className="ml-2 h-5 w-5 items-center justify-center rounded-full"
+      style={{
+        backgroundColor:
+          tone === 'success' ? colors.state.success : colors.state.error,
+      }}
+    >
+      <Feather name="check" size={13} color={colors.neutral.white} />
+    </View>
+  );
+}
+
+function MemberBadge({ label, filled }: { label: string; filled?: boolean }) {
+  return (
+    <View
+      className={`mr-2 rounded-full px-2 py-1 ${
+        filled
+          ? 'bg-state-success'
+          : 'border border-state-success bg-neutral-white'
+      }`}
+    >
+      <Text
+        className={`font-pretendard text-small-bold ${
+          filled ? 'text-neutral-white' : 'text-state-success'
+        }`}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function MemberStatusLine({ member }: { member: DutchPayMember }) {
+  if (member.status === 'INPUT_EDITING') {
+    return (
+      <View className="mt-2 flex-row items-center gap-2">
+        <View className="min-w-0 flex-1 rounded-lg border border-neutral-grey1 bg-neutral-white px-3 py-2">
+          <TextInput
+            editable={false}
+            value={member.editableAmount ?? ''}
+            className="font-pretendard text-normal-regular text-neutral-black2"
+          />
+        </View>
+        <Text className="font-pretendard text-normal-regular text-neutral-black1">
+          원
+        </Text>
+        <StatusCheck />
+      </View>
+    );
+  }
+
+  if (member.amount) {
+    const autoSplit = member.status === 'AUTO_SPLIT';
+    const confirmed = member.status === 'AMOUNT_CONFIRMED';
+
+    return (
+      <View className="mt-1 flex-row items-center">
+        <Text className="font-pretendard text-normal-bold text-erum-main">
+          {formatAmount(member.amount)}
+        </Text>
+        {autoSplit ? (
+          <View className="ml-2 rounded-full bg-[#E7F7EC] px-2 py-1">
+            <Text className="font-pretendard text-small-bold text-state-success">
+              자동배분
+            </Text>
+          </View>
+        ) : null}
+        {confirmed ? <StatusCheck /> : null}
+      </View>
+    );
+  }
+
+  if (member.status === 'WAITING_AMOUNT') {
+    return (
+      <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
+        금액 입력 대기 중
+      </Text>
+    );
+  }
+
+  if (member.status === 'PAYMENT_PENDING') {
+    return (
+      <Text className="mt-1 font-pretendard text-normal-bold text-erum-main">
+        결제진행중
+      </Text>
+    );
+  }
+
+  if (member.status === 'PAYMENT_COMPLETED') {
+    return (
+      <View className="mt-1 flex-row items-center">
+        <Text className="font-pretendard text-normal-bold text-erum-main">
+          결제완료
+        </Text>
+        <StatusCheck />
+      </View>
+    );
+  }
+
+  if (member.status === 'PAYMENT_FAILED') {
+    return (
+      <View className="mt-1 flex-row items-center">
+        <Text className="font-pretendard text-normal-bold text-state-error">
+          결제실패
+        </Text>
+        <StatusCheck tone="error" />
+      </View>
+    );
+  }
+
+  return null;
+}
+
+export default function DutchPayMemberRow({
+  member,
+  isLast,
+  menuOpen = false,
+  onPressMenu,
+}: Props) {
+  return (
+    <View className="relative flex-row gap-3">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-erum-main">
+        <Text className="font-pretendard text-large-bold text-neutral-white">
+          {member.initial}
+        </Text>
+      </View>
+
+      <View
+        className={`min-w-0 flex-1 pb-5 ${
+          isLast ? '' : 'border-b border-neutral-grey1'
+        }`}
+      >
+        <View className="min-h-12 justify-center">
+          <View className="flex-row items-center">
+            {member.isOwner ? <MemberBadge label="대표자" filled /> : null}
+            {member.isMe ? <MemberBadge label="나" /> : null}
+            <Text className="min-w-0 flex-1 font-pretendard text-large-regular text-neutral-black1">
+              {member.name}({member.phoneSuffix})
+            </Text>
+            {member.canOpenMenu ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${member.name} 내보내기 메뉴`}
+                hitSlop={10}
+                className="h-8 w-8 items-center justify-center"
+                onPress={() => onPressMenu?.(member.id)}
+              >
+                <Feather
+                  name="more-vertical"
+                  size={18}
+                  color={colors.neutral.black2}
+                />
+              </Pressable>
+            ) : null}
+          </View>
+
+          <MemberStatusLine member={member} />
+        </View>
+      </View>
+
+      {menuOpen ? (
+        <View className="absolute right-3 top-9 z-10 rounded-lg bg-neutral-white px-5 py-4 shadow-lg">
+          <Text className="font-pretendard text-normal-bold text-state-error">
+            내보내기
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
