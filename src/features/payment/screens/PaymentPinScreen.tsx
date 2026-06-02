@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
@@ -72,7 +72,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     if (mode === 'PAYMENT_INPUT') {
       const { paymentId, cardId, amount } = route.params ?? {};
 
-      if (!paymentId || !cardId || !amount) {
+      if (paymentId == null || cardId == null || amount == null) {
         setPin('');
         setHasError(true);
         navigation.replace('PaymentResult', {
@@ -157,62 +157,69 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <Header title="" type="close" onPressRight={handlePressClose} />
       }
     >
-      <View className="flex-1">
-        <View className="flex-[0.42] items-center justify-center px-5">
-          <Text className="font-pretendard text-heading-3 text-neutral-black1">
-            {screenText.title}
-          </Text>
-
-          <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
-            {screenText.description}
-          </Text>
-
-          <View className="mt-8">
-            <PinCodeDots
-              valueLength={pin.length}
-              maxLength={PIN_LENGTH}
-              hasError={hasError}
-            />
-          </View>
-
-          {hasError ? (
-            <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
-              {failCount || 1}회 틀렸습니다.
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="flex-grow"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="flex-1">
+          <View className="flex-[0.42] items-center justify-center px-5">
+            <Text className="font-pretendard text-heading-3 text-neutral-black1">
+              {screenText.title}
             </Text>
-          ) : null}
 
-          {isSubmitting ? (
-            <Loading message="결제를 처리하는 중입니다." />
-          ) : null}
+            <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
+              {screenText.description}
+            </Text>
 
-          {screenText.showWarning && !isSubmitting ? (
-            <View className="mt-12 w-full">
-              <NoticeBox
-                tone="warning"
-                description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
+            <View className="mt-8">
+              <PinCodeDots
+                valueLength={pin.length}
+                maxLength={PIN_LENGTH}
+                hasError={hasError}
               />
             </View>
-          ) : null}
 
-          {screenText.showForgotLink && !isSubmitting ? (
-            <Pressable
-              accessibilityRole="button"
-              className="mt-16"
-              onPress={handlePressForgotPassword}
-              onLongPress={handleMockError}
-            >
-              <Text className="font-pretendard text-normal-bold text-erum-main">
-                간편 비밀번호를 잊으셨나요?
+            {hasError ? (
+              <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
+                {failCount || 1}회 틀렸습니다.
               </Text>
-            </Pressable>
-          ) : null}
-        </View>
+            ) : null}
 
-        <PinCodeKeypad
-          onPressNumber={isSubmitting ? () => {} : handlePressNumber}
-          onPressDelete={isSubmitting ? () => {} : handlePressDelete}
-        />
-      </View>
+            {isSubmitting ? (
+              <Loading message="결제를 처리하는 중입니다." />
+            ) : null}
+
+            {screenText.showWarning && !isSubmitting ? (
+              <View className="mt-12 w-full">
+                <NoticeBox
+                  tone="warning"
+                  description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
+                />
+              </View>
+            ) : null}
+
+            {screenText.showForgotLink && !isSubmitting ? (
+              <Pressable
+                accessibilityRole="button"
+                className="mt-16"
+                onPress={handlePressForgotPassword}
+                onLongPress={handleMockError}
+              >
+                <Text className="font-pretendard text-normal-bold text-erum-main">
+                  간편 비밀번호를 잊으셨나요?
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <PinCodeKeypad
+            onPressNumber={isSubmitting ? () => {} : handlePressNumber}
+            onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+          />
+        </View>
+      </ScrollView>
     </PageWrap>
   );
 }

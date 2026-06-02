@@ -1,209 +1,401 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 
+import { useState, useEffect } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
-import { BottomNav, MypageFrame, MypageHeader } from '../components/MypageLayout';
+import { Button } from '../../../shared/components/Button';
+import { Card } from '../../../shared/components/Card';
+import { EmptyState } from '../../../shared/components/EmptyState';
+import { Tab } from '../../../shared/components/Tab';
+import { BottomSheet } from '../../../shared/components/BottomSheet';
 
-interface PaymentHistoryScreenProps {
-  isEmpty?: boolean;
-  showFilterSheet?: boolean;
-  onBack?: () => void;
-  onPressFilter?: () => void;
-  onPressItem?: () => void;
-  onCloseFilter?: () => void;
-}
+import { mockPaymentHistories } from '../mocks/mypageMockData';
+import type { PaymentHistoryItem, PaymentStatus, PaymentMethodType } from '../types/mypage';
 
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { PageWrap } from '../../../shared/components/PageWrap';
+
+import { Feather } from '@expo/vector-icons';
+
+
+
+type Props = NativeStackScreenProps<RootStackParamList, 'PaymentHistoryScreen'>;
 type PaymentTab = 'all' | 'completed' | 'canceled';
+type PeriodFilter = 'week' | 'month' | 'year' | 'custom' | null;
+type DatePickerTarget = 'start' | 'end' | null;
 
-type PaymentStatus = '결제완료' | '결제취소' | '결제취소요청';
+const statusLabel: Record<PaymentStatus, string> = {
+  completed: '결제완료',
+  canceled: '결제취소',
+  cancelRequested: '결제취소요청',
+};
 
-interface PaymentHistoryItem {
-  id: string;
-  method: string;
-  status: PaymentStatus;
-  title: string;
-  date: string;
-  amount: string;
-  tone: string;
-}
+const methodLabel: Record<PaymentMethodType, string> = {
+  dutchpay: '더치페이',
+  remote: '원격결제',
+  singleBenefit: '단일혜택',
+  singlePerformance: '단일실적',
+  splitBenefit: '분할혜택',
+  splitPerformance: '분할실적',
+};
 
-const mockPayments: PaymentHistoryItem[] = [
-  {
-    id: 'payment-1',
-    method: '더치페이',
-    status: '결제완료',
-    title: 'Luxury Hotel Stay',
-    date: '2026.04.23',
-    amount: '34,000원',
-    tone: 'pink',
-  },
-  {
-    id: 'payment-2',
-    method: '원격결제',
-    status: '결제취소요청',
-    title: '코드보안 양성산',
-    date: '2026.04.18',
-    amount: '34,000원',
-    tone: 'purple',
-  },
-  {
-    id: 'payment-3',
-    method: '단일혜택',
-    status: '결제취소',
-    title: '서울순대국',
-    date: '2026.04.16',
-    amount: '8,000원',
-    tone: 'blue',
-  },
-  {
-    id: 'payment-4',
-    method: '단일실적',
-    status: '결제완료',
-    title: '스타벅스 코리아 양성점',
-    date: '2026.04.05',
-    amount: '18,300원',
-    tone: 'cyan',
-  },
-  {
-    id: 'payment-5',
-    method: '분할혜택',
-    status: '결제취소',
-    title: '유니클로 양동포점',
-    date: '2026.04.02',
-    amount: '52,900원',
-    tone: 'emerald',
-  },
-  {
-    id: 'payment-6',
-    method: '분할실적',
-    status: '결제완료',
-    title: '무인양품 첨단센타운',
-    date: '2026.04.01',
-    amount: '3,334,000원',
-    tone: 'lime',
-  },
-];
+const methodClassName: Record<PaymentMethodType, string> = {
+  dutchpay: 'bg-pink-50 text-pink-600',
+  remote: 'bg-purple-50 text-purple-600',
+  singleBenefit: 'bg-blue-50 text-blue-600',
+  singlePerformance: 'bg-sky-50 text-sky-600',
+  splitBenefit: 'bg-emerald-50 text-emerald-600',
+  splitPerformance: 'bg-lime-50 text-lime-700',
+};
 
-export function PaymentHistoryScreen({
-  isEmpty = false,
-  showFilterSheet = false,
-  onBack,
-  onPressFilter,
-  onPressItem,
-  onCloseFilter,
-}: PaymentHistoryScreenProps) {
+
+export function PaymentHistoryScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handlePressPayment = (payment: PaymentHistoryItem) => {
-    navigation.navigate('PaymentDetailScreen', {
-      paymentId: payment.id,
-    });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(null);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
+  const [appliedPeriod, setAppliedPeriod] = useState<PeriodFilter>(null);
+  const [appliedMethod, setAppliedMethod] = useState<PaymentMethodType | null>(null);
+
+  const [startDate, setStartDate] = useState(() => new Date(2026, 3, 30));
+  const [endDate, setEndDate] = useState(() => new Date(2026, 4, 1));
+  const [datePickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
+  const isFilterApplied = appliedPeriod !== null || appliedMethod !== null;
+  const handlePressFilter = () => {
+    if (isFilterApplied) {
+      setSelectedPeriod(null);
+      setSelectedMethod(null);
+      setAppliedPeriod(null);
+      setAppliedMethod(null);
+      setIsFilterOpen(false);
+      return;
+    }
+
+    setIsFilterOpen(true);
   };
 
-  const sourcePayments = isEmpty ? [] : mockPayments;
-
-  const filteredPayments = sourcePayments.filter((payment) => {
-    if (activeTab === 'all') {
-      return true;
+  const handleChangeDate = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    if (event.type === 'dismissed') {
+      setDatePickerTarget(null);
+      return;
     }
 
-    if (activeTab === 'completed') {
-      return payment.status === '결제완료';
+    if (!selectedDate || !datePickerTarget) {
+      return;
     }
 
-    return payment.status === '결제취소' || payment.status === '결제취소요청';
+    if (datePickerTarget === 'start') {
+      setStartDate(selectedDate);
+    }
+
+    if (datePickerTarget === 'end') {
+      setEndDate(selectedDate);
+    }
+
+    setSelectedPeriod('custom');
+    setDatePickerTarget(null);
+  };
+
+  const filteredPayments = mockPaymentHistories.filter((payment) => {
+    const isTabMatched =
+      activeTab === 'all'
+        ? true
+        : activeTab === 'completed'
+          ? payment.status === 'completed'
+          : payment.status === 'canceled' || payment.status === 'cancelRequested';
+
+    const isPeriodMatched = appliedPeriod
+      ? isPaymentInPeriod(payment.date, appliedPeriod, startDate, endDate)
+      : true;
+
+    const isMethodMatched = appliedMethod
+      ? payment.method === appliedMethod
+      : true;
+
+    return isTabMatched && isPeriodMatched && isMethodMatched;
   });
 
-  const hasPayments = filteredPayments.length > 0;
-  const isFilterSheetVisible = showFilterSheet || isFilterOpen;
-
-  const handlePressFilter = () => {
-    setIsFilterOpen(true);
-    onPressFilter?.();
-  };
-
-  const handleCloseFilter = () => {
-    setIsFilterOpen(false);
-    onCloseFilter?.();
-  };
-
   return (
-      <MypageFrame backgroundClassName="bg-zinc-50">
-        <MypageHeader title="결제내역" onBack={onBack} />
-        <View className="h-12 w-full flex-row border-b border-zinc-100 bg-white">
-          <HistoryTab
-            label="전체"
-            active={activeTab === 'all'}
-            onPress={() => setActiveTab('all')}
+    <>
+      <PageWrap
+        backgroundClassName="bg-neutral-grey2"
+        header={
+          <Header
+            title="결제내역"
+            type="back"
+            onPressLeft={() => navigation.goBack()}
           />
-          <HistoryTab
-            label="결제완료"
-            active={activeTab === 'completed'}
-            onPress={() => setActiveTab('completed')}
+        }
+      >
+        <View className="gap-4 pb-28">
+          <Tab
+            items={[
+              { label: '전체', value: 'all' },
+              { label: '결제완료', value: 'completed' },
+              { label: '결제취소', value: 'canceled' },
+            ]}
+            value={activeTab}
+            onChange={(value) => setActiveTab(value as PaymentTab)}
           />
-          <HistoryTab
-            label="결제취소"
-            active={activeTab === 'canceled'}
-            onPress={() => setActiveTab('canceled')}
+
+          <View className="flex-row items-center justify-between">
+            <Text className="font-pretendard text-large-bold text-neutral-black1">
+              총 {filteredPayments.length}건
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              className="h-8 w-8 items-center justify-center rounded-full bg-[#2F62A3]"
+              onPress={handlePressFilter}
+            >
+              <Feather name="filter" size={18} color="#FFFFFF" />
+            </Pressable>
+          </View>
+
+          {isLoading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : filteredPayments.length > 0 ? (
+            filteredPayments.map((payment) => (
+              <PaymentItem
+                key={payment.id}
+                payment={payment}
+                onPress={() =>
+                  navigation.navigate('PaymentDetailScreen', {
+                    paymentId: payment.id,
+                  })
+                }
+              />
+            ))
+          ) : (
+            <EmptyState title="결제 내역이 없습니다." />
+          )}
+        </View>
+      </PageWrap>
+
+      <FloatingButton
+        value="my"
+        onChange={(value) => {
+          if (value === 'home') navigation.navigate('Main');
+          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'my') navigation.navigate('MypageHomeScreen');
+        }}
+      />
+
+      <BottomSheet
+        visible={isFilterOpen}
+        title="필터"
+        onClose={() => setIsFilterOpen(false)}
+      >
+        <View className="gap-7">
+          <View>
+            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
+              기간
+            </Text>
+
+            <View className="flex-row gap-3">
+              <FilterChip
+                label="이번주"
+                active={selectedPeriod === 'week'}
+                onPress={() => setSelectedPeriod('week')}
+              />
+              <FilterChip
+                label="이번달"
+                active={selectedPeriod === 'month'}
+                onPress={() => setSelectedPeriod('month')}
+              />
+              <FilterChip
+                label="올해"
+                active={selectedPeriod === 'year'}
+                onPress={() => setSelectedPeriod('year')}
+              />
+            </View>
+          </View>
+
+          <View>
+            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
+              기간 선택
+            </Text>
+
+            <View className="flex-row gap-3">
+              <DateBox
+                label={formatDate(startDate)}
+                active={selectedPeriod === 'custom'}
+                onPress={() => setDatePickerTarget('start')}
+              />
+
+              <DateBox
+                label={formatDate(endDate)}
+                active={selectedPeriod === 'custom'}
+                onPress={() => setDatePickerTarget('end')}
+              />
+            </View>
+            {datePickerTarget ? (
+              <DateTimePicker
+                value={datePickerTarget === 'start' ? startDate : endDate}
+                mode="date"
+                display="default"
+                onChange={handleChangeDate}
+              />
+            ) : null}
+          </View>
+
+          <View>
+            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
+              결제수단
+            </Text>
+
+            <View className="flex-row flex-wrap gap-y-3">
+              <View className="w-1/3 pr-2">
+                <FilterChip
+                  label="더치페이"
+                  active={selectedMethod === 'dutchpay'}
+                  onPress={() => setSelectedMethod('dutchpay')}
+                />
+              </View>
+
+              <View className="w-1/3 px-1">
+                <FilterChip
+                  label="원격결제"
+                  active={selectedMethod === 'remote'}
+                  onPress={() => setSelectedMethod('remote')}
+                />
+              </View>
+
+              <View className="w-1/3 pl-2">
+                <FilterChip
+                  label="단일혜택"
+                  active={selectedMethod === 'singleBenefit'}
+                  onPress={() => setSelectedMethod('singleBenefit')}
+                />
+              </View>
+
+              <View className="w-1/3 pr-2">
+                <FilterChip
+                  label="단일실적"
+                  active={selectedMethod === 'singlePerformance'}
+                  onPress={() => setSelectedMethod('singlePerformance')}
+                />
+              </View>
+
+              <View className="w-1/3 px-1">
+                <FilterChip
+                  label="분할혜택"
+                  active={selectedMethod === 'splitBenefit'}
+                  onPress={() => setSelectedMethod('splitBenefit')}
+                />
+              </View>
+
+              <View className="w-1/3 pl-2">
+                <FilterChip
+                  label="분할실적"
+                  active={selectedMethod === 'splitPerformance'}
+                  onPress={() => setSelectedMethod('splitPerformance')}
+                />
+              </View>
+            </View>
+          </View>
+
+          <Button
+            label="결과보기"
+            onPress={() => {
+              setAppliedPeriod(selectedPeriod);
+              setAppliedMethod(selectedMethod);
+              setIsFilterOpen(false);
+            }}
           />
         </View>
-
-        <ScrollView
-          className="w-full flex-1"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="w-full max-w-[360px] flex-1 self-center px-4 pb-44 pt-6">
-            <View className="mb-4 w-full flex-row items-center justify-between">
-              <Text className="text-base font-bold text-slate-950">
-                총 {filteredPayments.length}건
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                className="h-8 w-8 items-center justify-center rounded-full bg-blue-800"
-                onPress={handlePressFilter}
-              >
-                <Text className="text-lg text-white">▽</Text>
-              </Pressable>
-            </View>
-
-            {hasPayments ? (
-              <View className="w-full gap-4">
-                {filteredPayments.map((payment) => (
-                  <PaymentItem
-                    key={payment.id}
-                    method={payment.method}
-                    status={payment.status}
-                    title={payment.title}
-                    date={payment.date}
-                    amount={payment.amount}
-                    tone={payment.tone}
-                    onPress={() => handlePressPayment(payment)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View className="h-12 w-full items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-sm">
-                <Text className="text-sm text-slate-500">
-                  결제 내역이 없습니다.
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        <BottomNav active="pay" />
-        {isFilterSheetVisible ? (
-          <FilterSheet onClose={handleCloseFilter} />
-        ) : null}
-      </MypageFrame>
+      </BottomSheet>
+    </>
   );
 }
 
-function HistoryTab({
+function PaymentItem({
+  payment,
+  onPress,
+}: {
+  payment: PaymentHistoryItem;
+  onPress: () => void;
+}) {
+  return (
+    <Card onPress={onPress}>
+      <View className="flex-row items-center">
+        <Text
+          className={`rounded px-2 py-1 font-pretendard text-normal-bold ${
+            methodClassName[payment.method]
+          }`}
+        >
+          {methodLabel[payment.method]}
+        </Text>
+        <Text className="ml-3 font-pretendard text-normal-regular text-neutral-black2">
+          {statusLabel[payment.status]}
+        </Text>
+      </View>
+      <Text className="mt-4 font-pretendard text-large-bold text-neutral-black1">
+        {payment.title}
+      </Text>
+      <View className="mt-4 flex-row items-center justify-between">
+        <Text className="font-pretendard text-normal-regular text-neutral-black2">
+          {payment.date}
+        </Text>
+        <Text className="font-pretendard text-heading-3 text-neutral-black1">
+          {payment.amount}
+        </Text>
+      </View>
+    </Card>
+  );
+}
+
+function FilterChip({
+  label,
+  active = false,
+  onPress,
+}: {
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className={`h-11 flex-1 items-center justify-center rounded-full ${
+        active ? 'bg-[#2F62A3]' : 'bg-neutral-grey3'
+      }`}
+      onPress={onPress}
+    >
+      <Text
+        className={`font-pretendard text-large-bold ${
+          active ? 'text-neutral-white' : 'text-neutral-black2'
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function DateBox({
   label,
   active = false,
   onPress,
@@ -215,144 +407,78 @@ function HistoryTab({
   return (
     <Pressable
       accessibilityRole="button"
-      className="flex-1"
+      className={`h-12 flex-1 justify-center rounded-xl border px-4 ${
+        active
+          ? 'border-[#2F62A3] bg-neutral-white'
+          : 'border-neutral-grey1 bg-neutral-white'
+      }`}
       onPress={onPress}
     >
-      <View className="h-[46px] items-center justify-center">
-        <Text
-          className={`text-sm font-semibold ${
-            active ? 'text-blue-800' : 'text-slate-500'
-          }`}
-        >
-          {label}
-        </Text>
-      </View>
-      <View
-        className={`h-0.5 w-full ${
-          active ? 'bg-blue-800' : 'bg-transparent'
-        }`}
-      />
-    </Pressable>
-  );
-}
-
-function PaymentItem({
-  method,
-  status,
-  title,
-  date,
-  amount,
-  tone,
-  onPress,
-}: {
-  method: string;
-  status: string;
-  title: string;
-  date: string;
-  amount: string;
-  tone: string;
-  onPress?: () => void;
-}) {
-  const toneClassName: Record<string, string> = {
-    pink: 'bg-pink-50 text-pink-600',
-    purple: 'bg-purple-50 text-purple-600',
-    blue: 'bg-blue-50 text-blue-600',
-    cyan: 'bg-cyan-50 text-cyan-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    lime: 'bg-lime-50 text-lime-700',
-  };
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="w-full rounded-2xl border border-zinc-100 bg-white px-4 py-4 shadow-sm"
-      onPress={onPress}
-    >
-      <View className="w-full flex-row items-center">
-        <Text className={`rounded-md px-2 py-1 text-xs font-bold ${toneClassName[tone]}`}>
-          {method}
-        </Text>
-        <Text className="ml-3 text-xs text-slate-500">{status}</Text>
-      </View>
-      <Text className="mt-4 text-base font-bold text-slate-950">{title}</Text>
-      <View className="mt-4 h-px w-full bg-zinc-100" />
-      <View className="mt-4 w-full flex-row items-center justify-between">
-        <Text className="text-sm text-slate-500">{date}</Text>
-        <Text className="text-xl font-bold text-slate-950">{amount}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
-function FilterSheet({ onClose }: { onClose?: () => void }) {
-  return (
-    <View className="absolute inset-0 justify-end bg-black/45">
-      <View className="w-full rounded-t-2xl bg-white px-4 pb-6 pt-4">
-        <View className="mb-8 w-full flex-row items-center justify-between">
-          <Text className="text-lg font-bold text-slate-950">필터</Text>
-          <Pressable
-            accessibilityRole="button"
-            className="h-8 w-8 items-end"
-            onPress={onClose}
-          >
-            <Text className="text-3xl font-light leading-8 text-slate-950">×</Text>
-          </Pressable>
-        </View>
-
-        <Text className="mb-3 text-base font-bold text-slate-950">기간</Text>
-        <View className="mb-5 w-full flex-row">
-          <FilterChip label="이번주" active />
-          <View className="w-2" />
-          <FilterChip label="이번달" />
-          <View className="w-2" />
-          <FilterChip label="올해" />
-        </View>
-
-        <Text className="mb-3 text-base font-bold text-slate-950">기간 선택</Text>
-        <View className="mb-5 w-full flex-row">
-          <DateBox label="2026.04.30" />
-          <View className="w-2" />
-          <DateBox label="2026.05.01" />
-        </View>
-
-        <Text className="mb-3 text-base font-bold text-slate-950">결제수단</Text>
-        <View className="mb-5 w-full flex-row flex-wrap">
-          {['더치페이', '원격결제', '단일혜택', '단일실적', '분할혜택', '분할실적'].map(
-            (label) => (
-              <View key={label} className="mb-2 w-1/3 px-1">
-                <FilterChip label={label} active={label === '원격결제'} />
-              </View>
-            ),
-          )}
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          className="h-12 w-full items-center justify-center rounded-xl bg-blue-800"
-        >
-          <Text className="text-base font-bold text-white">결과보기</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function DateBox({ label }: { label: string }) {
-  return (
-    <View className="h-12 flex-1 justify-center rounded-lg border border-zinc-200 bg-white px-4">
-      <Text className="text-base text-slate-950">{label}</Text>
-    </View>
-  );
-}
-
-function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
-  return (
-    <View className={`h-10 w-full items-center justify-center rounded-full ${active ? 'bg-blue-800' : 'bg-zinc-100'}`}>
-      <Text className={`text-sm font-bold ${active ? 'text-white' : 'text-slate-600'}`}>
+      <Text className="font-pretendard text-large-regular text-neutral-black1">
         {label}
       </Text>
-    </View>
+    </Pressable>
   );
+}
+
+function isPaymentInPeriod(
+  dateText: string,
+  period: PeriodFilter,
+  startDate: Date,
+  endDate: Date,
+) {
+  if (!period) return true;
+
+  const paymentDate = parseDateText(dateText);
+  const today = new Date();
+
+  if (period === 'week') {
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+    return paymentDate >= startOfDay(startOfWeek) && paymentDate <= endOfDay(endOfWeek);
+  }
+
+  if (period === 'month') {
+    return (
+      paymentDate.getFullYear() === today.getFullYear() &&
+      paymentDate.getMonth() === today.getMonth()
+    );
+  }
+
+  if (period === 'year') {
+    return paymentDate.getFullYear() === today.getFullYear();
+  }
+
+  if (period === 'custom') {
+    return paymentDate >= startOfDay(startDate) && paymentDate <= endOfDay(endDate);
+  }
+
+  return true;
+}
+
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+
+  return `${year}.${month}.${day}`;
+}
+
+function parseDateText(dateText: string) {
+  const [year, month, day] = dateText.split('.').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
+}
+
+function endOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
 }
 
 export default PaymentHistoryScreen;

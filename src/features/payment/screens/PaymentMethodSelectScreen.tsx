@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../../App';
@@ -117,26 +117,35 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
 
                 <View className="h-px bg-neutral-grey1" />
 
-                {isLoading ? (
-                    <Text className="px-4 pt-4 font-pretendard text-normal-regular text-neutral-black2">
-                        결제 요청 정보를 확인 중입니다.
-                    </Text>
-                ) : null}
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="pb-6"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {isLoading ? (
+                        <Text className="px-4 pt-4 font-pretendard text-normal-regular text-neutral-black2">
+                            결제 요청 정보를 확인 중입니다.
+                        </Text>
+                    ) : null}
 
-                {errorMessage ? (
-                    <Text className="px-4 pt-4 font-pretendard text-normal-regular text-state-error">
-                        {errorMessage}
-                    </Text>
-                ) : null}
+                    {errorMessage ? (
+                        <Text className="px-4 pt-4 font-pretendard text-normal-regular text-state-error">
+                            {errorMessage}
+                        </Text>
+                    ) : null}
 
-                {summary ? <PaymentRequestSummary summary={summary} /> : null}
+                    {summary ? (
+                        <PaymentRequestSummary summary={summary} />
+                    ) : null}
 
-                {summary ? (
-                    <PaymentActionOptionList
-                        options={options}
-                        onPressOption={handlePressOption}
-                    />
-                ) : null}
+                    {summary ? (
+                        <PaymentActionOptionList
+                            options={options}
+                            onPressOption={handlePressOption}
+                        />
+                    ) : null}
+                </ScrollView>
             </View>
         </SafeAreaView>
     );

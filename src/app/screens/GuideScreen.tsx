@@ -208,6 +208,24 @@ const guidePages: GuidePage[] = [
     status: 'done',
     note: '담당자 : 조보름',
   },
+  {
+    depth1: 'payment',
+    depth2: 'cancel-request',
+    pageName: '결제 취소 요청',
+    routeName: 'PaymentCancel',
+    route: 'PaymentCancel',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'cancel-complete',
+    pageName: '결제 취소 완료',
+    routeName: 'PaymentCancel',
+    route: 'PaymentCancel',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
 ];
 
 const componentGuideItems: ComponentGuideItem[] = [
@@ -670,6 +688,20 @@ export default function GuideScreen({ navigation }: Props) {
                                 navigation.navigate('PaymentResult', {
                                   status: 'SUCCESS',
                                   flow: 'NORMAL',
+                                });
+                                return;
+                              }
+
+                              if (page.route === 'PaymentCancel') {
+                                if (page.depth2 === 'cancel-complete') {
+                                  navigation.navigate('PaymentCancel', {
+                                    mode: 'COMPLETE',
+                                  });
+                                  return;
+                                }
+
+                                navigation.navigate('PaymentCancel', {
+                                  mode: 'REQUEST',
                                 });
                                 return;
                               }

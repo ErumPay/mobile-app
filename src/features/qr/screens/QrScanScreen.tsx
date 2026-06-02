@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
@@ -139,7 +139,12 @@ export default function QrScanScreen({ navigation }: Props) {
                     onPressLeft={handlePressClose}
                 />
 
-                <View className="flex-1 items-center justify-center px-9 pb-12 pt-6">
+                <ScrollView
+                    className="flex-1"
+                    contentContainerClassName="flex-grow items-center justify-center px-9 pb-12 pt-6"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <View className="w-full pb-6">
                         <Text className="mb-8 text-center font-pretendard text-heading-3 text-white">
                             QR 코드를 스캔하세요
@@ -169,7 +174,7 @@ export default function QrScanScreen({ navigation }: Props) {
                                   : '카메라 권한 허용'}
                         </Text>
                     </Pressable>
-                </View>
+                </ScrollView>
             </View>
 
             <Toast

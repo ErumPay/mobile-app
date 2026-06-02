@@ -1,4 +1,4 @@
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -141,7 +141,12 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                 <Header title="" type="close" onPressRight={handlePressClose} />
             </View>
 
-            <View className="flex-1 px-4">
+            <ScrollView
+                className="flex-1"
+                contentContainerClassName="flex-grow px-4 pb-8 pt-16"
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
                 <View className="flex-1 justify-center">
                     <View className="w-full max-w-sm self-center">
                         {content.notice ? (
@@ -185,7 +190,7 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                         </View>
                     </View>
                 </View>
-            </View>
+            </ScrollView>
         </PageWrap>
     );
 }
