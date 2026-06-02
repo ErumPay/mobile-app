@@ -45,6 +45,7 @@ export type RootStackParamList = {
     | {
         paymentId?: number | string;
         amount?: number | string;
+        idempotencyKey?: string;
       }
     | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
@@ -58,7 +59,6 @@ export type RootStackParamList = {
   CardDetailScreen: { cardId: string };
   PaymentHistoryScreen: undefined;
   PaymentDetailScreen: { paymentId: string };
-  PhoneVerificationScreen: undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -84,3 +84,88 @@ const linking: LinkingOptions<RootStackParamList> = {
     },
   },
 };
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+export default function App() {
+  const { width } = useWindowDimensions();
+  const hasShownMobileOnlyAlert = useRef(false);
+
+  useEffect(() => {
+    if (width < 768) {
+      hasShownMobileOnlyAlert.current = false;
+      return;
+    }
+
+    if (hasShownMobileOnlyAlert.current) {
+      return;
+    }
+
+    hasShownMobileOnlyAlert.current = true;
+
+    Alert.alert("안내", "모바일로 이용해주세요.");
+  }, [width]);
+
+  return (
+    <SafeAreaProvider>
+      <View className="flex-1 bg-neutral-white">
+        <NavigationContainer linking={linking}>
+          <Stack.Navigator
+            initialRouteName="Main"
+            screenOptions={{ headerShown: false }}
+          >
+            <Stack.Screen name="Main" component={MainScreen} />
+            <Stack.Screen name="Guide" component={GuideScreen} />
+            <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
+            <Stack.Screen name="QrScan" component={QrScanScreen} />
+
+            <Stack.Screen
+              name="PaymentMethodSelect"
+              component={PaymentMethodSelectScreen}
+            />
+
+            <Stack.Screen
+              name="PaymentCardSelect"
+              component={PaymentCardSelectScreen}
+            />
+
+            <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
+            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
+            <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
+            <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
+
+            <Stack.Screen
+              name="MypageHomeScreen"
+              component={MypageHomeScreen}
+            />
+
+            <Stack.Screen
+              name="ProfileConfirmScreen"
+              component={ProfileConfirmScreen}
+            />
+
+            <Stack.Screen
+              name="PaymentHistoryScreen"
+              component={PaymentHistoryScreen}
+            />
+
+            <Stack.Screen
+              name="PaymentDetailScreen"
+              component={PaymentDetailScreen}
+            />
+
+            <Stack.Screen
+              name="CardManagementScreen"
+              component={CardManagementScreen}
+            />
+
+            <Stack.Screen
+              name="CardDetailScreen"
+              component={CardDetailScreen}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
+    </SafeAreaProvider>
+  );
+}

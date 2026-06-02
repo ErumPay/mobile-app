@@ -8,6 +8,7 @@ type PaymentInputPinRouteParams = {
   cardId: number;
   amount: number;
   flow: PaymentCardFlowType;
+  idempotencyKey?: string;
 };
 
 type PaymentRegisterPinRouteParams = {
@@ -29,4 +30,5 @@ export type LegacyPaymentPinRouteParams = {
   cardId?: number;
   amount?: number;
   flow?: PaymentCardFlowType;
+  idempotencyKey?: string;
 };

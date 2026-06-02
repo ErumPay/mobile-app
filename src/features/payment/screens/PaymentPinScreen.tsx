@@ -1,5 +1,19 @@
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+이건 `KAN-1348` 멱등성 로직을 살리되, `develop` 쪽의 `paymentParams` narrowing도 같이 쓰는 게 깔끔해. 그리고 하단 JSX가 중복으로 섞였으니까 `Pressable`/`Loading`/`PinCodeKeypad`는 한 번씩만 남겨야 해.
+
+수정 포인트:
+
+- `createPaymentIdempotencyKey` import 유지
+- `paymentParams` 변수 유지
+- `idempotencyKey`는 `paymentParams?.paymentId` 기준으로 생성
+- `requestPayment(payload, idempotencyKey)` 형태 유지
+- 하단 JSX 중복 제거
+- `PinCodeKeypad`는 바깥에 한 번만 유지
+
+최종 코드:
+
+```tsx
+import { useMemo, useState } from 'react';
+import { Alert, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
@@ -11,6 +25,7 @@ import { Loading } from '../../../shared/components/Loading';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
+import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -56,6 +71,15 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const idempotencyKey = useMemo(() => {
+    const paymentId = paymentParams?.paymentId;
+
+    if (paymentId == null) {
+      return undefined;
+    }
+
+    return paymentParams.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
+  }, [paymentParams]);
 
   const handlePressClose = () => {
     navigation.goBack();
@@ -72,7 +96,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
   const handleCompletePin = async (completedPin: string) => {
     if (mode === 'PAYMENT_INPUT') {
-      if (!paymentParams) {
+      if (!paymentParams || !idempotencyKey) {
         setPin('');
         setHasError(true);
         navigation.replace('PaymentResult', {
@@ -85,17 +109,20 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       try {
         setIsSubmitting(true);
 
-        await requestPayment({
-          pin: completedPin,
-          paymentId: paymentParams.paymentId,
-          totalAmount: paymentParams.amount,
-          cards: [
-            {
-              cardId: paymentParams.cardId,
-              amount: paymentParams.amount,
-            },
-          ],
-        });
+        await requestPayment(
+          {
+            pin: completedPin,
+            paymentId: paymentParams.paymentId,
+            totalAmount: paymentParams.amount,
+            cards: [
+              {
+                cardId: paymentParams.cardId,
+                amount: paymentParams.amount,
+              },
+            ],
+          },
+          idempotencyKey,
+        );
 
         setPin('');
         setHasError(false);
@@ -157,69 +184,63 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <Header title="" type="close" onPressRight={handlePressClose} />
       }
     >
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="flex-grow"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="flex-1">
-          <View className="flex-[0.42] items-center justify-center px-5">
-            <Text className="font-pretendard text-heading-3 text-neutral-black1">
-              {screenText.title}
-            </Text>
+      <View className="flex-1">
+        <View className="flex-[0.42] items-center justify-center px-5">
+          <Text className="font-pretendard text-heading-3 text-neutral-black1">
+            {screenText.title}
+          </Text>
 
-            <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
-              {screenText.description}
-            </Text>
+          <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
+            {screenText.description}
+          </Text>
 
-            <View className="mt-8">
-              <PinCodeDots
-                valueLength={pin.length}
-                maxLength={PIN_LENGTH}
-                hasError={hasError}
-              />
-            </View>
-
-            {hasError ? (
-              <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
-                {failCount || 1}회 틀렸습니다.
-              </Text>
-            ) : null}
-
-            {isSubmitting ? (
-              <Loading message="결제를 처리하는 중입니다." />
-            ) : null}
-
-            {screenText.showWarning && !isSubmitting ? (
-              <View className="mt-12 w-full">
-                <NoticeBox
-                  tone="warning"
-                  description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
-                />
-              </View>
-            ) : null}
-
-            {screenText.showForgotLink && !isSubmitting ? (
-              <Pressable
-                accessibilityRole="button"
-                className="mt-16"
-                onPress={handlePressForgotPassword}
-                onLongPress={handleMockError}
-              >
-                <Text className="font-pretendard text-normal-bold text-erum-main">
-                  간편 비밀번호를 잊으셨나요?
-                </Text>
-              </Pressable>
-            ) : null}
+          <View className="mt-8">
+            <PinCodeDots
+              valueLength={pin.length}
+              maxLength={PIN_LENGTH}
+              hasError={hasError}
+            />
           </View>
 
-          <PinCodeKeypad
-            onPressNumber={isSubmitting ? () => {} : handlePressNumber}
-            onPressDelete={isSubmitting ? () => {} : handlePressDelete}
-          />
+          {hasError ? (
+            <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
+              {failCount || 1}회 틀렸습니다.
+            </Text>
+          ) : null}
+
+          {isSubmitting ? (
+            <Loading message="결제를 처리하는 중입니다." />
+          ) : null}
+
+          {screenText.showWarning && !isSubmitting ? (
+            <View className="mt-12 w-full">
+              <NoticeBox
+                tone="warning"
+                description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
+              />
+            </View>
+          ) : null}
+
+          {screenText.showForgotLink && !isSubmitting ? (
+            <Pressable
+              accessibilityRole="button"
+              className="mt-16"
+              onPress={handlePressForgotPassword}
+              onLongPress={handleMockError}
+            >
+              <Text className="font-pretendard text-normal-bold text-erum-main">
+                간편 비밀번호를 잊으셨나요?
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
-      </ScrollView>
+
+        <PinCodeKeypad
+          onPressNumber={isSubmitting ? () => {} : handlePressNumber}
+          onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+        />
+      </View>
     </PageWrap>
   );
 }
+```

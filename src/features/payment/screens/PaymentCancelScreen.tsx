@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,6 +10,7 @@ import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
 import { mockPaymentCancelDetail } from '../constants/paymentCancel.mock';
+import { createPaymentCancelIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCancel'>;
 
@@ -159,6 +161,13 @@ function PaymentCancelRequestScreenContent() {
 export default function PaymentCancelScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'REQUEST';
   const isComplete = mode === 'COMPLETE';
+  const paymentId = route.params?.paymentId ?? mockPaymentCancelDetail.paymentId;
+  const idempotencyKey = useMemo(
+    () =>
+      route.params?.idempotencyKey ??
+      createPaymentCancelIdempotencyKey(paymentId),
+    [paymentId, route.params?.idempotencyKey],
+  );
 
   const handlePressClose = () => {
     if (navigation.canGoBack()) {
@@ -174,7 +183,11 @@ export default function PaymentCancelScreen({ navigation, route }: Props) {
   };
 
   const handlePressCancel = () => {
-    navigation.replace('PaymentCancel', { mode: 'COMPLETE' });
+    navigation.replace('PaymentCancel', {
+      mode: 'COMPLETE',
+      paymentId,
+      idempotencyKey,
+    });
   };
 
   return (

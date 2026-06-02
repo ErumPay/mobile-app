@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../../../shared/components/Header/Header';
@@ -20,6 +20,7 @@ import {
     subscribePaymentCardRecommendations,
 } from '../api/paymentCardRecommendationApi';
 import { toPaymentCardSelectData } from '../utils/paymentCardRecommendationAdapter';
+import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCardSelect'>;
 
@@ -68,6 +69,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const hasValidPaymentId =
         typeof paymentId === 'number' && Number.isFinite(paymentId);
     const hasValidAmount = typeof amount === 'number' && Number.isFinite(amount);
+    const idempotencyKey = useMemo(() => {
+        if (!hasValidPaymentId) {
+            return undefined;
+        }
+
+        return route.params?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
+    }, [hasValidPaymentId, paymentId, route.params?.idempotencyKey]);
+
     const [data, setData] = useState<PaymentCardSelectData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
@@ -97,6 +106,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
     const isSubmitDisabled =
         !data || (!selectedCardId && !isCombinationSelected);
+
     const selectedPaymentCard = useMemo<PaymentCard | null>(() => {
         if (!data) {
             return null;
@@ -124,7 +134,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     ]);
 
     useEffect(() => {
-        if (!hasValidPaymentId || !hasValidAmount) {
+        if (!hasValidPaymentId || !hasValidAmount || !idempotencyKey) {
             setData(null);
             setErrorMessage('결제 정보가 없습니다.');
             return;
@@ -140,6 +150,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 await preparePayment({
                     paymentId,
                     amount,
+                    idempotencyKey,
                 });
 
                 const response = await subscribePaymentCardRecommendations(paymentId);
@@ -169,7 +180,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         return () => {
             isMounted = false;
         };
-    }, [amount, hasValidAmount, hasValidPaymentId, paymentId]);
+    }, [amount, hasValidAmount, hasValidPaymentId, idempotencyKey, paymentId]);
 
     const handlePressClose = () => {
         navigation.goBack();
@@ -223,7 +234,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             (card) => card.id === pendingCardId,
         );
 
-        if (!hasValidPaymentId || !selectedCard) {
+        if (!hasValidPaymentId || !selectedCard || !idempotencyKey) {
             return;
         }
 
@@ -241,11 +252,12 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             cardId: Number(selectedCard.id),
             amount: selectedCard.amount,
             flow: isDutchPay ? 'DUTCH_PAY' : 'NORMAL',
+            idempotencyKey,
         });
     };
 
     const handlePressSubmit = () => {
-        if (!hasValidPaymentId || !selectedPaymentCard) {
+        if (!hasValidPaymentId || !selectedPaymentCard || !idempotencyKey) {
             return;
         }
 
@@ -255,6 +267,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             cardId: Number(selectedPaymentCard.id),
             amount: selectedPaymentCard.amount,
             flow: isDutchPay ? 'DUTCH_PAY' : 'NORMAL',
+            idempotencyKey,
         });
     };
 

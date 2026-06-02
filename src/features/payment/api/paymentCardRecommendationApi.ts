@@ -1,5 +1,4 @@
 import type { PaymentCardRecommendationResponse } from '../types/paymentCardRecommendation.types';
-import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 const API_BASE_URL = 'http://localhost:8083';
 const DEV_USER_ID = '1';
@@ -11,6 +10,7 @@ const PAYMENT_SUBSCRIBE_URL = (paymentId: number) =>
 type PreparePaymentParams = {
     paymentId: number;
     amount: number;
+    idempotencyKey: string;
 };
 
 type PaymentApiErrorResponse = {
@@ -22,7 +22,7 @@ const parsePaymentApiError = async (
     response: Response,
 ): Promise<PaymentApiErrorResponse> => {
     try {
-        return await response.json();
+        return response.json();
     } catch {
         return {};
     }
@@ -31,13 +31,14 @@ const parsePaymentApiError = async (
 export async function preparePayment({
     paymentId,
     amount,
+    idempotencyKey,
 }: PreparePaymentParams): Promise<void> {
     const response = await fetch(PAYMENT_PREPARE_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-User-Id': DEV_USER_ID,
-            'Idempotency-Key': createPaymentIdempotencyKey(paymentId),
+            'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({
             paymentId,
