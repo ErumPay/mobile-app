@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -7,7 +7,11 @@ import { Header } from '../../../shared/components/Header';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
+import { Loading } from '../../../shared/components/Loading';
 import type { PaymentPinMode } from '../types/paymentPin.types';
+import { requestPayment } from '../api/paymentRequestApi';
+import type { PaymentResultFlow } from '../types/paymentResult.types';
+import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -44,10 +48,26 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 export default function PaymentPinScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'PAYMENT_INPUT';
   const screenText = screenTextByMode[mode];
+  const paymentParams =
+    route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+  const paymentResultFlow: PaymentResultFlow =
+    paymentParams?.flow === 'DUTCH_PAY' ? 'DUTCH_PAY_PRE_AUTH' : 'NORMAL';
 
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const idempotencyKey = useMemo(() => {
+    const paymentId = paymentParams?.paymentId;
+
+    if (paymentId == null) {
+      return undefined;
+    }
+
+    return (
+      paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId)
+    );
+  }, [paymentParams]);
 
   const handlePressClose = () => {
     navigation.goBack();
@@ -62,9 +82,54 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     setHasError(false);
   };
 
-  const handleCompletePin = () => {
+  const handleCompletePin = async (completedPin: string) => {
     if (mode === 'PAYMENT_INPUT') {
-      Alert.alert('간편비밀번호', '결제를 진행합니다.');
+      if (!paymentParams || !idempotencyKey) {
+        setPin('');
+        setHasError(true);
+        navigation.replace('PaymentResult', {
+          status: 'FAILURE',
+          flow: paymentResultFlow,
+        });
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+
+        await requestPayment(
+          {
+            pin: completedPin,
+            paymentId: paymentParams.paymentId,
+            totalAmount: paymentParams.amount,
+            cards: [
+              {
+                cardId: paymentParams.cardId,
+                amount: paymentParams.amount,
+              },
+            ],
+          },
+          idempotencyKey,
+        );
+
+        setPin('');
+        setHasError(false);
+        navigation.replace('PaymentResult', {
+          status: 'SUCCESS',
+          flow: paymentResultFlow,
+        });
+      } catch {
+        setPin('');
+        setHasError(true);
+        setFailCount((prev) => prev + 1);
+        navigation.replace('PaymentResult', {
+          status: 'FAILURE',
+          flow: paymentResultFlow,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+
       return;
     }
 
@@ -78,7 +143,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   };
 
   const handlePressNumber = (value: string) => {
-    if (pin.length >= PIN_LENGTH) {
+    if (pin.length >= PIN_LENGTH || isSubmitting) {
       return;
     }
 
@@ -88,7 +153,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     setHasError(false);
 
     if (nextPin.length === PIN_LENGTH) {
-      handleCompletePin();
+      void handleCompletePin(nextPin);
     }
   };
 
@@ -131,7 +196,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             </Text>
           ) : null}
 
-          {screenText.showWarning ? (
+          {isSubmitting ? (
+            <Loading message="결제를 처리하는 중입니다." />
+          ) : null}
+
+          {screenText.showWarning && !isSubmitting ? (
             <View className="mt-12 w-full">
               <NoticeBox
                 tone="warning"
@@ -140,7 +209,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             </View>
           ) : null}
 
-          {screenText.showForgotLink ? (
+          {screenText.showForgotLink && !isSubmitting ? (
             <Pressable
               accessibilityRole="button"
               className="mt-16"
@@ -155,8 +224,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         </View>
 
         <PinCodeKeypad
-          onPressNumber={handlePressNumber}
-          onPressDelete={handlePressDelete}
+          onPressNumber={isSubmitting ? () => {} : handlePressNumber}
+          onPressDelete={isSubmitting ? () => {} : handlePressDelete}
         />
       </View>
     </PageWrap>

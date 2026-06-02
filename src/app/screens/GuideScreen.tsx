@@ -104,8 +104,8 @@ const guidePages: GuidePage[] = [
     depth1: "card",
     depth2: "register",
     pageName: "카드 등록",
-    routeName: "CardManualRegister",
-    route: "CardManualRegister",
+    routeName: "CardRegister",
+    route: "CardRegister",
     status: "done",
     note: "담당자 : 나혜빈",
   },
@@ -162,6 +162,69 @@ const guidePages: GuidePage[] = [
     route: "PaymentPin",
     status: "done",
     note: "담당자 : 조보름",
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-normal-success',
+    pageName: '일반결제 결제 완료',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-normal-failure',
+    pageName: '일반결제 결제 실패',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-dutch-preauth-success',
+    pageName: '더치페이 가결제 완료',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-dutch-preauth-failure',
+    pageName: '더치페이 가결제 실패',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'result-dutch-final-success',
+    pageName: '더치페이 최종결제 완료',
+    routeName: 'PaymentResult',
+    route: 'PaymentResult',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'cancel-request',
+    pageName: '결제 취소 요청',
+    routeName: 'PaymentCancel',
+    route: 'PaymentCancel',
+    status: 'planned',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'cancel-complete',
+    pageName: '결제 취소 완료',
+    routeName: 'PaymentCancel',
+    route: 'PaymentCancel',
+    status: 'planned',
+    note: '담당자 : 조보름',
   },
 ];
 
@@ -548,8 +611,8 @@ export default function GuideScreen({ navigation }: Props) {
                                 return;
                               }
 
-                              if (page.route === "CardManualRegister") {
-                                navigation.navigate("CardManualRegister");
+                              if (page.route === "CardRegister") {
+                                navigation.navigate("CardRegister");
                                 return;
                               }
 
@@ -585,6 +648,64 @@ export default function GuideScreen({ navigation }: Props) {
 
                                 navigation.navigate("PaymentPin", {
                                   mode: "PAYMENT_INPUT",
+                                  paymentId: 1,
+                                  cardId: 1,
+                                  amount: 45000,
+                                  flow: "NORMAL",
+                                });
+                                return;
+                              }
+
+                              if (page.route === 'PaymentResult') {
+                                if (page.depth2 === 'result-normal-failure') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'FAILURE',
+                                    flow: 'NORMAL',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'result-dutch-preauth-success') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'SUCCESS',
+                                    flow: 'DUTCH_PAY_PRE_AUTH',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'result-dutch-preauth-failure') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'FAILURE',
+                                    flow: 'DUTCH_PAY_PRE_AUTH',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'result-dutch-final-success') {
+                                  navigation.navigate('PaymentResult', {
+                                    status: 'SUCCESS',
+                                    flow: 'DUTCH_PAY_FINAL',
+                                  });
+                                  return;
+                                }
+
+                                navigation.navigate('PaymentResult', {
+                                  status: 'SUCCESS',
+                                  flow: 'NORMAL',
+                                });
+                                return;
+                              }
+
+                              if (page.route === 'PaymentCancel') {
+                                if (page.depth2 === 'cancel-complete') {
+                                  navigation.navigate('PaymentCancel', {
+                                    mode: 'COMPLETE',
+                                  });
+                                  return;
+                                }
+
+                                navigation.navigate('PaymentCancel', {
+                                  mode: 'REQUEST',
                                 });
                                 return;
                               }

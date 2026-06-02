@@ -5,6 +5,7 @@ export type PaymentRequestType =
     | 'REMOTE_RECIPIENT';
 
 export type PaymentRequestSummary = {
+    paymentId: number;
     merchantName: string;
     amount: number;
     type: PaymentRequestType;

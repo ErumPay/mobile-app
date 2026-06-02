@@ -20,6 +20,12 @@ export const colors = {
     orange: '#FF664F',
     sky: '#A1D7F4',
   },
+  notice: {
+    info: '#F1FBFF',
+    success: '#F2FBF4',
+    warning: '#FFF5F2',
+    error: '#FFF3F3',
+  },
   neutral: {
     black1: '#1D1F1F',
     black2: '#4B5057',
