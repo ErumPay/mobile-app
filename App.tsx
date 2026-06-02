@@ -21,6 +21,9 @@ import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScr
 import type { PaymentResultRouteParams } from "./src/features/payment/types/paymentResult.types";
 import PaymentCancelScreen from "./src/features/payment/screens/PaymentCancelScreen";
 import type { PaymentCancelRouteParams } from "./src/features/payment/types/paymentCancel.types";
+import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
+import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
+import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -32,12 +35,23 @@ export type RootStackParamList = {
   Main: undefined;
   Guide: undefined;
   QrScan: undefined;
-  PaymentMethodSelect: undefined;
-  PaymentCardSelect: undefined;
+  PaymentMethodSelect:
+    | {
+        summary?: PaymentRequestSummary;
+        token?: string;
+      }
+    | undefined;
+  PaymentCardSelect:
+    | {
+        paymentId?: number | string;
+        amount?: number | string;
+      }
+    | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
+  DutchPayGroup: DutchPayGroupRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -60,6 +74,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentPin: "payment/pin",
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
+      DutchPayGroup: "payment/dutch-pay-group",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -69,74 +84,3 @@ const linking: LinkingOptions<RootStackParamList> = {
     },
   },
 };
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
-export default function App() {
-  const { width } = useWindowDimensions();
-  const hasShownMobileOnlyAlert = useRef(false);
-
-  useEffect(() => {
-    if (width < 768) {
-      hasShownMobileOnlyAlert.current = false;
-      return;
-    }
-
-    if (hasShownMobileOnlyAlert.current) {
-      return;
-    }
-
-    hasShownMobileOnlyAlert.current = true;
-
-    Alert.alert("안내", "모바일로 이용해주세요.");
-  }, [width]);
-
-  return (
-    <SafeAreaProvider>
-      <View className="flex-1 bg-neutral-white">
-        <NavigationContainer linking={linking}>
-          <Stack.Navigator
-            initialRouteName="Main"
-            screenOptions={{ headerShown: false }}
-          >
-            <Stack.Screen name="Main" component={MainScreen} />
-            <Stack.Screen name="Guide" component={GuideScreen} />
-            <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
-            <Stack.Screen name="QrScan" component={QrScanScreen} />
-
-            <Stack.Screen
-              name="PaymentMethodSelect"
-              component={PaymentMethodSelectScreen}
-            />
-            <Stack.Screen
-              name="PaymentCardSelect"
-              component={PaymentCardSelectScreen}
-            />
-            <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
-            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
-            <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
-
-            <Stack.Screen name="MypageHomeScreen" component={MypageHomeScreen} />
-            <Stack.Screen
-              name="ProfileConfirmScreen"
-              component={ProfileConfirmScreen}
-            />
-            <Stack.Screen
-              name="CardManagementScreen"
-              component={CardManagementScreen}
-            />
-            <Stack.Screen name="CardDetailScreen" component={CardDetailScreen} />
-            <Stack.Screen
-              name="PaymentHistoryScreen"
-              component={PaymentHistoryScreen}
-            />
-            <Stack.Screen
-              name="PaymentDetailScreen"
-              component={PaymentDetailScreen}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </View>
-    </SafeAreaProvider>
-  );
-}

@@ -169,7 +169,7 @@ const guidePages: GuidePage[] = [
     pageName: '일반결제 결제 완료',
     routeName: 'PaymentResult',
     route: 'PaymentResult',
-    status: 'planned',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -178,7 +178,7 @@ const guidePages: GuidePage[] = [
     pageName: '일반결제 결제 실패',
     routeName: 'PaymentResult',
     route: 'PaymentResult',
-    status: 'planned',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -187,7 +187,7 @@ const guidePages: GuidePage[] = [
     pageName: '더치페이 가결제 완료',
     routeName: 'PaymentResult',
     route: 'PaymentResult',
-    status: 'planned',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -196,7 +196,7 @@ const guidePages: GuidePage[] = [
     pageName: '더치페이 가결제 실패',
     routeName: 'PaymentResult',
     route: 'PaymentResult',
-    status: 'planned',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -205,7 +205,7 @@ const guidePages: GuidePage[] = [
     pageName: '더치페이 최종결제 완료',
     routeName: 'PaymentResult',
     route: 'PaymentResult',
-    status: 'planned',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -648,6 +648,10 @@ export default function GuideScreen({ navigation }: Props) {
 
                                 navigation.navigate("PaymentPin", {
                                   mode: "PAYMENT_INPUT",
+                                  paymentId: 1,
+                                  cardId: 1,
+                                  amount: 45000,
+                                  flow: "NORMAL",
                                 });
                                 return;
                               }

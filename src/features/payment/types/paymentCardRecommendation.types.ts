@@ -1,0 +1,37 @@
+export type PaymentCardRecommendationStrategyType =
+    | 'BENEFIT_SINGLE'
+    | 'PERF_SINGLE'
+    | 'BENEFIT_SPLIT'
+    | 'PERF_SPLIT';
+
+export type PaymentCardRecommendationCard = {
+    cardId: number;
+    cardProductId: number;
+    cardCompany: string;
+    cardName: string;
+    maskedNumber: string;
+    amount: number;
+    discountAmount: number;
+    cashbackAmount: number;
+    mileageAmount: number;
+    totalBenefitAmount: number;
+    currentPerformanceAmount: number;
+    targetPerformanceAmount: number;
+    remainingToTarget: number;
+    expectedPerformanceAmount: number;
+    willReachTarget: boolean;
+    warnings: string[];
+};
+
+export type PaymentCardRecommendationResult = {
+    strategyType: PaymentCardRecommendationStrategyType;
+    totalBenefitAmount: number;
+    cards: PaymentCardRecommendationCard[];
+    reason: string | null;
+};
+
+export type PaymentCardRecommendationResponse = {
+    paymentId: number;
+    recommendedAt: string;
+    results: PaymentCardRecommendationResult[];
+};
