@@ -8,9 +8,8 @@ import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
-import { mockOcrResult } from '../mocks/cardMockData';
+import { uploadCardImage } from '../api/cardOcrApi';
 import type { OcrCardResult } from '../types/card';
-import { getIssuerLabel } from '../types/cardFormat';
 
 interface CardOcrScreenProps {
   onClose: () => void;
@@ -20,7 +19,7 @@ interface CardOcrScreenProps {
   }) => void;
 }
 
-const MAX_IMAGE_SIDE = 1024;
+const MAX_IMAGE_SIDE = 512;
 const CARD_FRAME_ASPECT_RATIO = 1.58;
 
 function getCardFrameImageActions(width: number, height: number): Action[] {
@@ -105,14 +104,8 @@ export function CardOcrScreen({
         },
       );
 
-      // TODO: 백엔드 OCR API 연결 시 여기서 JPEG 이미지 파일을 전송합니다.
-      // const ocrResult = await uploadCardImage(manipulatedImage.uri);
-      // setOcrResult(ocrResult);
-
-      // API 연결 전까지는 mock OCR 결과로 화면 흐름만 확인합니다.
-      setOcrResult(mockOcrResult);
-
-
+      const ocrResult = await uploadCardImage(manipulatedImage.uri);
+      setOcrResult(ocrResult);
     } catch {
       Alert.alert('안내', '카드 이미지를 촬영하지 못했습니다.');
     } finally {
@@ -179,8 +172,6 @@ export function CardOcrScreen({
           </Text>
 
           <View className="mt-8 rounded-2xl bg-neutral-grey2 px-5 py-6">
-            <OcrInfo label="카드사" value={getIssuerLabel(ocrResult.issuer)} />
-            <OcrInfo label="카드명" value={ocrResult.cardName} />
             <OcrInfo
               label="카드번호"
               value={formatOcrCardNumber(ocrResult.cardNumber)}
