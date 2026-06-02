@@ -29,13 +29,17 @@ function StatusCheck({ tone = 'success' }: { tone?: 'success' | 'error' }) {
   );
 }
 
-function MemberBadge({ label, filled }: { label: string; filled?: boolean }) {
+function MemberBadge({
+  label,
+  filled,
+}: {
+  label: string;
+  filled?: boolean;
+}) {
   return (
     <View
       className={`mr-2 rounded-full px-2 py-1 ${
-        filled
-          ? 'bg-state-success'
-          : 'border border-state-success bg-neutral-white'
+        filled ? 'bg-state-success' : 'border border-state-success bg-neutral-white'
       }`}
     >
       <Text
@@ -144,11 +148,7 @@ export default function DutchPayMemberRow({
         </Text>
       </View>
 
-      <View
-        className={`min-w-0 flex-1 pb-5 ${
-          isLast ? '' : 'border-b border-neutral-grey1'
-        }`}
-      >
+      <View className={`min-w-0 flex-1 pb-5 ${isLast ? '' : 'border-b border-neutral-grey1'}`}>
         <View className="min-h-12 justify-center">
           <View className="flex-row items-center">
             {member.isOwner ? <MemberBadge label="대표자" filled /> : null}
@@ -164,11 +164,7 @@ export default function DutchPayMemberRow({
                 className="h-8 w-8 items-center justify-center"
                 onPress={() => onPressMenu?.(member.id)}
               >
-                <Feather
-                  name="more-vertical"
-                  size={18}
-                  color={colors.neutral.black2}
-                />
+                <Feather name="more-vertical" size={18} color={colors.neutral.black2} />
               </Pressable>
             ) : null}
           </View>
