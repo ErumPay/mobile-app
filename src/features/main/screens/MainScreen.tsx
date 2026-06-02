@@ -9,7 +9,10 @@ import {
   PaymentProgressCardSkeleton,
   type PaymentProgressVariant,
 } from "../components/PaymentProgressCard";
-import { MainBannerCarousel } from "../components/MainBannerCarousel";
+import {
+  MainBannerCarousel,
+  type MainBannerId,
+} from "../components/MainBannerCarousel";
 import { MainHeader } from "../components/MainHeader";
 import type { PaymentHistory } from "../components/RecentPaymentHistory";
 import { RecentPaymentHistory } from "../components/RecentPaymentHistory";
@@ -17,6 +20,7 @@ import { FloatingButton } from "../../../shared/components/FloatingButton";
 import { RejectConfirmModal } from "../../../shared/components/Modal";
 import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
+import { mockPaymentRequestSummary } from "../../payment/constants/paymentMethod.mock";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
 
@@ -76,7 +80,7 @@ const recentPaymentHistoryFixtures: Record<
 const paymentHistories =
   recentPaymentHistoryFixtures[recentPaymentHistoryScenario];
 
-const hasActivePaymentProgress = true;
+const hasActivePaymentProgress = false;
 const hasNotification = false;
 const activePaymentProgressVariant: PaymentProgressVariant =
   "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
@@ -84,6 +88,10 @@ const isPaymentProgressLoading = false;
 const isMonthlyPaymentLoading = false;
 const isNotificationLoading = false;
 const isPaymentHistoryLoading = false;
+
+const paymentMethodSelectParams = {
+  summary: mockPaymentRequestSummary,
+};
 
 export default function MainScreen({ navigation }: Props) {
   const paymentProgressVariant = activePaymentProgressVariant;
@@ -101,12 +109,14 @@ export default function MainScreen({ navigation }: Props) {
       icon: "card",
       toneClassName: "bg-[#FFE6C7]",
       iconColor: "#F06423",
+      onPress: () => navigation.navigate("CardManagementScreen"),
     },
     {
       label: "결제내역",
       icon: "history",
       toneClassName: "bg-[#EEDCFF]",
       iconColor: "#8A2DFF",
+      onPress: () => navigation.navigate("PaymentHistoryScreen"),
     },
   ];
 
@@ -122,14 +132,41 @@ export default function MainScreen({ navigation }: Props) {
     setIsRejectConfirmVisible(false);
   };
 
+  const handlePressPaymentProgressPrimary = () => {
+    if (paymentProgressVariant.startsWith("DUTCHPAY_")) {
+      navigation.navigate("DutchPayGroup");
+      return;
+    }
+
+    navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+  };
+
+  const handlePressPaymentProgressAccept = () => {
+    navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+  };
+
+  const handlePressBanner = (id: MainBannerId) => {
+    if (id === "card-recommendation") {
+      navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+      return;
+    }
+
+    if (id === "dutchpay") {
+      navigation.navigate("DutchPayGroup");
+      return;
+    }
+
+    navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+  };
+
   return (
     <View className="flex-1 items-center bg-neutral-grey2">
       <View className="w-full flex-1 overflow-hidden bg-neutral-white">
         <View className="border-b border-neutral-grey1 bg-neutral-white px-5 py-3">
           <Pressable
-              accessibilityRole="button"
-              className="self-start rounded-full border border-neutral-grey1 px-3 py-2"
-              onPress={() => navigation.navigate("Guide")}
+            accessibilityRole="button"
+            className="self-start rounded-full border border-neutral-grey1 px-3 py-2"
+            onPress={() => navigation.navigate("Guide")}
           >
             <Text className="font-pretendard text-normal-bold text-erum-secondary">
               IA 가이드 보기
@@ -152,7 +189,11 @@ export default function MainScreen({ navigation }: Props) {
             </View>
 
             <View className="mt-10 overflow-hidden rounded-xl bg-erum-secondary px-4 pb-4 pt-5 shadow-sm">
-              <View className="items-center">
+              <Pressable
+                accessibilityRole="button"
+                className="items-center"
+                onPress={() => navigation.navigate("QrScan")}
+              >
                 <View className="h-[78px] w-[78px] items-center justify-center rounded-xl bg-neutral-white">
                   <Image
                     accessibilityLabel="QR 결제 아이콘"
@@ -161,7 +202,7 @@ export default function MainScreen({ navigation }: Props) {
                     style={{ width: 60, height: 60 }}
                   />
                 </View>
-              </View>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 className="mt-5 h-10 flex-row items-center justify-center rounded-lg bg-[#5CA28E]"
@@ -181,6 +222,8 @@ export default function MainScreen({ navigation }: Props) {
                 ) : (
                   <PaymentProgressCard
                     variant={paymentProgressVariant}
+                    onPressAccept={handlePressPaymentProgressAccept}
+                    onPressPrimary={handlePressPaymentProgressPrimary}
                     onPressReject={handleRejectPaymentProgress}
                   />
                 )}
@@ -204,22 +247,32 @@ export default function MainScreen({ navigation }: Props) {
               <RecentPaymentHistory
                 histories={paymentHistories}
                 isLoading={isPaymentHistoryLoading}
+                onPressHistory={(history) =>
+                  navigation.navigate("PaymentDetailScreen", {
+                    paymentId: String(history.id),
+                  })
+                }
+                onPressMore={() => navigation.navigate("PaymentHistoryScreen")}
               />
             </View>
             <View className="mt-10">
-              <MainBannerCarousel />
+              <MainBannerCarousel onPressItem={handlePressBanner} />
             </View>
           </View>
         </PageWrap>
 
         <FloatingButton
-          value="payment"
+          value="home"
           onChange={(value) => {
             if (value === "home") {
               return;
             }
 
             if (value === "payment") {
+              navigation.navigate(
+                "PaymentMethodSelect",
+                paymentMethodSelectParams,
+              );
               return;
             }
 
