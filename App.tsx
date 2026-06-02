@@ -10,6 +10,7 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import GuideScreen from "./src/app/screens/GuideScreen";
+import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
 import TutorialScreen from "./src/features/auth/screens/TutorialScreen";
 import CardRegisterScreen from "./src/features/card/screens/CardRegisterScreen";
 import MainScreen from "./src/features/main/screens/MainScreen";
@@ -41,6 +42,7 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Main: undefined;
   Guide: undefined;
+  SmsVerification: undefined;
   QrScan: undefined;
   PaymentMethodSelect:
     | {
@@ -84,6 +86,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Tutorial: "tutorial",
       Main: "",
       Guide: "guide",
+      SmsVerification: "auth/sms-verification",
       QrScan: "qr-scan",
       CardRegister: "card-register",
       PaymentMethodSelect: "payment/method-select",
@@ -136,6 +139,10 @@ export default function App() {
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
+            <Stack.Screen
+              name="SmsVerification"
+              component={SmsVerificationScreen}
+            />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
             <Stack.Screen
