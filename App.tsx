@@ -24,6 +24,7 @@ import type { PaymentCancelRouteParams } from "./src/features/payment/types/paym
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
 import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
 import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
+import TutorialScreen from "./src/features/auth/screens/TutorialScreen";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -32,6 +33,7 @@ import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistorySc
 import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
 
 export type RootStackParamList = {
+  Tutorial: undefined;
   Main: undefined;
   Guide: undefined;
   QrScan: undefined;
@@ -65,6 +67,7 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ["http://localhost:19000"],
   config: {
     screens: {
+      Tutorial: "tutorial",
       Main: "",
       Guide: "guide",
       QrScan: "qr-scan",
@@ -114,6 +117,7 @@ export default function App() {
             initialRouteName="Main"
             screenOptions={{ headerShown: false }}
           >
+            <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
