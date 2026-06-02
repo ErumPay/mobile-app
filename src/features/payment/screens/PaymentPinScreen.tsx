@@ -1,17 +1,3 @@
-이건 `KAN-1348` 멱등성 로직을 살리되, `develop` 쪽의 `paymentParams` narrowing도 같이 쓰는 게 깔끔해. 그리고 하단 JSX가 중복으로 섞였으니까 `Pressable`/`Loading`/`PinCodeKeypad`는 한 번씩만 남겨야 해.
-
-수정 포인트:
-
-- `createPaymentIdempotencyKey` import 유지
-- `paymentParams` 변수 유지
-- `idempotencyKey`는 `paymentParams?.paymentId` 기준으로 생성
-- `requestPayment(payload, idempotencyKey)` 형태 유지
-- 하단 JSX 중복 제거
-- `PinCodeKeypad`는 바깥에 한 번만 유지
-
-최종 코드:
-
-```tsx
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -78,7 +64,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return undefined;
     }
 
-    return paymentParams.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
+    return (
+      paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId)
+    );
   }, [paymentParams]);
 
   const handlePressClose = () => {
@@ -243,4 +231,3 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     </PageWrap>
   );
 }
-```
