@@ -110,7 +110,7 @@ const scenarioData: Record<
     members: withMembers([
       { amount: 40000, status: 'AMOUNT_CONFIRMED' },
       { status: 'PAYMENT_PENDING' },
-      { status: 'PAYMENT_COMPLETED' },
+      { status: 'PAYMENT_PENDING' },
     ]),
     footer: {
       type: 'button',
