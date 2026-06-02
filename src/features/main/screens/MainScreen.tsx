@@ -162,22 +162,29 @@ export default function MainScreen({ navigation }: Props) {
   return (
     <View className="flex-1 items-center bg-neutral-grey2">
       <View className="w-full flex-1 overflow-hidden bg-neutral-white">
-        <View className="border-b border-neutral-grey1 bg-neutral-white px-5 py-3">
-          <Pressable
-            accessibilityRole="button"
-            className="self-start rounded-full border border-neutral-grey1 px-3 py-2"
-            onPress={() => navigation.navigate("Guide")}
-          >
-            <Text className="font-pretendard text-normal-bold text-erum-secondary">
-              IA 가이드 보기
-            </Text>
-          </Pressable>
-        </View>
-        <MainHeader
-          hasNotification={hasNotification}
-          isNotificationLoading={isNotificationLoading}
-        />
-        <PageWrap padded={false}>
+        <PageWrap
+          padded={false}
+          backgroundClassName="bg-neutral-white"
+          header={
+            <>
+              <View className="border-b border-neutral-grey1 bg-neutral-white px-5 py-3">
+                <Pressable
+                  accessibilityRole="button"
+                  className="self-start rounded-full border border-neutral-grey1 px-3 py-2"
+                  onPress={() => navigation.navigate("Guide")}
+                >
+                  <Text className="font-pretendard text-normal-bold text-erum-secondary">
+                    IA 가이드 보기
+                  </Text>
+                </Pressable>
+              </View>
+              <MainHeader
+                hasNotification={hasNotification}
+                isNotificationLoading={isNotificationLoading}
+              />
+            </>
+          }
+        >
           <View className="bg-neutral-white px-5 pb-40">
             <View className="mt-10">
               <Text className="font-pretendard text-heading-3 text-neutral-black1">
