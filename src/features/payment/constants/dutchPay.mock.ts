@@ -39,14 +39,15 @@ function withMembers(updates: Partial<DutchPayMember>[]): DutchPayMember[] {
   }));
 }
 
-const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 'scenario'>> = {
+const scenarioData: Record<
+  DutchPayScenario,
+  Omit<DutchPayGroupData, 'role' | 'scenario'>
+> = {
   OWNER_INITIAL: {
     totalAmount,
-    members: withMembers([
-      { canOpenMenu: false },
-      { canOpenMenu: true },
-      { canOpenMenu: true },
-    ]),
+    members: withMembers([{ canOpenMenu: false }]).filter(
+      (member) => member.isOwner,
+    ),
     footer: {
       type: 'button',
       label: '더치페이 그룹 확정하기',
@@ -68,9 +69,9 @@ const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 's
   OWNER_AMOUNT_INPUT_WAITING: {
     totalAmount,
     members: withMembers([
-      { amount: 80000, status: 'AMOUNT_CONFIRMED' },
+      { amount: totalAmount, status: 'AMOUNT_CONFIRMED' },
       { status: 'WAITING_AMOUNT' },
-      { amount: 10000, status: 'AMOUNT_CONFIRMED' },
+      { status: 'WAITING_AMOUNT' },
     ]),
     footer: {
       type: 'button',
@@ -107,7 +108,7 @@ const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 's
     members: withMembers([
       { amount: 40000, status: 'AMOUNT_CONFIRMED' },
       { status: 'PAYMENT_PENDING' },
-      { status: 'PAYMENT_COMPLETED' },
+      { status: 'PAYMENT_PENDING' },
     ]),
     footer: {
       type: 'button',
@@ -130,9 +131,9 @@ const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 's
   OWNER_FINAL_PAYMENT_FAILURE: {
     totalAmount,
     members: withMembers([
-      { amount: 70000, status: 'AMOUNT_CONFIRMED' },
-      { status: 'PAYMENT_FAILED' },
-      { status: 'PAYMENT_COMPLETED' },
+      { amount: 40000, status: 'AMOUNT_CONFIRMED' },
+      { amount: 30000, status: 'PAYMENT_FAILED' },
+      { amount: 10000, status: 'PAYMENT_COMPLETED' },
     ]),
     contentNotice: {
       tone: 'error',
@@ -145,11 +146,7 @@ const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 's
   },
   PARTICIPANT_INITIAL: {
     totalAmount,
-    members: withMembers([
-      {},
-      { isMe: true },
-      {},
-    ]),
+    members: withMembers([{}, { isMe: true }, {}]),
     footer: {
       type: 'button',
       label: '더치페이 그룹 나가기',
@@ -158,14 +155,13 @@ const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 's
   PARTICIPANT_AMOUNT_INPUT: {
     totalAmount,
     members: withMembers([
-      { amount: 40000, status: 'AMOUNT_CONFIRMED' },
-      { isMe: true, status: 'INPUT_EDITING', editableAmount: '40,000' },
-      { amount: 10000, status: 'AMOUNT_CONFIRMED' },
+      { amount: totalAmount, status: 'AMOUNT_CONFIRMED' },
+      { isMe: true, status: 'INPUT_EDITING', editableAmount: '0' },
+      { status: 'WAITING_AMOUNT' },
     ]),
     footer: {
-      type: 'notice',
-      tone: 'info',
-      message: '대표자가 결제 금액 확인을 하고 있습니다.',
+      type: 'button',
+      label: '금액 확정하기',
     },
   },
   PARTICIPANT_PAYMENT_PROGRESS: {
@@ -189,8 +185,9 @@ const scenarioData: Record<DutchPayScenario, Omit<DutchPayGroupData, 'role' | 's
       { amount: 10000, status: 'AMOUNT_CONFIRMED' },
     ]),
     footer: {
-      type: 'button',
-      label: '더치페이 금액 확정하기',
+      type: 'notice',
+      tone: 'info',
+      message: '대표자가 결제 금액 확인을 하고 있습니다.',
     },
   },
   PARTICIPANT_FINAL_PAYMENT_PROGRESS: {

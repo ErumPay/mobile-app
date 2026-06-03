@@ -24,6 +24,8 @@ import type { PaymentCancelRouteParams } from "./src/features/payment/types/paym
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
 import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
 import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
+import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
+import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -53,6 +55,7 @@ export type RootStackParamList = {
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
   DutchPayGroup: DutchPayGroupRouteParams | undefined;
+  PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -75,6 +78,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
       DutchPayGroup: "payment/dutch-pay-group",
+      PaymentParticipantSelect: "payment/participant-select",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -133,6 +137,10 @@ export default function App() {
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
             <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
+            <Stack.Screen
+              name="PaymentParticipantSelect"
+              component={PaymentParticipantSelectScreen}
+            />
 
             <Stack.Screen
               name="MypageHomeScreen"

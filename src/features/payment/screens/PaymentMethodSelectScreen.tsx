@@ -5,6 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';
+import Modal from '../../../shared/components/Modal';
+import PaymentMockBadge from '../components/PaymentMockBadge';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import PaymentActionOptionList from '../components/PaymentActionOptionList';
 import PaymentRequestSummary from '../components/PaymentRequestSummary';
 import { getPaymentActionOptions } from '../utils/paymentMethodOptions';
@@ -29,7 +32,16 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
     const [errorMessage, setErrorMessage] = useState(
         routeSummary || routeToken ? '' : '결제 요청 token이 없습니다.',
     );
+    const [stopModalVisible, setStopModalVisible] = useState(false);
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
+        useState(false);
     const options = summary ? getPaymentActionOptions(summary.type) : [];
+    const stopModalDescription =
+        summary?.type === 'DUTCH_PAY_PARTICIPANT' ||
+        summary?.type === 'REMOTE_RECIPIENT'
+            ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+            : undefined;
 
     useEffect(() => {
         if (routeSummary) {
@@ -84,12 +96,18 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
     }, [routeSummary, routeToken]);
 
     const handlePressClose = () => {
+        setStopModalVisible(true);
+    };
+
+    const handleConfirmStopPayment = () => {
+        setStopModalVisible(false);
+
         if (navigation.canGoBack()) {
             navigation.goBack();
             return;
         }
 
-        navigation.navigate('Guide');
+        navigation.navigate('Main');
     };
 
     const handlePressOption = (type: PaymentActionType) => {
@@ -118,7 +136,34 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
             return;
         }
 
+        if (type === 'REJECT') {
+            setRejectModalVisible(true);
+            return;
+        }
+
+        if (type === 'REMOTE_REQUEST') {
+            setRemoteRequestCompleteModalVisible(true);
+            return;
+        }
+
+        if (type === 'DUTCH_PAY') {
+            navigation.navigate('PaymentParticipantSelect', {
+                mode: 'DUTCH_PAY',
+            });
+            return;
+        }
+
         Alert.alert('결제 수단 선택', `${type} 액션이 선택되었습니다.`);
+    };
+
+    const handleConfirmReject = () => {
+        setRejectModalVisible(false);
+        navigation.navigate('Main');
+    };
+
+    const handleConfirmRemoteRequestComplete = () => {
+        setRemoteRequestCompleteModalVisible(false);
+        navigation.navigate('Main');
     };
 
     return (
@@ -151,7 +196,14 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                     ) : null}
 
                     {summary ? (
-                        <PaymentRequestSummary summary={summary} />
+                        <>
+                            {routeSummary ? (
+                                <View className="px-4 pt-4">
+                                    <PaymentMockBadge />
+                                </View>
+                            ) : null}
+                            <PaymentRequestSummary summary={summary} />
+                        </>
                     ) : null}
 
                     {summary ? (
@@ -161,6 +213,32 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                         />
                     ) : null}
                 </ScrollView>
+                <PaymentStopConfirmModal
+                    visible={stopModalVisible}
+                    description={stopModalDescription}
+                    onConfirm={handleConfirmStopPayment}
+                    onCancel={() => setStopModalVisible(false)}
+                />
+                <Modal
+                    visible={rejectModalVisible}
+                    type="two"
+                    title="결제 요청을 거절하시겠습니까?"
+                    description="거절하면 요청자에게 거절 상태가 전달됩니다."
+                    confirmLabel="예"
+                    cancelLabel="아니오"
+                    onConfirm={handleConfirmReject}
+                    onCancel={() => setRejectModalVisible(false)}
+                    onClose={() => setRejectModalVisible(false)}
+                />
+                <Modal
+                    visible={remoteRequestCompleteModalVisible}
+                    type="one"
+                    title="원격결제 요청이 전송되었습니다."
+                    description="메인에서 결제 진행상태를 확인할 수 있습니다."
+                    confirmLabel="확인"
+                    onConfirm={handleConfirmRemoteRequestComplete}
+                    onClose={handleConfirmRemoteRequestComplete}
+                />
             </View>
         </SafeAreaView>
     );

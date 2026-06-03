@@ -14,6 +14,8 @@ import { Toast } from '../../../shared/components/Toast';
 import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';
 import { validatePaymentQr } from '../../payment/api/paymentQrApi';
+import PaymentStopConfirmModal from '../../payment/components/PaymentStopConfirmModal';
+import QrRescanModal from '../../payment/components/QrRescanModal';
 import { toPaymentRequestSummary } from '../../payment/utils/paymentQrAdapter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QrScan'>;
@@ -26,6 +28,8 @@ export default function QrScanScreen({ navigation }: Props) {
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<ToastType>('info');
     const [isValidating, setIsValidating] = useState(false);
+    const [stopModalVisible, setStopModalVisible] = useState(false);
+    const [rescanModalVisible, setRescanModalVisible] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -44,12 +48,24 @@ export default function QrScanScreen({ navigation }: Props) {
     };
 
     const handlePressClose = () => {
+        setStopModalVisible(true);
+    };
+
+    const handleConfirmStopPayment = () => {
+        setStopModalVisible(false);
+
         if (navigation.canGoBack()) {
             navigation.goBack();
             return;
         }
 
-        navigation.navigate('Guide');
+        navigation.navigate('Main');
+    };
+
+    const handlePressRescan = () => {
+        scanLockRef.current = false;
+        setIsValidating(false);
+        setRescanModalVisible(false);
     };
 
     const validateScannedQr = async (token: string) => {
@@ -58,7 +74,8 @@ export default function QrScanScreen({ navigation }: Props) {
         }
 
         if (!token) {
-            showToast('QR 코드 정보를 읽지 못했습니다.', 'error');
+            scanLockRef.current = false;
+            setRescanModalVisible(true);
             return;
         }
 
@@ -69,8 +86,8 @@ export default function QrScanScreen({ navigation }: Props) {
             const qrResult = await validatePaymentQr(token);
 
             if (qrResult.code !== 'VALID') {
-                showToast('유효하지 않은 QR 코드입니다.', 'error');
                 scanLockRef.current = false;
+                setRescanModalVisible(true);
                 return;
             }
 
@@ -78,8 +95,8 @@ export default function QrScanScreen({ navigation }: Props) {
                 summary: toPaymentRequestSummary(qrResult),
             });
         } catch {
-            showToast('QR 결제 정보를 불러오지 못했습니다.', 'error');
             scanLockRef.current = false;
+            setRescanModalVisible(true);
         } finally {
             setIsValidating(false);
         }
@@ -188,6 +205,15 @@ export default function QrScanScreen({ navigation }: Props) {
                 visible={toastVisible}
                 message={toastMessage}
                 type={toastType}
+            />
+            <PaymentStopConfirmModal
+                visible={stopModalVisible}
+                onConfirm={handleConfirmStopPayment}
+                onCancel={() => setStopModalVisible(false)}
+            />
+            <QrRescanModal
+                visible={rescanModalVisible}
+                onConfirm={handlePressRescan}
             />
         </SafeAreaView>
     );
