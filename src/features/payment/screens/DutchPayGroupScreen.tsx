@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
@@ -142,7 +142,10 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? 'OWNER';
   const scenario = route.params?.scenario;
   const splitType = route.params?.splitType ?? 'MANUAL';
-  const data = getMockDutchPayGroupData({ role, scenario });
+  const data = useMemo(
+    () => getMockDutchPayGroupData({ role, scenario }),
+    [role, scenario],
+  );
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
   const [members, setMembers] = useState<DutchPayMember[]>(data.members);
@@ -204,18 +207,32 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     displayMembers.find((member) => member.isOwner)?.amount ?? ownerAmount;
   const myPaymentAmount =
     displayMembers.find((member) => member.isMe)?.amount ?? myEditableAmount;
+  const latestPaymentAmountRef = useRef(myPaymentAmount);
 
-  const navigateToDutchPayMethodSelect = (amount: number) => {
-    navigation.navigate('PaymentMethodSelect', {
-      summary: createDutchPayPaymentSummary({
-        paymentId: role === 'OWNER' ? 1347001 : 1347002,
-        amount,
-      }),
-    });
-  };
+  const navigateToDutchPayMethodSelect = useCallback(
+    (amount: number) => {
+      navigation.navigate('PaymentMethodSelect', {
+        summary: createDutchPayPaymentSummary({
+          paymentId: role === 'OWNER' ? 1347001 : 1347002,
+          amount,
+        }),
+      });
+    },
+    [navigation, role],
+  );
+
+  useEffect(() => {
+    latestPaymentAmountRef.current = myPaymentAmount;
+  }, [myPaymentAmount]);
 
   useEffect(() => {
     if (isAutoSplitParticipantInput) {
+      if (data.members.length === 0) {
+        setMembers([]);
+        setOpenMenuMemberId(null);
+        return;
+      }
+
       const splitAmount = Math.floor(data.totalAmount / data.members.length);
 
       setMembers(
@@ -236,7 +253,13 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
     setMembers(data.members);
     setOpenMenuMemberId(null);
-  }, [data.scenario, data.totalAmount, isAutoSplitParticipantInput, role]);
+  }, [
+    data.members,
+    data.scenario,
+    data.totalAmount,
+    isAutoSplitParticipantInput,
+    role,
+  ]);
 
   useEffect(() => {
     if (redirectTimerRef.current) {
@@ -252,7 +275,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     setToastVisible(true);
     redirectTimerRef.current = setTimeout(() => {
       setToastVisible(false);
-      navigateToDutchPayMethodSelect(myPaymentAmount);
+      navigateToDutchPayMethodSelect(latestPaymentAmountRef.current);
       redirectTimerRef.current = null;
     }, 3000);
 
@@ -262,7 +285,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         redirectTimerRef.current = null;
       }
     };
-  }, [data.scenario, myPaymentAmount]);
+  }, [data.scenario, navigateToDutchPayMethodSelect]);
 
   const handlePressClose = () => {
     setStopModalVisible(true);

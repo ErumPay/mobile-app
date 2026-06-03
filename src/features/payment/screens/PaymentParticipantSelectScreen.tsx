@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Modal as RNModal,
   Pressable,
@@ -367,7 +368,10 @@ export default function PaymentParticipantSelectScreen({
   const mode = route.params?.mode ?? 'DUTCH_PAY';
   const scenario = route.params?.scenario ?? 'DEFAULT';
   const content = getModeContent(mode);
-  const initialState = getParticipantSelectMockState({ mode, scenario });
+  const initialState = useMemo(
+    () => getParticipantSelectMockState({ mode, scenario }),
+    [mode, scenario],
+  );
   const [searchKeyword, setSearchKeyword] = useState(initialState.searchKeyword);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(
     initialState.selectedFriendIds,
@@ -386,9 +390,11 @@ export default function PaymentParticipantSelectScreen({
   const shareCountdownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const latestModeRef = useRef(mode);
+  const latestAutoSplitCheckedRef = useRef(autoSplitChecked);
   const isDutchPay = mode === 'DUTCH_PAY';
   const normalizedSearchKeyword = searchKeyword.trim().replace(/-/g, '');
-  const filterFriends = (friends: ParticipantFriend[]) => {
+  const filterFriends = useCallback((friends: ParticipantFriend[]) => {
     if (!normalizedSearchKeyword) {
       return friends;
     }
@@ -402,14 +408,14 @@ export default function PaymentParticipantSelectScreen({
         friend.phoneSuffix.includes(normalizedSearchKeyword)
       );
     });
-  };
+  }, [normalizedSearchKeyword]);
   const favoriteFriends = useMemo(
     () => filterFriends(initialState.favoriteFriends),
-    [initialState.favoriteFriends, normalizedSearchKeyword],
+    [filterFriends, initialState.favoriteFriends],
   );
   const allFriends = useMemo(
     () => filterFriends(initialState.allFriends),
-    [initialState.allFriends, normalizedSearchKeyword],
+    [filterFriends, initialState.allFriends],
   );
   const hasSearchKeyword = normalizedSearchKeyword.length > 0;
   const hasVisibleFriends = favoriteFriends.length > 0 || allFriends.length > 0;
@@ -443,19 +449,27 @@ export default function PaymentParticipantSelectScreen({
     });
   };
 
-  const clearShareCountdownTimer = () => {
+  useEffect(() => {
+    latestModeRef.current = mode;
+  }, [mode]);
+
+  useEffect(() => {
+    latestAutoSplitCheckedRef.current = autoSplitChecked;
+  }, [autoSplitChecked]);
+
+  const clearShareCountdownTimer = useCallback(() => {
     if (shareCountdownTimerRef.current) {
       clearTimeout(shareCountdownTimerRef.current);
       shareCountdownTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const resetShareModal = () => {
+  const resetShareModal = useCallback(() => {
     clearShareCountdownTimer();
     setShareModalVisible(false);
     setShareStep('READY');
     setShareCountdown(3);
-  };
+  }, [clearShareCountdownTimer]);
 
   const handlePressSelectAll = (friends: ParticipantFriend[]) => {
     if (!isDutchPay) {
@@ -476,9 +490,14 @@ export default function PaymentParticipantSelectScreen({
 
   const handlePressCopyLink = async () => {
     clearShareCountdownTimer();
-    await Clipboard.setStringAsync(inviteUrl);
-    setShareStep('COPIED');
-    setShareCountdown(3);
+
+    try {
+      await Clipboard.setStringAsync(inviteUrl);
+      setShareStep('COPIED');
+      setShareCountdown(3);
+    } catch {
+      Alert.alert('URL 공유', 'URL 복사에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   useEffect(() => {
@@ -489,11 +508,13 @@ export default function PaymentParticipantSelectScreen({
     if (shareCountdown <= 0) {
       resetShareModal();
 
-      if (mode === 'DUTCH_PAY') {
+      if (latestModeRef.current === 'DUTCH_PAY') {
         navigation.navigate('DutchPayGroup', {
           role: 'OWNER',
           scenario: 'OWNER_INITIAL',
-          splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
+          splitType: latestAutoSplitCheckedRef.current
+            ? 'AUTO_SPLIT'
+            : 'MANUAL',
         });
         return;
       }
@@ -509,9 +530,8 @@ export default function PaymentParticipantSelectScreen({
 
     return clearShareCountdownTimer;
   }, [
-    autoSplitChecked,
-    mode,
     navigation,
+    resetShareModal,
     shareCountdown,
     shareModalVisible,
     shareStep,

@@ -72,6 +72,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   }, [paymentParams]);
 
   const handlePressClose = () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (mode === 'PAYMENT_INPUT') {
       setStopModalVisible(true);
       return;
@@ -81,6 +85,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   };
 
   const handleConfirmStopPayment = () => {
+    if (isSubmitting) {
+      return;
+    }
+
     setStopModalVisible(false);
 
     if (navigation.canGoBack()) {
