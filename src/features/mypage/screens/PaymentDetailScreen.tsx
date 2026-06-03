@@ -1,6 +1,7 @@
 import { Modal as RNModal, Pressable, Text, View, ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
@@ -8,14 +9,45 @@ import { Card } from '../../../shared/components/Card';
 import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
-import { mockPaymentDetails } from '../mocks/mypageMockData';
+import { mockManagedCards, mockPaymentDetails } from '../mocks/mypageMockData';
+import type { PaymentBenefitType, PaymentMethodType } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentDetailScreen'>;
+
+const paymentMethodLabel: Record<PaymentMethodType, string> = {
+  remote: '원격결제',
+  dutchpay: '더치페이',
+  solo: '혼자결제',
+};
+
+const paymentBenefitLabel: Record<PaymentBenefitType, string> = {
+  singleBenefit: '단일혜택',
+  singlePerformance: '단일실적',
+  splitBenefit: '분할혜택',
+  splitPerformance: '분할실적',
+};
+
+const paymentMethodClassName: Record<PaymentMethodType, string> = {
+  remote: 'bg-purple-50 text-purple-600',
+  dutchpay: 'bg-pink-50 text-pink-600',
+  solo: 'bg-slate-100 text-slate-700',
+};
+
+const paymentBenefitClassName: Record<PaymentBenefitType, string> = {
+  singleBenefit: 'bg-blue-50 text-blue-600',
+  singlePerformance: 'bg-sky-50 text-sky-600',
+  splitBenefit: 'bg-emerald-50 text-emerald-600',
+  splitPerformance: 'bg-lime-50 text-lime-700',
+};
 
 export function PaymentDetailScreen({ navigation, route }: Props) {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const payment =
     mockPaymentDetails[route.params.paymentId] ?? mockPaymentDetails['payment-1'];
+  const paymentCardIds = payment.cardIds ?? [payment.cardId];
+  const paymentCards = paymentCardIds
+    .map((cardId) => mockManagedCards.find((card) => card.id === cardId))
+    .filter((card): card is NonNullable<typeof card> => Boolean(card));
 
   return (
     <>
@@ -42,6 +74,24 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
           </Card>
 
           <Card title="결제 정보">
+            <InfoRow
+              label="카드명"
+              value={paymentCards.map((card) => card.name).join('\n') || '등록 카드'}
+            />
+            <InfoRow
+              label="카드번호"
+              value={paymentCards.map((card) => card.cardNumber).join('\n') || '-'}
+            />
+            <BadgeInfoRow label="결제 방식">
+              <Badge
+                label={paymentMethodLabel[payment.method]}
+                className={paymentMethodClassName[payment.method]}
+              />
+              <Badge
+                label={paymentBenefitLabel[payment.benefitType]}
+                className={paymentBenefitClassName[payment.benefitType]}
+              />
+            </BadgeInfoRow>
             <InfoRow label="결제상태" value="결제완료" valueClassName="text-erum-main" />
             <InfoRow label="결제일시" value={payment.paidAt} />
             <InfoRow label="영수증 ID" value={payment.receiptId} />
@@ -107,6 +157,33 @@ function InfoRow({
         {value}
       </Text>
     </View>
+  );
+}
+
+function BadgeInfoRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <View className="flex-row items-center justify-between py-2">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <View className="min-w-0 flex-1 flex-row justify-end gap-2">
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function Badge({ label, className }: { label: string; className: string }) {
+  return (
+    <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${className}`}>
+      {label}
+    </Text>
   );
 }
 
