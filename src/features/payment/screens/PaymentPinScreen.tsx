@@ -8,6 +8,7 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import { Loading } from '../../../shared/components/Loading';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
@@ -57,6 +58,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stopModalVisible, setStopModalVisible] = useState(false);
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
 
@@ -70,7 +72,31 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   }, [paymentParams]);
 
   const handlePressClose = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (mode === 'PAYMENT_INPUT') {
+      setStopModalVisible(true);
+      return;
+    }
+
     navigation.goBack();
+  };
+
+  const handleConfirmStopPayment = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setStopModalVisible(false);
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Main');
   };
 
   const handlePressForgotPassword = () => {
@@ -226,6 +252,16 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <PinCodeKeypad
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+        />
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description={
+            paymentParams?.flow === 'DUTCH_PAY'
+              ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+              : undefined
+          }
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
         />
       </View>
     </PageWrap>

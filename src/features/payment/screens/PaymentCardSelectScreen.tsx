@@ -9,6 +9,7 @@ import RecommendedCardSection from '../components/RecommendedCardSection';
 import CardCombinationSection from '../components/CardCombinationSection';
 import RegisteredCardBottomSheet from '../components/RegisteredCardBottomSheet';
 import PaymentCardActionButton from '../components/PaymentCardActionButton';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { Skeleton } from '../../../shared/components/Skeleton';
 import type {
     CardCombinationType,
@@ -88,6 +89,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         useState<CardCombinationType>('SINGLE_BENEFIT');
     const [isCombinationSelected, setIsCombinationSelected] = useState(false);
     const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
+    const [stopModalVisible, setStopModalVisible] = useState(false);
     const isDutchPay = data?.flowType === 'DUTCH_PAY';
 
     const selectedCombination = useMemo(
@@ -183,7 +185,18 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     }, [amount, hasValidAmount, hasValidPaymentId, idempotencyKey, paymentId]);
 
     const handlePressClose = () => {
-        navigation.goBack();
+        setStopModalVisible(true);
+    };
+
+    const handleConfirmStopPayment = () => {
+        setStopModalVisible(false);
+
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+            return;
+        }
+
+        navigation.navigate('Main');
     };
 
     const handlePressRecommendedCard = () => {
@@ -343,6 +356,16 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     notice={
                         isDutchPay ? '이 결제는 가결제로 먼저 진행돼요!' : undefined
                     }
+                />
+                <PaymentStopConfirmModal
+                    visible={stopModalVisible}
+                    description={
+                        isDutchPay
+                            ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+                            : undefined
+                    }
+                    onConfirm={handleConfirmStopPayment}
+                    onCancel={() => setStopModalVisible(false)}
                 />
             </View>
         </SafeAreaView>

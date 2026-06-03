@@ -9,6 +9,7 @@ type Props = {
   isLast: boolean;
   menuOpen?: boolean;
   onPressMenu?: (memberId: string) => void;
+  onChangeEditableAmount?: (memberId: string, value: string) => void;
 };
 
 function formatAmount(amount: number) {
@@ -53,42 +54,28 @@ function MemberBadge({
   );
 }
 
-function MemberStatusLine({ member }: { member: DutchPayMember }) {
+function MemberStatusLine({
+  member,
+  onChangeEditableAmount,
+}: {
+  member: DutchPayMember;
+  onChangeEditableAmount?: (memberId: string, value: string) => void;
+}) {
   if (member.status === 'INPUT_EDITING') {
     return (
       <View className="mt-2 flex-row items-center gap-2">
         <View className="min-w-0 flex-1 rounded-lg border border-neutral-grey1 bg-neutral-white px-3 py-2">
           <TextInput
-            editable={false}
+            accessibilityLabel={`${member.name} 결제 금액 입력`}
+            keyboardType="number-pad"
             value={member.editableAmount ?? ''}
             className="font-pretendard text-normal-regular text-neutral-black2"
+            onChangeText={(value) => onChangeEditableAmount?.(member.id, value)}
           />
         </View>
         <Text className="font-pretendard text-normal-regular text-neutral-black1">
           원
         </Text>
-        <StatusCheck />
-      </View>
-    );
-  }
-
-  if (member.amount) {
-    const autoSplit = member.status === 'AUTO_SPLIT';
-    const confirmed = member.status === 'AMOUNT_CONFIRMED';
-
-    return (
-      <View className="mt-1 flex-row items-center">
-        <Text className="font-pretendard text-normal-bold text-erum-main">
-          {formatAmount(member.amount)}
-        </Text>
-        {autoSplit ? (
-          <View className="ml-2 rounded-full bg-[#E7F7EC] px-2 py-1">
-            <Text className="font-pretendard text-small-bold text-state-success">
-              자동배분
-            </Text>
-          </View>
-        ) : null}
-        {confirmed ? <StatusCheck /> : null}
       </View>
     );
   }
@@ -131,6 +118,27 @@ function MemberStatusLine({ member }: { member: DutchPayMember }) {
     );
   }
 
+  if (member.amount) {
+    const autoSplit = member.status === 'AUTO_SPLIT';
+    const confirmed = member.status === 'AMOUNT_CONFIRMED';
+
+    return (
+      <View className="mt-1 flex-row items-center">
+        <Text className="font-pretendard text-normal-bold text-erum-main">
+          {formatAmount(member.amount)}
+        </Text>
+        {autoSplit ? (
+          <View className="ml-2 rounded-full bg-[#E7F7EC] px-2 py-1">
+            <Text className="font-pretendard text-small-bold text-state-success">
+              자동배분
+            </Text>
+          </View>
+        ) : null}
+        {confirmed ? <StatusCheck /> : null}
+      </View>
+    );
+  }
+
   return null;
 }
 
@@ -139,6 +147,7 @@ export default function DutchPayMemberRow({
   isLast,
   menuOpen = false,
   onPressMenu,
+  onChangeEditableAmount,
 }: Props) {
   return (
     <View className="relative flex-row gap-3">
@@ -169,7 +178,10 @@ export default function DutchPayMemberRow({
             ) : null}
           </View>
 
-          <MemberStatusLine member={member} />
+          <MemberStatusLine
+            member={member}
+            onChangeEditableAmount={onChangeEditableAmount}
+          />
         </View>
       </View>
 
