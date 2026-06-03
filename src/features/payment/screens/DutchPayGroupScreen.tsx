@@ -1,16 +1,18 @@
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
+import { Toast } from '../../../shared/components/Toast';
 import { colors } from '../../../shared/styles/designTokens';
 import DutchPayMemberRow from '../components/DutchPayMemberRow';
 import DutchPayTotalNotice from '../components/DutchPayTotalNotice';
 import { getMockDutchPayGroupData } from '../constants/dutchPay.mock';
+import type { PaymentRequestSummary } from '../types/paymentMethod.types';
 import type { DutchPayMember, DutchPayScenario } from '../types/dutchPay.types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
@@ -19,7 +21,7 @@ const nextScenarioByScenario = {
   OWNER_INITIAL: 'OWNER_AUTO_SPLIT_READY',
   OWNER_AUTO_SPLIT_READY: 'OWNER_AMOUNT_INPUT_COMPLETE',
   OWNER_AMOUNT_INPUT_WAITING: 'OWNER_AMOUNT_INPUT_COMPLETE',
-  OWNER_AMOUNT_INPUT_COMPLETE: 'OWNER_PAYMENT_PROGRESS',
+  OWNER_AMOUNT_INPUT_COMPLETE: 'OWNER_PAYMENT_REQUEST',
   OWNER_PAYMENT_REQUEST: 'OWNER_PAYMENT_PROGRESS',
   OWNER_PAYMENT_PROGRESS: 'OWNER_FINAL_PAYMENT_READY',
   OWNER_FINAL_PAYMENT_READY: 'OWNER_FINAL_PAYMENT_READY',
@@ -96,6 +98,22 @@ function formatEditableAmount(value: string) {
   return parseAmount(value).toLocaleString('ko-KR');
 }
 
+function createDutchPayPaymentSummary({
+  amount,
+  paymentId,
+}: {
+  amount: number;
+  paymentId: number;
+}): PaymentRequestSummary {
+  return {
+    paymentId,
+    merchantName: '롯데시네마 홍대입구점',
+    amount,
+    type: 'DUTCH_PAY_PARTICIPANT',
+    dutchPayOwnerName: '김지지',
+  };
+}
+
 function applyFailedPaymentAmountToOwner(
   members: DutchPayMember[],
 ): DutchPayMember[] {
@@ -122,8 +140,10 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const scenario = route.params?.scenario;
   const splitType = route.params?.splitType ?? 'MANUAL';
   const data = getMockDutchPayGroupData({ role, scenario });
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
   const [members, setMembers] = useState<DutchPayMember[]>(data.members);
+  const [toastVisible, setToastVisible] = useState(false);
 
   const isParticipantAmountInputScenario =
     data.scenario === 'PARTICIPANT_AMOUNT_INPUT';
@@ -175,6 +195,19 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       : data.footer.type === 'button'
         ? data.footer.label
         : '';
+  const ownerDisplayAmount =
+    displayMembers.find((member) => member.isOwner)?.amount ?? ownerAmount;
+  const myPaymentAmount =
+    displayMembers.find((member) => member.isMe)?.amount ?? myEditableAmount;
+
+  const navigateToDutchPayMethodSelect = (amount: number) => {
+    navigation.navigate('PaymentMethodSelect', {
+      summary: createDutchPayPaymentSummary({
+        paymentId: role === 'OWNER' ? 1347001 : 1347002,
+        amount,
+      }),
+    });
+  };
 
   useEffect(() => {
     if (isAutoSplitParticipantInput) {
@@ -199,6 +232,32 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     setMembers(data.members);
     setOpenMenuMemberId(null);
   }, [data.scenario, data.totalAmount, isAutoSplitParticipantInput, role]);
+
+  useEffect(() => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+
+    if (data.scenario !== 'PARTICIPANT_PAYMENT_REQUEST') {
+      setToastVisible(false);
+      return;
+    }
+
+    setToastVisible(true);
+    redirectTimerRef.current = setTimeout(() => {
+      setToastVisible(false);
+      navigateToDutchPayMethodSelect(myPaymentAmount);
+      redirectTimerRef.current = null;
+    }, 3000);
+
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, [data.scenario, myPaymentAmount]);
 
   const handlePressClose = () => {
     if (navigation.canGoBack()) {
@@ -243,6 +302,14 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           };
         }),
       );
+      return;
+    }
+
+    if (
+      data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
+      data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE'
+    ) {
+      navigateToDutchPayMethodSelect(ownerDisplayAmount);
       return;
     }
 
@@ -354,6 +421,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             )}
           </View>
         </View>
+        <Toast
+          visible={toastVisible}
+          type="info"
+          message={'3초 뒤 결제 화면으로 이동됩니다.\n결제는 10분 이내 진행해주세요.'}
+        />
       </View>
     </PageWrap>
   );
