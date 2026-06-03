@@ -28,6 +28,7 @@ export type DutchPayScenario =
 export type DutchPayGroupRouteParams = {
   role?: DutchPayRole;
   scenario?: DutchPayScenario;
+  splitType?: 'AUTO_SPLIT' | 'MANUAL';
 };
 
 export type DutchPayMember = {

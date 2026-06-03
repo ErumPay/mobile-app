@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
@@ -11,6 +11,7 @@ import { colors } from '../../../shared/styles/designTokens';
 import DutchPayMemberRow from '../components/DutchPayMemberRow';
 import DutchPayTotalNotice from '../components/DutchPayTotalNotice';
 import { getMockDutchPayGroupData } from '../constants/dutchPay.mock';
+import type { DutchPayMember, DutchPayScenario } from '../types/dutchPay.types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
 
@@ -30,11 +31,17 @@ const nextScenarioByScenario = {
   PARTICIPANT_FINAL_PAYMENT_PROGRESS: 'PARTICIPANT_FINAL_PAYMENT_PROGRESS',
 } as const;
 
-function DutchPayHeader({ onPressClose }: { onPressClose: () => void }) {
+function DutchPayHeader({
+  title,
+  onPressClose,
+}: {
+  title: string;
+  onPressClose: () => void;
+}) {
   return (
     <View className="flex-row items-center justify-between border-b border-neutral-grey1 bg-neutral-white px-4 py-3">
       <Text className="min-w-0 flex-1 font-pretendard text-heading-3 text-neutral-black1">
-        더치페이 결제 그룹 참여
+        {title}
       </Text>
       <Pressable
         accessibilityRole="button"
@@ -48,11 +55,137 @@ function DutchPayHeader({ onPressClose }: { onPressClose: () => void }) {
   );
 }
 
+function getHeaderTitle(scenario: DutchPayScenario) {
+  if (
+    scenario === 'OWNER_AUTO_SPLIT_READY' ||
+    scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
+    scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
+  ) {
+    return '더치페이 결제 금액 확인';
+  }
+
+  if (scenario === 'PARTICIPANT_AMOUNT_INPUT') {
+    return '더치페이 결제 금액 입력';
+  }
+
+  if (scenario === 'OWNER_PAYMENT_PROGRESS') {
+    return '더치페이 결제 최종 결제';
+  }
+
+  return '더치페이 결제 그룹 참여';
+}
+
+function parseAmount(value?: string) {
+  return Number((value ?? '').replace(/[^0-9]/g, '')) || 0;
+}
+
+function formatEditableAmount(value: string) {
+  return parseAmount(value).toLocaleString('ko-KR');
+}
+
+function applyFailedPaymentAmountToOwner(
+  members: DutchPayMember[],
+): DutchPayMember[] {
+  const failedAmount = members
+    .filter((member) => !member.isOwner && member.status === 'PAYMENT_FAILED')
+    .reduce((total, member) => total + (member.amount ?? 0), 0);
+
+  if (failedAmount === 0) {
+    return members;
+  }
+
+  return members.map((member) =>
+    member.isOwner
+      ? {
+          ...member,
+          amount: (member.amount ?? 0) + failedAmount,
+        }
+      : member,
+  );
+}
+
 export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? 'OWNER';
   const scenario = route.params?.scenario;
+  const splitType = route.params?.splitType ?? 'MANUAL';
   const data = getMockDutchPayGroupData({ role, scenario });
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
+  const [members, setMembers] = useState<DutchPayMember[]>(data.members);
+
+  const isParticipantAmountInputScenario =
+    data.scenario === 'PARTICIPANT_AMOUNT_INPUT';
+  const isAutoSplitParticipantInput =
+    isParticipantAmountInputScenario && splitType === 'AUTO_SPLIT';
+  const participantMembers = members.filter((member) => !member.isOwner);
+  const confirmedParticipantAmount = participantMembers.reduce(
+    (total, member) =>
+      member.status === 'AMOUNT_CONFIRMED' ? total + (member.amount ?? 0) : total,
+    0,
+  );
+  const ownerAmount = Math.max(data.totalAmount - confirmedParticipantAmount, 0);
+  const allParticipantsConfirmed =
+    participantMembers.length > 0 &&
+    participantMembers.every((member) => member.status === 'AMOUNT_CONFIRMED');
+  const isOwnerAmountCheckScenario =
+    data.scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
+    data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE';
+  const myMember = members.find((member) => member.isMe);
+  const myEditableAmount = parseAmount(myMember?.editableAmount);
+  const isMyAmountConfirmed =
+    myMember?.status === 'AMOUNT_CONFIRMED' && typeof myMember.amount === 'number';
+  const displayMembers = applyFailedPaymentAmountToOwner(
+    members.map((member) => {
+      if (
+        member.isOwner &&
+        (isOwnerAmountCheckScenario || isParticipantAmountInputScenario)
+      ) {
+        return {
+          ...member,
+          amount: ownerAmount,
+          status: 'AMOUNT_CONFIRMED',
+        };
+      }
+
+      return member;
+    }),
+  );
+  const primaryDisabled =
+    data.footer.type === 'button' &&
+    ((data.footer.disabled && !isOwnerAmountCheckScenario) ||
+      (isOwnerAmountCheckScenario && !allParticipantsConfirmed) ||
+      (isParticipantAmountInputScenario &&
+        !isMyAmountConfirmed &&
+        myEditableAmount < 1));
+  const primaryLabel =
+    isParticipantAmountInputScenario && isMyAmountConfirmed
+      ? '금액 수정하기'
+      : data.footer.type === 'button'
+        ? data.footer.label
+        : '';
+
+  useEffect(() => {
+    if (isAutoSplitParticipantInput) {
+      const splitAmount = Math.floor(data.totalAmount / data.members.length);
+
+      setMembers(
+        data.members.map((member) =>
+          member.isMe
+            ? {
+                ...member,
+                amount: splitAmount,
+                status: 'AMOUNT_CONFIRMED',
+                editableAmount: undefined,
+              }
+            : member,
+        ),
+      );
+      setOpenMenuMemberId(null);
+      return;
+    }
+
+    setMembers(data.members);
+    setOpenMenuMemberId(null);
+  }, [data.scenario, data.totalAmount, isAutoSplitParticipantInput, role]);
 
   const handlePressClose = () => {
     if (navigation.canGoBack()) {
@@ -68,6 +201,38 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (data.scenario === 'PARTICIPANT_INITIAL') {
+      navigation.navigate('Main');
+      return;
+    }
+
+    if (isParticipantAmountInputScenario) {
+      setMembers((prevMembers) =>
+        prevMembers.map((member) => {
+          if (!member.isMe) {
+            return member;
+          }
+
+          if (member.status === 'AMOUNT_CONFIRMED') {
+            return {
+              ...member,
+              amount: undefined,
+              status: 'INPUT_EDITING',
+              editableAmount: formatEditableAmount(String(member.amount ?? 0)),
+            };
+          }
+
+          return {
+            ...member,
+            amount: myEditableAmount,
+            status: 'AMOUNT_CONFIRMED',
+            editableAmount: undefined,
+          };
+        }),
+      );
+      return;
+    }
+
     const nextScenario = nextScenarioByScenario[data.scenario];
 
     if (data.scenario === nextScenario) {
@@ -78,6 +243,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     navigation.replace('DutchPayGroup', {
       role: data.role,
       scenario: nextScenario,
+      splitType,
     });
   };
 
@@ -85,12 +251,30 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     Alert.alert('더치페이', '더치페이 그룹 취소 요청입니다.');
   };
 
+  const handleChangeEditableAmount = (memberId: string, value: string) => {
+    setMembers((prevMembers) =>
+      prevMembers.map((member) =>
+        member.id === memberId
+          ? {
+              ...member,
+              editableAmount: formatEditableAmount(value),
+            }
+          : member,
+      ),
+    );
+  };
+
   return (
     <PageWrap
       scroll={false}
       padded={false}
       backgroundClassName="bg-neutral-white"
-      header={<DutchPayHeader onPressClose={handlePressClose} />}
+      header={
+        <DutchPayHeader
+          title={getHeaderTitle(data.scenario)}
+          onPressClose={handlePressClose}
+        />
+      }
     >
       <View className="flex-1">
         <ScrollView
@@ -103,17 +287,18 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             <DutchPayTotalNotice amount={data.totalAmount} />
 
             <View className="mt-9 gap-5">
-              {data.members.map((member, index) => (
+              {displayMembers.map((member, index) => (
                 <DutchPayMemberRow
                   key={`${data.scenario}-${member.id}`}
                   member={member}
-                  isLast={index === data.members.length - 1}
+                  isLast={index === displayMembers.length - 1}
                   menuOpen={openMenuMemberId === member.id}
                   onPressMenu={(memberId) =>
                     setOpenMenuMemberId((prev) =>
                       prev === memberId ? null : memberId,
                     )
                   }
+                  onChangeEditableAmount={handleChangeEditableAmount}
                 />
               ))}
             </View>
@@ -134,9 +319,9 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             {data.footer.type === 'button' ? (
               <>
                 <Button
-                  label={data.footer.label}
+                  label={primaryLabel}
                   size="large"
-                  disabled={data.footer.disabled}
+                  disabled={primaryDisabled}
                   onPress={handlePressPrimary}
                 />
                 {data.footer.secondaryLabel ? (
