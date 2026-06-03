@@ -10,32 +10,44 @@ import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import PaymentActionOptionList from '../components/PaymentActionOptionList';
 import PaymentRequestSummary from '../components/PaymentRequestSummary';
+import { mockRemotePaymentRequestResponse } from '../constants/remotePayment.mock';
 import { getPaymentActionOptions } from '../utils/paymentMethodOptions';
 import type {
     PaymentActionType,
     PaymentRequestSummary as PaymentRequestSummaryType,
 } from '../types/paymentMethod.types';
 import { validatePaymentQr } from '../api/paymentQrApi';
+import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import { toPaymentRequestSummary } from '../utils/paymentQrAdapter';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import { toRemotePaymentRecipientSummary } from '../utils/remotePaymentAdapter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentMethodSelect'>;
 
 export default function PaymentMethodSelectScreen({ navigation, route }: Props) {
     const routeSummary = route.params?.summary;
     const routeToken = route.params?.token;
+    const routeRemoteRequestId = route.params?.remoteRequestId;
     const paymentIdempotencyKeyMap = useRef(new Map<number, string>());
     const [summary, setSummary] = useState<PaymentRequestSummaryType | null>(
         routeSummary ?? null,
     );
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
-        routeSummary || routeToken ? '' : '결제 요청 token이 없습니다.',
+        routeSummary || routeToken || routeRemoteRequestId
+            ? ''
+            : '결제 요청 token이 없습니다.',
     );
     const [stopModalVisible, setStopModalVisible] = useState(false);
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
         useState(false);
+    const rejectRemoteRequest = useRemotePaymentProgressStore(
+        (state) => state.rejectRequest,
+    );
+    const setRecipientProgress = useRemotePaymentProgressStore(
+        (state) => state.setRecipientProgress,
+    );
     const options = summary ? getPaymentActionOptions(summary.type) : [];
     const stopModalDescription =
         summary?.type === 'DUTCH_PAY_PARTICIPANT' ||
@@ -46,6 +58,13 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
     useEffect(() => {
         if (routeSummary) {
             setSummary(routeSummary);
+            setErrorMessage('');
+            return;
+        }
+
+        if (routeRemoteRequestId) {
+            setRecipientProgress(mockRemotePaymentRequestResponse);
+            setSummary(toRemotePaymentRecipientSummary(mockRemotePaymentRequestResponse));
             setErrorMessage('');
             return;
         }
@@ -93,7 +112,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         return () => {
             isMounted = false;
         };
-    }, [routeSummary, routeToken]);
+    }, [routeRemoteRequestId, routeSummary, routeToken, setRecipientProgress]);
 
     const handlePressClose = () => {
         setStopModalVisible(true);
@@ -131,6 +150,12 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
             navigation.navigate('PaymentCardSelect', {
                 paymentId: summary.paymentId,
                 amount: summary.amount,
+                flow:
+                    summary.type === 'REMOTE_RECIPIENT'
+                        ? 'REMOTE_PAYMENT'
+                        : summary.type === 'DUTCH_PAY_PARTICIPANT'
+                          ? 'DUTCH_PAY'
+                          : 'NORMAL',
                 idempotencyKey,
             });
             return;
@@ -142,7 +167,9 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         }
 
         if (type === 'REMOTE_REQUEST') {
-            setRemoteRequestCompleteModalVisible(true);
+            navigation.navigate('PaymentParticipantSelect', {
+                mode: 'REMOTE_PAYMENT',
+            });
             return;
         }
 
@@ -157,6 +184,10 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
     };
 
     const handleConfirmReject = () => {
+        if (summary?.type === 'REMOTE_RECIPIENT') {
+            rejectRemoteRequest();
+        }
+
         setRejectModalVisible(false);
         navigation.navigate('Main');
     };

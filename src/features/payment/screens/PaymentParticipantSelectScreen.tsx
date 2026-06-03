@@ -22,11 +22,13 @@ import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
 import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
+import { requestRemotePayment } from '../api/remotePaymentApi';
 import {
   getParticipantSelectMockState,
   mockAllFriends,
   mockFavoriteFriends,
 } from '../constants/paymentParticipantSelect.mock';
+import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type {
   ParticipantFriend,
   ParticipantSelectMode,
@@ -40,6 +42,11 @@ type Props = NativeStackScreenProps<
 type ShareStep = 'READY' | 'COPIED';
 
 const inviteUrl = 'https://erumpay.com/group/abc123';
+const MOCK_REMOTE_PAYMENT = {
+  amount: 45000,
+  merchantName: '롯데시네마 홍대입구점',
+  paymentId: 1,
+};
 
 function getModeContent(mode: ParticipantSelectMode) {
   if (mode === 'DUTCH_PAY') {
@@ -387,6 +394,10 @@ export default function PaymentParticipantSelectScreen({
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
     useState(false);
+  const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
+  const setRequesterProgress = useRemotePaymentProgressStore(
+    (state) => state.setRequesterProgress,
+  );
   const shareCountdownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -420,7 +431,25 @@ export default function PaymentParticipantSelectScreen({
   const hasSearchKeyword = normalizedSearchKeyword.length > 0;
   const hasVisibleFriends = favoriteFriends.length > 0 || allFriends.length > 0;
   const selectedCount = selectedFriendIds.length;
-  const ctaDisabled = selectedCount === 0;
+  const ctaDisabled = selectedCount === 0 || isRemoteRequesting;
+  const selectedRemoteFriend = useMemo(() => {
+    if (isDutchPay) {
+      return null;
+    }
+
+    const selectedFriendId = selectedFriendIds[0];
+
+    return (
+      [...initialState.favoriteFriends, ...initialState.allFriends].find(
+        (friend) => friend.id === selectedFriendId,
+      ) ?? null
+    );
+  }, [
+    initialState.allFriends,
+    initialState.favoriteFriends,
+    isDutchPay,
+    selectedFriendIds,
+  ]);
 
   const handlePressClose = () => {
     setStopModalVisible(true);
@@ -541,7 +570,7 @@ export default function PaymentParticipantSelectScreen({
     return clearShareCountdownTimer;
   }, []);
 
-  const handlePressSubmit = () => {
+  const handlePressSubmit = async () => {
     if (isDutchPay) {
       navigation.navigate('DutchPayGroup', {
         role: 'OWNER',
@@ -549,6 +578,28 @@ export default function PaymentParticipantSelectScreen({
         splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
       });
       return;
+    }
+
+    if (!selectedRemoteFriend) {
+      return;
+    }
+
+    try {
+      setIsRemoteRequesting(true);
+
+      const response = await requestRemotePayment({
+        ...MOCK_REMOTE_PAYMENT,
+        recipientName: selectedRemoteFriend.name,
+        recipientPhoneSuffix: selectedRemoteFriend.phoneSuffix,
+        recipientUserId: selectedRemoteFriend.id,
+      });
+
+      setRequesterProgress(response);
+    } catch {
+      Alert.alert('원격결제 요청', '원격결제 요청에 실패했습니다.');
+      return;
+    } finally {
+      setIsRemoteRequesting(false);
     }
 
     setRemoteRequestCompleteModalVisible(true);
@@ -706,7 +757,7 @@ export default function PaymentParticipantSelectScreen({
           ) : null}
 
           <Button
-            label={content.ctaLabel}
+            label={isRemoteRequesting ? '요청 중입니다' : content.ctaLabel}
             size="large"
             disabled={ctaDisabled}
             onPress={handlePressSubmit}

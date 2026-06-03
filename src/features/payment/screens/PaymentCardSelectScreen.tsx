@@ -90,7 +90,10 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const [isCombinationSelected, setIsCombinationSelected] = useState(false);
     const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
     const [stopModalVisible, setStopModalVisible] = useState(false);
-    const isDutchPay = data?.flowType === 'DUTCH_PAY';
+    const routeFlow = route.params?.flow;
+    const paymentFlow = routeFlow ?? data?.flowType ?? 'NORMAL';
+    const isDutchPay = paymentFlow === 'DUTCH_PAY';
+    const isRemotePayment = paymentFlow === 'REMOTE_PAYMENT';
 
     const selectedCombination = useMemo(
         () =>
@@ -264,7 +267,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId,
             cardId: Number(selectedCard.id),
             amount: selectedCard.amount,
-            flow: isDutchPay ? 'DUTCH_PAY' : 'NORMAL',
+            flow: paymentFlow,
             idempotencyKey,
         });
     };
@@ -279,7 +282,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId,
             cardId: Number(selectedPaymentCard.id),
             amount: selectedPaymentCard.amount,
-            flow: isDutchPay ? 'DUTCH_PAY' : 'NORMAL',
+            flow: paymentFlow,
             idempotencyKey,
         });
     };
@@ -360,7 +363,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 <PaymentStopConfirmModal
                     visible={stopModalVisible}
                     description={
-                        isDutchPay
+                        isDutchPay || isRemotePayment
                             ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
                             : undefined
                     }
