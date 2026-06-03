@@ -8,7 +8,7 @@ const PAYMENT_SUBSCRIBE_URL = (paymentId: number) =>
     `${API_BASE_URL}/api/v1/payment/${paymentId}/subscribe`;
 
 type PreparePaymentParams = {
-    paymentId: number;
+    paymentId?: number;
     amount: number;
     idempotencyKey: string;
     paymentType?: 'SINGLE' | 'DUTCH' | 'REMOTE';
@@ -88,6 +88,10 @@ export async function preparePayment({
         const error = await parsePaymentApiError(response);
 
         if (error.reason === 'PAYMENT_REQUEST_IN_PROGRESS') {
+            if (paymentId == null) {
+                throw new Error(error.message ?? '결제 요청이 처리 중입니다.');
+            }
+
             return {
                 paymentId,
                 paymentStatus: 'PAY_PENDING',

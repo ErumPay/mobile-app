@@ -16,7 +16,19 @@ import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { getMockDutchPayGroupData } from '../constants/dutchPay.mock';
 import type { PaymentRequestSummary } from '../types/paymentMethod.types';
-import type { DutchPayMember, DutchPayScenario } from '../types/dutchPay.types';
+import type {
+  DutchPayGroupData,
+  DutchPayMember,
+  DutchPayScenario,
+} from '../types/dutchPay.types';
+import {
+  confirmDutchPayParticipants,
+  getDutchPaySession,
+  inviteDutchPayAppFriends,
+  updateDutchPayMyAmount,
+  type DutchPayParticipantResponse,
+  type DutchPaySessionDetailResponse,
+} from '../api/dutchPayApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
 
@@ -35,6 +47,8 @@ const nextScenarioByScenario = {
   PARTICIPANT_PAYMENT_REQUEST: 'PARTICIPANT_PAYMENT_PROGRESS',
   PARTICIPANT_FINAL_PAYMENT_PROGRESS: 'PARTICIPANT_FINAL_PAYMENT_PROGRESS',
 } as const;
+
+const DEV_USER_ID = 1;
 
 function DutchPayHeader({
   title,
@@ -134,17 +148,183 @@ function applyFailedPaymentAmountToOwner(
           ...member,
           amount: (member.amount ?? 0) + failedAmount,
         }
-      : member,
+    : member,
   );
+}
+
+function toDutchPayScenario(
+  session: DutchPaySessionDetailResponse,
+  role: 'OWNER' | 'PARTICIPANT',
+): DutchPayScenario {
+  if (role === 'PARTICIPANT') {
+    switch (session.session_progress_step) {
+      case 'AMOUNT_INPUT':
+        return 'PARTICIPANT_AMOUNT_INPUT';
+      case 'PAYMENT_REQUEST':
+        return 'PARTICIPANT_PAYMENT_REQUEST';
+      case 'PAYMENT_IN_PROGRESS':
+        return 'PARTICIPANT_PAYMENT_PROGRESS';
+      case 'FINAL_PAYMENT_REQUIRED':
+      case 'TIMEOUT_HANDLED':
+      case 'COMPLETED':
+        return 'PARTICIPANT_FINAL_PAYMENT_PROGRESS';
+      default:
+        return 'PARTICIPANT_INITIAL';
+    }
+  }
+
+  switch (session.session_progress_step) {
+    case 'PARTICIPANT_CONFIRM':
+      return 'OWNER_INITIAL';
+    case 'AMOUNT_INPUT':
+      return 'OWNER_AMOUNT_INPUT_WAITING';
+    case 'PAYMENT_REQUEST':
+      return 'OWNER_AMOUNT_INPUT_COMPLETE';
+    case 'PAYMENT_IN_PROGRESS':
+      return 'OWNER_PAYMENT_PROGRESS';
+    case 'FINAL_PAYMENT_REQUIRED':
+    case 'TIMEOUT_HANDLED':
+    case 'COMPLETED':
+      return 'OWNER_FINAL_PAYMENT_READY';
+    case 'FAILED':
+      return 'OWNER_FINAL_PAYMENT_FAILURE';
+    case 'GROUP_CREATED':
+    default:
+      return 'OWNER_INITIAL';
+  }
+}
+
+function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
+  if (participant.status === 'PAID' || participant.status === 'HOST_PAID') {
+    return 'PAYMENT_COMPLETED' as const;
+  }
+
+  if (participant.status === 'REJECTED' || participant.status === 'TIMEOUT') {
+    return 'PAYMENT_FAILED' as const;
+  }
+
+  if (participant.payment_id != null) {
+    return 'PAYMENT_PENDING' as const;
+  }
+
+  if (participant.amount != null) {
+    return 'AMOUNT_CONFIRMED' as const;
+  }
+
+  if (participant.status === 'PENDING') {
+    return 'WAITING_AMOUNT' as const;
+  }
+
+  return 'EMPTY' as const;
+}
+
+function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMember {
+  const name = participant.host ? '대표자' : `참여자 ${participant.user_id}`;
+  const phoneSuffix = String(participant.user_id).padStart(4, '0').slice(-4);
+
+  return {
+    id: String(participant.participant_id),
+    name,
+    phoneSuffix,
+    initial: name.slice(0, 1),
+    isOwner: participant.host,
+    isMe: participant.user_id === DEV_USER_ID,
+    amount: participant.amount ?? undefined,
+    status: toDutchPayMemberStatus(participant),
+    canOpenMenu: !participant.host,
+  };
+}
+
+function toDutchPayGroupData(
+  session: DutchPaySessionDetailResponse,
+  role: 'OWNER' | 'PARTICIPANT',
+): DutchPayGroupData {
+  const scenario = toDutchPayScenario(session, role);
+  const members = session.participants.map(toDutchPayMember);
+
+  return {
+    role,
+    scenario,
+    totalAmount: session.total_amount,
+    members,
+    footer: getServerFooter(scenario),
+  };
+}
+
+function getServerFooter(scenario: DutchPayScenario) {
+  if (scenario === 'OWNER_FINAL_PAYMENT_READY') {
+    return {
+      type: 'button' as const,
+      label: '최종 결제하기',
+    };
+  }
+
+  if (scenario === 'OWNER_PAYMENT_PROGRESS') {
+    return {
+      type: 'button' as const,
+      label: '결제 전체 상태 보기',
+      disabled: true,
+    };
+  }
+
+  if (scenario === 'OWNER_INITIAL') {
+    return {
+      type: 'button' as const,
+      label: '인원 확정하기',
+      secondaryLabel: '더치페이 그룹 취소하기',
+    };
+  }
+
+  if (
+    scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
+    scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
+  ) {
+    return {
+      type: 'button' as const,
+      label: '금액 확정하기',
+    };
+  }
+
+  if (scenario === 'PARTICIPANT_AMOUNT_INPUT') {
+    return {
+      type: 'button' as const,
+      label: '금액 확정하기',
+    };
+  }
+
+  if (scenario === 'PARTICIPANT_PAYMENT_REQUEST') {
+    return {
+      type: 'button' as const,
+      label: '결제 진행하기',
+    };
+  }
+
+  return {
+    type: 'notice' as const,
+    tone: 'info' as const,
+    message: '더치페이 진행 상태를 확인 중입니다.',
+  };
 }
 
 export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? 'OWNER';
   const scenario = route.params?.scenario;
   const splitType = route.params?.splitType ?? 'MANUAL';
+  const sessionId = route.params?.sessionId;
+  const selectedUserIds = useMemo(
+    () => route.params?.selectedUserIds ?? [],
+    [route.params?.selectedUserIds],
+  );
+  const [serverSession, setServerSession] =
+    useState<DutchPaySessionDetailResponse | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const invitedSessionIdsRef = useRef<Set<number>>(new Set());
   const data = useMemo(
-    () => getMockDutchPayGroupData({ role, scenario }),
-    [role, scenario],
+    () =>
+      serverSession
+        ? toDutchPayGroupData(serverSession, role)
+        : getMockDutchPayGroupData({ role, scenario }),
+    [role, scenario, serverSession],
   );
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
@@ -192,7 +372,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   );
   const primaryDisabled =
     data.footer.type === 'button' &&
-    ((data.footer.disabled && !isOwnerAmountCheckScenario) ||
+    (isSyncing ||
+      (data.footer.disabled && !isOwnerAmountCheckScenario) ||
       (isOwnerAmountCheckScenario && !allParticipantsConfirmed) ||
       (isParticipantAmountInputScenario &&
         !isMyAmountConfirmed &&
@@ -220,6 +401,72 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     },
     [navigation, role],
   );
+
+  const refreshServerSession = useCallback(async () => {
+    if (!sessionId) {
+      return;
+    }
+
+    const nextSession = await getDutchPaySession(sessionId);
+    setServerSession(nextSession);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const syncSession = async () => {
+      try {
+        setIsSyncing(true);
+
+        if (
+          selectedUserIds.length > 0 &&
+          !invitedSessionIdsRef.current.has(sessionId)
+        ) {
+          const invitedSession = await inviteDutchPayAppFriends({
+            sessionId,
+            userIds: selectedUserIds,
+          });
+
+          invitedSessionIdsRef.current.add(sessionId);
+
+          if (isMounted) {
+            setServerSession(invitedSession);
+          }
+
+          return;
+        }
+
+        const nextSession = await getDutchPaySession(sessionId);
+
+        if (isMounted) {
+          setServerSession(nextSession);
+        }
+      } catch (error) {
+        if (isMounted) {
+          Alert.alert(
+            '더치페이',
+            error instanceof Error
+              ? error.message
+              : '더치페이 세션 정보를 불러오지 못했습니다.',
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsSyncing(false);
+        }
+      }
+    };
+
+    void syncSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedUserIds, sessionId]);
 
   useEffect(() => {
     latestPaymentAmountRef.current = myPaymentAmount;
@@ -304,6 +551,75 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
   const handlePressPrimary = () => {
     if (data.footer.type !== 'button') {
+      return;
+    }
+
+    if (sessionId && serverSession) {
+      const runServerAction = async () => {
+        try {
+          setIsSyncing(true);
+
+          if (
+            data.scenario === 'OWNER_INITIAL' ||
+            data.scenario === 'OWNER_AUTO_SPLIT_READY' ||
+            data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
+          ) {
+            const nextSession = await confirmDutchPayParticipants({
+              sessionId,
+              splitMethod: route.params?.splitMethod,
+            });
+            setServerSession(nextSession);
+            return;
+          }
+
+          if (isParticipantAmountInputScenario) {
+            const nextSession = await updateDutchPayMyAmount({
+              sessionId,
+              amount: myEditableAmount,
+            });
+            setServerSession(nextSession);
+            return;
+          }
+
+          if (data.scenario === 'PARTICIPANT_PAYMENT_REQUEST') {
+            navigation.navigate('PaymentCardSelect', {
+              amount: myPaymentAmount,
+              flow: 'DUTCH_PAY',
+              dutchSessionId: sessionId,
+              orderName: serverSession.order_name,
+              merchantId: serverSession.merchant_id,
+            });
+            return;
+          }
+
+          if (
+            data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
+            data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE'
+          ) {
+            navigation.navigate('PaymentCardSelect', {
+              amount: ownerDisplayAmount,
+              flow: 'DUTCH_PAY_FINAL',
+              dutchSessionId: sessionId,
+              orderName: serverSession.order_name,
+              merchantId: serverSession.merchant_id,
+            });
+            return;
+          }
+
+          await refreshServerSession();
+        } catch (error) {
+          Alert.alert(
+            '더치페이',
+            error instanceof Error
+              ? error.message
+              : '더치페이 요청을 처리하지 못했습니다.',
+          );
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+
+      void runServerAction();
       return;
     }
 
