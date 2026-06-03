@@ -14,7 +14,12 @@ import { Tab } from '../../../shared/components/Tab';
 import { BottomSheet } from '../../../shared/components/BottomSheet';
 
 import { mockPaymentHistories } from '../mocks/mypageMockData';
-import type { PaymentHistoryItem, PaymentStatus, PaymentMethodType } from '../types/mypage';
+import type {
+  PaymentBenefitType,
+  PaymentHistoryItem,
+  PaymentMethodType,
+  PaymentStatus,
+} from '../types/mypage';
 
 import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
@@ -36,8 +41,12 @@ const statusLabel: Record<PaymentStatus, string> = {
 };
 
 const methodLabel: Record<PaymentMethodType, string> = {
-  dutchpay: '더치페이',
   remote: '원격결제',
+  dutchpay: '더치페이',
+  solo: '혼자결제',
+};
+
+const benefitLabel: Record<PaymentBenefitType, string> = {
   singleBenefit: '단일혜택',
   singlePerformance: '단일실적',
   splitBenefit: '분할혜택',
@@ -45,8 +54,12 @@ const methodLabel: Record<PaymentMethodType, string> = {
 };
 
 const methodClassName: Record<PaymentMethodType, string> = {
-  dutchpay: 'bg-pink-50 text-pink-600',
   remote: 'bg-purple-50 text-purple-600',
+  dutchpay: 'bg-pink-50 text-pink-600',
+  solo: 'bg-slate-100 text-slate-700',
+};
+
+const benefitClassName: Record<PaymentBenefitType, string> = {
   singleBenefit: 'bg-blue-50 text-blue-600',
   singlePerformance: 'bg-sky-50 text-sky-600',
   splitBenefit: 'bg-emerald-50 text-emerald-600',
@@ -69,19 +82,24 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
+  const [selectedBenefit, setSelectedBenefit] = useState<PaymentBenefitType | null>(null);
   const [appliedPeriod, setAppliedPeriod] = useState<PeriodFilter>(null);
   const [appliedMethod, setAppliedMethod] = useState<PaymentMethodType | null>(null);
+  const [appliedBenefit, setAppliedBenefit] = useState<PaymentBenefitType | null>(null);
 
   const [startDate, setStartDate] = useState(() => new Date(2026, 3, 30));
   const [endDate, setEndDate] = useState(() => new Date(2026, 4, 1));
   const [datePickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
-  const isFilterApplied = appliedPeriod !== null || appliedMethod !== null;
+  const isFilterApplied =
+    appliedPeriod !== null || appliedMethod !== null || appliedBenefit !== null;
   const handlePressFilter = () => {
     if (isFilterApplied) {
       setSelectedPeriod(null);
       setSelectedMethod(null);
+      setSelectedBenefit(null);
       setAppliedPeriod(null);
       setAppliedMethod(null);
+      setAppliedBenefit(null);
       setIsFilterOpen(false);
       return;
     }
@@ -130,7 +148,11 @@ export function PaymentHistoryScreen({ navigation }: Props) {
       ? payment.method === appliedMethod
       : true;
 
-    return isTabMatched && isPeriodMatched && isMethodMatched;
+    const isBenefitMatched = appliedBenefit
+      ? payment.benefitType === appliedBenefit
+      : true;
+
+    return isTabMatched && isPeriodMatched && isMethodMatched && isBenefitMatched;
   });
 
   return (
@@ -285,33 +307,49 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
               <View className="w-1/3 pl-2">
                 <FilterChip
+                  label="혼자결제"
+                  active={selectedMethod === 'solo'}
+                  onPress={() => setSelectedMethod('solo')}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View>
+            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
+              적용 유형
+            </Text>
+
+            <View className="flex-row flex-wrap gap-y-3">
+              <View className="w-1/3 pr-2">
+                <FilterChip
                   label="단일혜택"
-                  active={selectedMethod === 'singleBenefit'}
-                  onPress={() => setSelectedMethod('singleBenefit')}
+                  active={selectedBenefit === 'singleBenefit'}
+                  onPress={() => setSelectedBenefit('singleBenefit')}
                 />
               </View>
 
               <View className="w-1/3 pr-2">
                 <FilterChip
                   label="단일실적"
-                  active={selectedMethod === 'singlePerformance'}
-                  onPress={() => setSelectedMethod('singlePerformance')}
+                  active={selectedBenefit === 'singlePerformance'}
+                  onPress={() => setSelectedBenefit('singlePerformance')}
                 />
               </View>
 
               <View className="w-1/3 px-1">
                 <FilterChip
                   label="분할혜택"
-                  active={selectedMethod === 'splitBenefit'}
-                  onPress={() => setSelectedMethod('splitBenefit')}
+                  active={selectedBenefit === 'splitBenefit'}
+                  onPress={() => setSelectedBenefit('splitBenefit')}
                 />
               </View>
 
               <View className="w-1/3 pl-2">
                 <FilterChip
                   label="분할실적"
-                  active={selectedMethod === 'splitPerformance'}
-                  onPress={() => setSelectedMethod('splitPerformance')}
+                  active={selectedBenefit === 'splitPerformance'}
+                  onPress={() => setSelectedBenefit('splitPerformance')}
                 />
               </View>
             </View>
@@ -322,6 +360,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
             onPress={() => {
               setAppliedPeriod(selectedPeriod);
               setAppliedMethod(selectedMethod);
+              setAppliedBenefit(selectedBenefit);
               setIsFilterOpen(false);
             }}
           />
@@ -341,13 +380,22 @@ function PaymentItem({
   return (
     <Card onPress={onPress}>
       <View className="flex-row items-center">
-        <Text
-          className={`rounded px-2 py-1 font-pretendard text-normal-bold ${
-            methodClassName[payment.method]
-          }`}
-        >
-          {methodLabel[payment.method]}
-        </Text>
+        <View className="flex-row gap-2">
+          <Text
+            className={`rounded px-2 py-1 font-pretendard text-normal-bold ${
+              methodClassName[payment.method]
+            }`}
+          >
+            {methodLabel[payment.method]}
+          </Text>
+          <Text
+            className={`rounded px-2 py-1 font-pretendard text-normal-bold ${
+              benefitClassName[payment.benefitType]
+            }`}
+          >
+            {benefitLabel[payment.benefitType]}
+          </Text>
+        </View>
         <Text className="ml-3 font-pretendard text-normal-regular text-neutral-black2">
           {statusLabel[payment.status]}
         </Text>
