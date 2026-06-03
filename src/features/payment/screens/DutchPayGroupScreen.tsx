@@ -5,12 +5,15 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
+import Modal from '../../../shared/components/Modal';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { Toast } from '../../../shared/components/Toast';
 import { colors } from '../../../shared/styles/designTokens';
 import DutchPayMemberRow from '../components/DutchPayMemberRow';
 import DutchPayTotalNotice from '../components/DutchPayTotalNotice';
+import PaymentMockBadge from '../components/PaymentMockBadge';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { getMockDutchPayGroupData } from '../constants/dutchPay.mock';
 import type { PaymentRequestSummary } from '../types/paymentMethod.types';
 import type { DutchPayMember, DutchPayScenario } from '../types/dutchPay.types';
@@ -144,6 +147,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
   const [members, setMembers] = useState<DutchPayMember[]>(data.members);
   const [toastVisible, setToastVisible] = useState(false);
+  const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [cancelGroupModalVisible, setCancelGroupModalVisible] = useState(false);
 
   const isParticipantAmountInputScenario =
     data.scenario === 'PARTICIPANT_AMOUNT_INPUT';
@@ -260,6 +265,12 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   }, [data.scenario, myPaymentAmount]);
 
   const handlePressClose = () => {
+    setStopModalVisible(true);
+  };
+
+  const handleConfirmStopPayment = () => {
+    setStopModalVisible(false);
+
     if (navigation.canGoBack()) {
       navigation.goBack();
       return;
@@ -340,7 +351,12 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   };
 
   const handlePressSecondary = () => {
-    Alert.alert('더치페이', '더치페이 그룹 취소 요청입니다.');
+    setCancelGroupModalVisible(true);
+  };
+
+  const handleConfirmCancelGroup = () => {
+    setCancelGroupModalVisible(false);
+    navigation.navigate('Main');
   };
 
   const handleChangeEditableAmount = (memberId: string, value: string) => {
@@ -376,6 +392,9 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-sm self-center">
+            <View className="mb-3">
+              <PaymentMockBadge />
+            </View>
             <DutchPayTotalNotice amount={data.totalAmount} />
 
             <View className="mt-9 gap-5">
@@ -437,6 +456,23 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           visible={toastVisible}
           type="info"
           message={'3초 뒤 결제 화면으로 이동됩니다.\n결제는 10분 이내 진행해주세요.'}
+        />
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description="중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다."
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
+        />
+        <Modal
+          visible={cancelGroupModalVisible}
+          type="two"
+          title="정말 해당 그룹을 취소하시겠습니까?"
+          description="취소하면 참여자는 더 이상 이 그룹에 참여할 수 없습니다."
+          confirmLabel="예"
+          cancelLabel="아니오"
+          onConfirm={handleConfirmCancelGroup}
+          onCancel={() => setCancelGroupModalVisible(false)}
+          onClose={() => setCancelGroupModalVisible(false)}
         />
       </View>
     </PageWrap>

@@ -3,9 +3,8 @@ import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Image,
-  Modal,
+  Modal as RNModal,
   Pressable,
   ScrollView,
   Text,
@@ -16,9 +15,12 @@ import {
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
 import Checkbox from '../../../shared/components/Checkbox';
+import ConfirmModal from '../../../shared/components/Modal';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
+import PaymentMockBadge from '../components/PaymentMockBadge';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import {
   getParticipantSelectMockState,
   mockAllFriends,
@@ -276,7 +278,7 @@ function ShareLinkModal({
       : `${countdown}초 뒤 메인으로 이동합니다.`;
 
   return (
-    <Modal
+    <RNModal
       animationType="fade"
       transparent
       visible={visible}
@@ -344,7 +346,7 @@ function ShareLinkModal({
           )}
         </View>
       </View>
-    </Modal>
+    </RNModal>
   );
 }
 
@@ -378,6 +380,9 @@ export default function PaymentParticipantSelectScreen({
   );
   const [shareStep, setShareStep] = useState<ShareStep>('READY');
   const [shareCountdown, setShareCountdown] = useState(3);
+  const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
+    useState(false);
   const shareCountdownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -412,6 +417,12 @@ export default function PaymentParticipantSelectScreen({
   const ctaDisabled = selectedCount === 0;
 
   const handlePressClose = () => {
+    setStopModalVisible(true);
+  };
+
+  const handleConfirmStopPayment = () => {
+    setStopModalVisible(false);
+
     if (navigation.canGoBack()) {
       navigation.goBack();
       return;
@@ -520,7 +531,12 @@ export default function PaymentParticipantSelectScreen({
       return;
     }
 
-    Alert.alert('원격결제 요청', '선택한 참여자에게 원격결제를 요청합니다.');
+    setRemoteRequestCompleteModalVisible(true);
+  };
+
+  const handleConfirmRemoteRequestComplete = () => {
+    setRemoteRequestCompleteModalVisible(false);
+    navigation.navigate('Main');
   };
 
   return (
@@ -546,6 +562,10 @@ export default function PaymentParticipantSelectScreen({
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full self-center">
+            <View className="mb-3">
+              <PaymentMockBadge />
+            </View>
+
             {isDutchPay ? (
               <View className="mb-3 flex-row items-center justify-between">
                 <View className="flex-row items-center">
@@ -680,6 +700,21 @@ export default function PaymentParticipantSelectScreen({
           countdown={shareCountdown}
           onClose={resetShareModal}
           onPressCopy={handlePressCopyLink}
+        />
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description="중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다."
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
+        />
+        <ConfirmModal
+          visible={remoteRequestCompleteModalVisible}
+          type="one"
+          title="원격결제 요청이 전송되었습니다."
+          description="메인에서 결제 진행상태를 확인할 수 있습니다."
+          confirmLabel="확인"
+          onConfirm={handleConfirmRemoteRequestComplete}
+          onClose={handleConfirmRemoteRequestComplete}
         />
       </View>
     </PageWrap>
