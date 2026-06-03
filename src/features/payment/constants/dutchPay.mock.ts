@@ -45,11 +45,9 @@ const scenarioData: Record<
 > = {
   OWNER_INITIAL: {
     totalAmount,
-    members: withMembers([
-      { canOpenMenu: false },
-      { canOpenMenu: true },
-      { canOpenMenu: true },
-    ]),
+    members: withMembers([{ canOpenMenu: false }]).filter(
+      (member) => member.isOwner,
+    ),
     footer: {
       type: 'button',
       label: '더치페이 그룹 확정하기',

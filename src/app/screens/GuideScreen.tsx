@@ -228,6 +228,42 @@ const guidePages: GuidePage[] = [
   },
   {
     depth1: 'payment',
+    depth2: 'participant-select-dutch-default',
+    pageName: '더치페이 그룹 생성',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-dutch-no-friends',
+    pageName: '더치페이 그룹 생성 친구 없음',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-remote-default',
+    pageName: '원격결제 요청',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-remote-no-friends',
+    pageName: '원격결제 요청 친구 없음',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
     depth2: 'dutch-owner-initial',
     pageName: '더치페이 대표자 그룹 참여',
     routeName: 'DutchPayGroup',
@@ -745,6 +781,22 @@ export default function GuideScreen({ navigation }: Props) {
 
                               if (page.route === "PaymentCardSelect") {
                                 navigation.navigate("PaymentCardSelect");
+                                return;
+                              }
+
+                              if (page.route === "PaymentParticipantSelect") {
+                                const isRemote = page.depth2.includes("remote");
+                                const mode = isRemote
+                                  ? "REMOTE_PAYMENT"
+                                  : "DUTCH_PAY";
+                                const scenario = page.depth2.includes("no-friends")
+                                  ? "NO_FRIENDS"
+                                  : "DEFAULT";
+
+                                navigation.navigate("PaymentParticipantSelect", {
+                                  mode,
+                                  scenario,
+                                });
                                 return;
                               }
 

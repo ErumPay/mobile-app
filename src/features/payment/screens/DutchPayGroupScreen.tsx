@@ -315,6 +315,18 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
     const nextScenario = nextScenarioByScenario[data.scenario];
 
+    if (data.scenario === 'OWNER_INITIAL') {
+      navigation.replace('DutchPayGroup', {
+        role: data.role,
+        scenario:
+          splitType === 'AUTO_SPLIT'
+            ? 'OWNER_AUTO_SPLIT_READY'
+            : 'OWNER_AMOUNT_INPUT_WAITING',
+        splitType,
+      });
+      return;
+    }
+
     if (data.scenario === nextScenario) {
       Alert.alert('더치페이', `${data.footer.label} 화면으로 이동합니다.`);
       return;
