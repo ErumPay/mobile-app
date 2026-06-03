@@ -9,7 +9,6 @@ import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
 import { uploadCardImage } from '../api/cardOcrApi';
-import type { OcrCardResult } from '../types/card';
 
 interface CardOcrScreenProps {
   onClose: () => void;
@@ -71,7 +70,6 @@ export function CardOcrScreen({
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isTakingPicture, setIsTakingPicture] = useState(false);
-  const [ocrResult, setOcrResult] = useState<OcrCardResult | null>(null);
 
 
   const handleTakePicture = async () => {
@@ -105,7 +103,10 @@ export function CardOcrScreen({
       );
 
       const ocrResult = await uploadCardImage(manipulatedImage.uri);
-      setOcrResult(ocrResult);
+      onConfirmOcrResult({
+        cardNumber: ocrResult.cardNumber,
+        expiry: ocrResult.expiry,
+      });
     } catch {
       Alert.alert('안내', '카드 이미지를 촬영하지 못했습니다.');
     } finally {
@@ -158,50 +159,6 @@ export function CardOcrScreen({
     );
   }
 
-  if (ocrResult) {
-  return (
-    <PageWrap
-      scroll={false}
-      padded={false}
-      backgroundClassName="bg-neutral-black3"
-    >
-      <View className="flex-1 items-center justify-center px-6">
-        <View className="w-full rounded-3xl bg-neutral-white px-6 py-8">
-          <Text className="text-center font-pretendard text-heading-2 text-neutral-black1">
-            OCR로 확인된 카드입니다!
-          </Text>
-
-          <View className="mt-8 rounded-2xl bg-neutral-grey2 px-5 py-6">
-            <OcrInfo
-              label="카드번호"
-              value={formatOcrCardNumber(ocrResult.cardNumber)}
-            />
-            <OcrInfo label="유효기간" value={ocrResult.expiry} />
-          </View>
-
-          <View className="mt-8 gap-3">
-            <Button
-              label="카드 등록하기"
-              onPress={() =>
-                onConfirmOcrResult({
-                  cardNumber: ocrResult.cardNumber,
-                  expiry: ocrResult.expiry,
-                })
-              }
-            />
-
-            <Button
-              label="다시 촬영하기"
-              variant="secondary"
-              onPress={() => setOcrResult(null)}
-            />
-          </View>
-        </View>
-      </View>
-    </PageWrap>
-  );
-}
-
   return (
     <PageWrap
       scroll={false}
@@ -244,23 +201,6 @@ export function CardOcrScreen({
         </View>
     </PageWrap>
   );
-}
-
-function OcrInfo({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="mb-5">
-      <Text className="font-pretendard text-large-regular text-neutral-black2">
-        {label}
-      </Text>
-      <Text className="mt-2 font-pretendard text-heading-3 text-neutral-black1">
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function formatOcrCardNumber(value: string) {
-  return value.replace(/(\d{4})(?=\d)/g, '$1-');
 }
 
 export default CardOcrScreen;

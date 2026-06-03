@@ -134,6 +134,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
 export const mockPaymentDetails: Record<string, PaymentDetail> = {
   'payment-1': {
     ...mockPaymentHistories[0],
+    cardIds: ['card-1', 'card-2'],
     paidAt: '2026.04.25 21:00:01',
     receiptId: '123-456-789',
     sellerName: '코보문고 작성점',

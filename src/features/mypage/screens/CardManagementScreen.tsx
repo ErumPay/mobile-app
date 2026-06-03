@@ -93,10 +93,18 @@ function ManagedCardItem({
   onPress: () => void;
 }) {
   return (
-    <Card onPress={card.disabled ? undefined : onPress}>
-      <View className="relative">
+    <Card onPress={onPress}>
+      <View
+        className={`relative rounded-xl ${
+          card.disabled ? 'bg-neutral-grey2 p-3' : ''
+        }`}
+      >
         <View className="flex-row items-center">
-          <View className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${card.colorClassName}`}>
+          <View
+            className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${
+              card.disabled ? 'bg-neutral-grey1' : card.colorClassName
+            }`}
+          >
             <Text className="font-pretendard text-[9px] text-neutral-white">
               {card.issuer}
             </Text>
@@ -134,12 +142,10 @@ function ManagedCardItem({
         </View>
 
         {card.disabled ? (
-          <View className="absolute inset-0 flex-row items-center justify-center rounded-xl bg-neutral-black3/40">
-            <View className="rounded-full bg-state-error px-4 py-2">
-              <Text className="font-pretendard text-normal-bold text-neutral-white">
-                사용불가
-              </Text>
-            </View>
+          <View className="mt-3 rounded-lg bg-neutral-grey1 px-4 py-3">
+            <Text className="text-center font-pretendard text-large-bold text-neutral-black2">
+              사용불가
+            </Text>
           </View>
         ) : null}
       </View>

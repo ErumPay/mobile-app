@@ -41,6 +41,7 @@ export type PaymentHistoryItem = {
 };
 
 export type PaymentDetail = PaymentHistoryItem & {
+  cardIds?: string[];
   paidAt: string;
   receiptId: string;
   sellerName: string;
