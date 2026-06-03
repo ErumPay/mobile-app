@@ -1,9 +1,10 @@
 import DateTimePicker, {
+  DateTimePickerAndroid,
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 
-import { useState, useEffect } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { createElement, useEffect, useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
@@ -87,8 +88,8 @@ export function PaymentHistoryScreen({ navigation }: Props) {
   const [appliedMethod, setAppliedMethod] = useState<PaymentMethodType | null>(null);
   const [appliedBenefit, setAppliedBenefit] = useState<PaymentBenefitType | null>(null);
 
-  const [startDate, setStartDate] = useState(() => new Date(2026, 3, 30));
-  const [endDate, setEndDate] = useState(() => new Date(2026, 4, 1));
+  const [startDate, setStartDate] = useState(getDefaultStartDate);
+  const [endDate, setEndDate] = useState(getDefaultEndDate);
   const [datePickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
   const isFilterApplied =
     appliedPeriod !== null || appliedMethod !== null || appliedBenefit !== null;
@@ -107,10 +108,19 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     setIsFilterOpen(true);
   };
 
-  const handleChangeDate = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date,
-  ) => {
+  const applySelectedDate = (target: Exclude<DatePickerTarget, null>, selectedDate: Date) => {
+    if (target === 'start') {
+      setStartDate(selectedDate);
+    }
+
+    if (target === 'end') {
+      setEndDate(selectedDate);
+    }
+
+    setSelectedPeriod('custom');
+  };
+
+  const handleChangeDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (event.type === 'dismissed') {
       setDatePickerTarget(null);
       return;
@@ -120,16 +130,27 @@ export function PaymentHistoryScreen({ navigation }: Props) {
       return;
     }
 
-    if (datePickerTarget === 'start') {
-      setStartDate(selectedDate);
-    }
-
-    if (datePickerTarget === 'end') {
-      setEndDate(selectedDate);
-    }
-
-    setSelectedPeriod('custom');
+    applySelectedDate(datePickerTarget, selectedDate);
     setDatePickerTarget(null);
+  };
+
+  const handleOpenDatePicker = (target: Exclude<DatePickerTarget, null>) => {
+    const value = target === 'start' ? startDate : endDate;
+    setSelectedPeriod('custom');
+
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        mode: 'date',
+        onChange: (event, selectedDate) => {
+          if (event.type === 'dismissed' || !selectedDate) return;
+          applySelectedDate(target, selectedDate);
+        },
+      });
+      return;
+    }
+
+    setDatePickerTarget(target);
   };
 
   const filteredPayments = mockPaymentHistories.filter((payment) => {
@@ -264,13 +285,17 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               <DateBox
                 label={formatDate(startDate)}
                 active={selectedPeriod === 'custom'}
-                onPress={() => setDatePickerTarget('start')}
+                onPress={() => handleOpenDatePicker('start')}
+                value={startDate}
+                onChangeDate={(date) => applySelectedDate('start', date)}
               />
 
               <DateBox
                 label={formatDate(endDate)}
                 active={selectedPeriod === 'custom'}
-                onPress={() => setDatePickerTarget('end')}
+                onPress={() => handleOpenDatePicker('end')}
+                value={endDate}
+                onChangeDate={(date) => applySelectedDate('end', date)}
               />
             </View>
             {datePickerTarget ? (
@@ -321,7 +346,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
             </Text>
 
             <View className="flex-row flex-wrap gap-y-3">
-              <View className="w-1/3 pr-2">
+              <View className="w-1/2 pr-2">
                 <FilterChip
                   label="단일혜택"
                   active={selectedBenefit === 'singleBenefit'}
@@ -329,7 +354,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View className="w-1/3 pr-2">
+              <View className="w-1/2 pl-2">
                 <FilterChip
                   label="단일실적"
                   active={selectedBenefit === 'singlePerformance'}
@@ -337,7 +362,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View className="w-1/3 px-1">
+              <View className="w-1/2 pr-2">
                 <FilterChip
                   label="분할혜택"
                   active={selectedBenefit === 'splitBenefit'}
@@ -345,7 +370,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View className="w-1/3 pl-2">
+              <View className="w-1/2 pl-2">
                 <FilterChip
                   label="분할실적"
                   active={selectedBenefit === 'splitPerformance'}
@@ -447,11 +472,49 @@ function DateBox({
   label,
   active = false,
   onPress,
+  value,
+  onChangeDate,
 }: {
   label: string;
   active?: boolean;
   onPress: () => void;
+  value?: Date;
+  onChangeDate?: (date: Date) => void;
 }) {
+  if (Platform.OS === 'web' && value && onChangeDate) {
+    return (
+      <View className="flex-1">
+        {createElement('input', {
+          'aria-label': label,
+          type: 'date',
+          value: formatDateInputValue(value),
+          onChange: (event: { currentTarget: { value: string } }) => {
+            const nextDate = parseDateInputValue(event.currentTarget.value);
+            if (nextDate) {
+              onChangeDate(nextDate);
+            }
+          },
+          style: {
+            width: '100%',
+            height: 48,
+            boxSizing: 'border-box',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: active ? '#2F62A3' : '#D8DDE5',
+            backgroundColor: '#FFFFFF',
+            paddingLeft: 16,
+            paddingRight: 16,
+            color: '#111827',
+            fontFamily: 'Pretendard',
+            fontSize: 16,
+            outlineColor: '#2F62A3',
+          },
+        })}
+      </View>
+    );
+  }
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -516,6 +579,24 @@ function formatDate(date: Date) {
   return `${year}.${month}.${day}`;
 }
 
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateInputValue(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
 function parseDateText(dateText: string) {
   const [year, month, day] = dateText.split('.').map(Number);
   return new Date(year, month - 1, day);
@@ -527,6 +608,16 @@ function startOfDay(date: Date) {
 
 function endOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
+}
+
+function getDefaultStartDate() {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), 1);
+}
+
+function getDefaultEndDate() {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
 export default PaymentHistoryScreen;
