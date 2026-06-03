@@ -57,6 +57,23 @@ function DutchPayHeader({
 
 function getHeaderTitle(scenario: DutchPayScenario) {
   if (
+    scenario === 'OWNER_PAYMENT_REQUEST' ||
+    scenario === 'PARTICIPANT_PAYMENT_REQUEST'
+  ) {
+    return '더치페이 결제 금액 확인중';
+  }
+
+  if (
+    scenario === 'OWNER_FINAL_PAYMENT_READY' ||
+    scenario === 'OWNER_PAYMENT_PROGRESS' ||
+    scenario === 'OWNER_FINAL_PAYMENT_FAILURE' ||
+    scenario === 'PARTICIPANT_PAYMENT_PROGRESS' ||
+    scenario === 'PARTICIPANT_FINAL_PAYMENT_PROGRESS'
+  ) {
+    return '더치페이 결제 진행중';
+  }
+
+  if (
     scenario === 'OWNER_AUTO_SPLIT_READY' ||
     scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
     scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
@@ -66,10 +83,6 @@ function getHeaderTitle(scenario: DutchPayScenario) {
 
   if (scenario === 'PARTICIPANT_AMOUNT_INPUT') {
     return '더치페이 결제 금액 입력';
-  }
-
-  if (scenario === 'OWNER_PAYMENT_PROGRESS') {
-    return '더치페이 결제 최종 결제';
   }
 
   return '더치페이 결제 그룹 참여';
