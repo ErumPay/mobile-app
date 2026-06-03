@@ -8,4 +8,9 @@ export type PaymentResultFlow =
 export type PaymentResultRouteParams = {
     status?: PaymentResultStatus;
     flow?: PaymentResultFlow;
+    dutchSessionId?: number;
+    selectedUserIds?: number[];
+    splitMethod?: 'EQUAL' | 'CUSTOM';
+    orderName?: string;
+    merchantId?: number;
 };

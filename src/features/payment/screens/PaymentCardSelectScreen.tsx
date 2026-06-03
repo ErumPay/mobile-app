@@ -77,6 +77,11 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
         return route.params?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
     }, [hasValidPaymentId, paymentId, route.params?.idempotencyKey]);
+    const routeFlow = route.params?.flow ?? 'NORMAL';
+    const isDutchPayRoute = routeFlow === 'DUTCH_PAY';
+    const [dutchSessionId, setDutchSessionId] = useState(
+        route.params?.dutchSessionId,
+    );
 
     const [data, setData] = useState<PaymentCardSelectData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -152,16 +157,21 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 setIsLoading(true);
                 setErrorMessage('');
 
-                await preparePayment({
+                const prepareResponse = await preparePayment({
                     paymentId,
                     amount,
                     idempotencyKey,
+                    paymentType: isDutchPayRoute ? 'DUTCH' : 'SINGLE',
                 });
 
                 const response = await subscribePaymentCardRecommendations(paymentId);
-                const nextData = toPaymentCardSelectData(response);
+                const nextData = {
+                    ...toPaymentCardSelectData(response),
+                    flowType: isDutchPayRoute ? 'DUTCH_PAY' : 'NORMAL',
+                } as PaymentCardSelectData;
 
                 if (isMounted) {
+                    setDutchSessionId(prepareResponse.dutchSessionId);
                     setData(nextData);
                 }
             } catch (error) {
@@ -185,7 +195,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         return () => {
             isMounted = false;
         };
-    }, [amount, hasValidAmount, hasValidPaymentId, idempotencyKey, paymentId]);
+    }, [amount, hasValidAmount, hasValidPaymentId, idempotencyKey, isDutchPayRoute, paymentId]);
 
     const handlePressClose = () => {
         setStopModalVisible(true);
@@ -269,6 +279,11 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             amount: selectedCard.amount,
             flow: paymentFlow,
             idempotencyKey,
+            dutchSessionId,
+            selectedUserIds: route.params?.selectedUserIds,
+            splitMethod: route.params?.splitMethod,
+            orderName: route.params?.orderName,
+            merchantId: route.params?.merchantId,
         });
     };
 
@@ -284,6 +299,11 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             amount: selectedPaymentCard.amount,
             flow: paymentFlow,
             idempotencyKey,
+            dutchSessionId,
+            selectedUserIds: route.params?.selectedUserIds,
+            splitMethod: route.params?.splitMethod,
+            orderName: route.params?.orderName,
+            merchantId: route.params?.merchantId,
         });
     };
 

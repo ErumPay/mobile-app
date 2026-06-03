@@ -179,6 +179,9 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         if (type === 'DUTCH_PAY') {
             navigation.navigate('PaymentParticipantSelect', {
                 mode: 'DUTCH_PAY',
+                paymentId: summary?.paymentId,
+                amount: summary?.amount,
+                orderName: summary?.merchantName,
             });
             return;
         }

@@ -10,6 +10,10 @@ export type ParticipantSelectScenario =
 export type ParticipantSelectRouteParams = {
   mode?: ParticipantSelectMode;
   scenario?: ParticipantSelectScenario;
+  paymentId?: number;
+  amount?: number;
+  orderName?: string;
+  merchantId?: number;
 };
 
 export type ParticipantFriend = {

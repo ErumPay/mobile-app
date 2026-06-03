@@ -48,6 +48,12 @@ const MOCK_REMOTE_PAYMENT = {
   paymentId: 1,
 };
 
+function toDutchPayUserIds(friendIds: string[]) {
+  return friendIds
+    .map((friendId) => Number(friendId.replace(/[^0-9]/g, '')) + 1)
+    .filter((userId) => Number.isFinite(userId) && userId > 1);
+}
+
 function getModeContent(mode: ParticipantSelectMode) {
   if (mode === 'DUTCH_PAY') {
     return {
@@ -538,12 +544,14 @@ export default function PaymentParticipantSelectScreen({
       resetShareModal();
 
       if (latestModeRef.current === 'DUTCH_PAY') {
-        navigation.navigate('DutchPayGroup', {
-          role: 'OWNER',
-          scenario: 'OWNER_INITIAL',
-          splitType: latestAutoSplitCheckedRef.current
-            ? 'AUTO_SPLIT'
-            : 'MANUAL',
+        navigation.navigate('PaymentCardSelect', {
+          paymentId: route.params?.paymentId,
+          amount: route.params?.amount,
+          flow: 'DUTCH_PAY',
+          selectedUserIds: toDutchPayUserIds(selectedFriendIds),
+          splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
+          orderName: route.params?.orderName,
+          merchantId: route.params?.merchantId,
         });
         return;
       }
@@ -572,10 +580,14 @@ export default function PaymentParticipantSelectScreen({
 
   const handlePressSubmit = async () => {
     if (isDutchPay) {
-      navigation.navigate('DutchPayGroup', {
-        role: 'OWNER',
-        scenario: 'OWNER_INITIAL',
-        splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
+      navigation.navigate('PaymentCardSelect', {
+        paymentId: route.params?.paymentId,
+        amount: route.params?.amount,
+        flow: 'DUTCH_PAY',
+        selectedUserIds: toDutchPayUserIds(selectedFriendIds),
+        splitMethod: autoSplitChecked ? 'EQUAL' : 'CUSTOM',
+        orderName: route.params?.orderName,
+        merchantId: route.params?.merchantId,
       });
       return;
     }

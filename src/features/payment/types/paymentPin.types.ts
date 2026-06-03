@@ -9,6 +9,11 @@ type PaymentInputPinRouteParams = {
   amount: number;
   flow: PaymentCardFlowType;
   idempotencyKey?: string;
+  dutchSessionId?: number;
+  selectedUserIds?: number[];
+  splitMethod?: 'EQUAL' | 'CUSTOM';
+  orderName?: string;
+  merchantId?: number;
 };
 
 type PaymentRegisterPinRouteParams = {
@@ -31,4 +36,9 @@ export type LegacyPaymentPinRouteParams = {
   amount?: number;
   flow?: PaymentCardFlowType;
   idempotencyKey?: string;
+  dutchSessionId?: number;
+  selectedUserIds?: number[];
+  splitMethod?: 'EQUAL' | 'CUSTOM';
+  orderName?: string;
+  merchantId?: number;
 };

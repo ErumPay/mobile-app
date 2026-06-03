@@ -151,6 +151,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
+          dutchSessionId: paymentParams.dutchSessionId,
+          selectedUserIds: paymentParams.selectedUserIds,
+          splitMethod: paymentParams.splitMethod,
+          orderName: paymentParams.orderName,
+          merchantId: paymentParams.merchantId,
         });
       } catch {
         setPin('');
