@@ -120,12 +120,10 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                 return;
             }
 
-            navigation.navigate('DutchPayGroup', {
-                role: 'OWNER',
-                sessionId: route.params.dutchSessionId,
-                selectedUserIds: route.params.selectedUserIds,
-                splitMethod: route.params.splitMethod,
-                splitType: route.params.splitMethod === 'EQUAL' ? 'AUTO_SPLIT' : 'MANUAL',
+            navigation.navigate('PaymentParticipantSelect', {
+                mode: 'DUTCH_PAY',
+                scenario: 'DEFAULT',
+                dutchSessionId: route.params.dutchSessionId,
                 orderName: route.params.orderName,
                 merchantId: route.params.merchantId,
             });

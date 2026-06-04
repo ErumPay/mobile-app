@@ -83,12 +83,13 @@ export type DutchPayInviteLinkResponse = {
 async function requestJson<T>(
     url: string,
     options: RequestInit = {},
+    userId?: number | string,
 ): Promise<T> {
     const response = await fetch(url, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': getPaymentUserId(),
+            'X-User-Id': String(userId ?? getPaymentUserId()),
             ...options.headers,
         },
     });
@@ -102,8 +103,9 @@ async function requestJson<T>(
 
 export function getDutchPaySession(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}`);
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}`, {}, userId);
 }
 
 export function getActiveDutchPaySessions(): Promise<DutchPaySessionDetailResponse[]> {
@@ -113,16 +115,18 @@ export function getActiveDutchPaySessions(): Promise<DutchPaySessionDetailRespon
 export function inviteDutchPayAppFriends({
     sessionId,
     userIds,
+    userId,
 }: {
     sessionId: number;
     userIds: number[];
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
     return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`, {
         method: 'POST',
         body: JSON.stringify({
             user_ids: userIds,
         }),
-    });
+    }, userId);
 }
 
 export function createDutchPayInviteLink(
@@ -144,16 +148,18 @@ export function acceptDutchPayInviteLink(
 export function confirmDutchPayParticipants({
     sessionId,
     splitMethod,
+    userId,
 }: {
     sessionId: number;
     splitMethod?: DutchPaySplitMethod;
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
     return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/confirm`, {
         method: 'POST',
         body: JSON.stringify({
             split_method: splitMethod,
         }),
-    });
+    }, userId);
 }
 
 export function updateDutchPaySplitMethod({
@@ -174,16 +180,18 @@ export function updateDutchPaySplitMethod({
 export function updateDutchPayMyAmount({
     sessionId,
     amount,
+    userId,
 }: {
     sessionId: number;
     amount: number;
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
     return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-amount`, {
         method: 'PATCH',
         body: JSON.stringify({
             amount,
         }),
-    });
+    }, userId);
 }
 
 export function rejectDutchPayInvite(

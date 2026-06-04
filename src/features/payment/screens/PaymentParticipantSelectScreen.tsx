@@ -517,12 +517,17 @@ export default function PaymentParticipantSelectScreen({
       resetShareModal();
 
       if (latestModeRef.current === 'DUTCH_PAY') {
-        navigation.navigate('PaymentCardSelect', {
-          paymentId: route.params?.paymentId,
-          amount: route.params?.amount,
-          flow: 'DUTCH_PAY',
+        if (!route.params?.dutchSessionId) {
+          Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+          return;
+        }
+
+        navigation.navigate('DutchPayGroup', {
+          role: 'OWNER',
+          sessionId: route.params.dutchSessionId,
           selectedUserIds: toDutchPayUserIds(selectedFriendIds),
           splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
+          splitType: latestAutoSplitCheckedRef.current ? 'AUTO_SPLIT' : 'MANUAL',
           orderName: route.params?.orderName,
           merchantId: route.params?.merchantId,
         });
@@ -553,12 +558,17 @@ export default function PaymentParticipantSelectScreen({
 
   const handlePressSubmit = async () => {
     if (isDutchPay) {
-      navigation.navigate('PaymentCardSelect', {
-        paymentId: route.params?.paymentId,
-        amount: route.params?.amount,
-        flow: 'DUTCH_PAY',
+      if (!route.params?.dutchSessionId) {
+        Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+        return;
+      }
+
+      navigation.navigate('DutchPayGroup', {
+        role: 'OWNER',
+        sessionId: route.params.dutchSessionId,
         selectedUserIds: toDutchPayUserIds(selectedFriendIds),
         splitMethod: autoSplitChecked ? 'EQUAL' : 'CUSTOM',
+        splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
         orderName: route.params?.orderName,
         merchantId: route.params?.merchantId,
       });

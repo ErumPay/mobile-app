@@ -26,10 +26,10 @@ import {
   getDutchPaySession,
   inviteDutchPayAppFriends,
   updateDutchPayMyAmount,
-  DUTCH_PAY_DEV_USER_ID,
   type DutchPayParticipantResponse,
   type DutchPaySessionDetailResponse,
 } from '../api/dutchPayApi';
+import { getPaymentUserId } from '../api/paymentApiConfig';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
 
@@ -104,6 +104,20 @@ function getHeaderTitle(scenario: DutchPayScenario) {
   }
 
   return '더치페이 결제 그룹 참여';
+}
+
+function toFiniteNumber(value: unknown) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsedValue = Number(value);
+
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+  }
+
+  return undefined;
 }
 
 function parseAmount(value?: string) {
@@ -315,9 +329,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? 'OWNER';
   const scenario = route.params?.scenario;
   const splitType = route.params?.splitType ?? 'MANUAL';
-  const sessionId = route.params?.sessionId;
+  const sessionId = toFiniteNumber(route.params?.sessionId);
+  const routeUserId = toFiniteNumber(route.params?.userId);
+  const merchantId = toFiniteNumber(route.params?.merchantId);
   const isServerMode = typeof sessionId === 'number';
-  const currentUserId = DUTCH_PAY_DEV_USER_ID;
+  const currentUserId = (routeUserId ?? Number(getPaymentUserId())) || 1;
   const selectedUserIds = useMemo(
     () => route.params?.selectedUserIds ?? [],
     [route.params?.selectedUserIds],
@@ -411,16 +427,16 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   );
 
   const refreshServerSession = useCallback(async () => {
-    if (!sessionId) {
+    if (sessionId == null) {
       return;
     }
 
-    const nextSession = await getDutchPaySession(sessionId);
+    const nextSession = await getDutchPaySession(sessionId, currentUserId);
     setServerSession(nextSession);
-  }, [sessionId]);
+  }, [currentUserId, sessionId]);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (sessionId == null) {
       return;
     }
 
@@ -438,6 +454,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           const invitedSession = await inviteDutchPayAppFriends({
             sessionId,
             userIds: selectedUserIds,
+            userId: currentUserId,
           });
 
           invitedSessionIdsRef.current.add(sessionId);
@@ -449,7 +466,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           return;
         }
 
-        const nextSession = await getDutchPaySession(sessionId);
+        const nextSession = await getDutchPaySession(sessionId, currentUserId);
 
         if (isMounted) {
           setServerSession(nextSession);
@@ -480,7 +497,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     return () => {
       isMounted = false;
     };
-  }, [selectedUserIds, sessionId]);
+  }, [currentUserId, selectedUserIds, sessionId]);
 
   useEffect(() => {
     latestPaymentAmountRef.current = myPaymentAmount;
@@ -568,7 +585,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (sessionId && serverSession) {
+    if (sessionId != null && serverSession) {
       const runServerAction = async () => {
         try {
           setIsSyncing(true);
@@ -581,6 +598,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             const nextSession = await confirmDutchPayParticipants({
               sessionId,
               splitMethod: route.params?.splitMethod,
+              userId: currentUserId,
             });
             setServerSession(nextSession);
             return;
@@ -590,6 +608,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             const nextSession = await updateDutchPayMyAmount({
               sessionId,
               amount: myEditableAmount,
+              userId: currentUserId,
             });
             setServerSession(nextSession);
             return;
@@ -601,7 +620,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               flow: 'DUTCH_PAY',
               dutchSessionId: sessionId,
               orderName: serverSession.order_name,
-              merchantId: serverSession.merchant_id,
+              merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;
           }
@@ -615,7 +634,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               flow: 'DUTCH_PAY_FINAL',
               dutchSessionId: sessionId,
               orderName: serverSession.order_name,
-              merchantId: serverSession.merchant_id,
+              merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;
           }

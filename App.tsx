@@ -2,9 +2,9 @@ import './global.css';
 
 import { useEffect, useRef } from 'react';
 import { Alert, useWindowDimensions, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import GuideScreen from './src/app/screens/GuideScreen';
 import SignupCompleteScreen from './src/features/auth/screens/SignupCompleteScreen';

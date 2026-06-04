@@ -12,6 +12,7 @@ export type ParticipantSelectRouteParams = {
   scenario?: ParticipantSelectScenario;
   paymentId?: number;
   amount?: number;
+  dutchSessionId?: number;
   orderName?: string;
   merchantId?: number;
 };
