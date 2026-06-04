@@ -8,6 +8,12 @@ type PaymentInputPinRouteParams = {
   cardId: number;
   amount: number;
   flow: PaymentCardFlowType;
+  idempotencyKey?: string;
+  dutchSessionId?: number;
+  selectedUserIds?: number[];
+  splitMethod?: 'EQUAL' | 'CUSTOM';
+  orderName?: string;
+  merchantId?: number;
 };
 
 type PaymentRegisterPinRouteParams = {
@@ -16,6 +22,7 @@ type PaymentRegisterPinRouteParams = {
 
 type PaymentConfirmPinRouteParams = {
   mode: 'CONFIRM';
+  firstPin: string;
 };
 
 export type PaymentPinRouteParams =
@@ -25,8 +32,15 @@ export type PaymentPinRouteParams =
 
 export type LegacyPaymentPinRouteParams = {
   mode?: PaymentPinMode;
+  firstPin?: string;
   paymentId?: number;
   cardId?: number;
   amount?: number;
   flow?: PaymentCardFlowType;
+  idempotencyKey?: string;
+  dutchSessionId?: number;
+  selectedUserIds?: number[];
+  splitMethod?: 'EQUAL' | 'CUSTOM';
+  orderName?: string;
+  merchantId?: number;
 };

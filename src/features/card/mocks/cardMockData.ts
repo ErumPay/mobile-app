@@ -14,13 +14,15 @@ export const initialCardRegisterFormValues: CardRegisterFormValues = {
 };
 
 export const mockRegisteredCard: RegisteredCard = {
-  id: 'card-1',
-  issuer: 'SHINHAN',
-  last4: '1234',
-  holderName: '조이름',
-  cardNickname: '별칭미설정',
+  cardId: 1,
+  cardProductId: 1,
+  cardCompany: 'SHINHAN',
+  cardName: 'Deep Dream 카드',
+  maskedNumber: '**** **** **** 1234',
+  cardAlias: '별칭미설정',
+  expiryYm: '202805',
   isDefault: false,
-  createdAt: '2026.05.29',
+  status: 'ACTIVE',
 };
 
 export const mockOcrCard = {
@@ -36,8 +38,6 @@ export const mockCardRegisterResult = {
 };
 
 export const mockOcrResult: OcrCardResult = {
-  issuer: 'SHINHAN',
-  cardName: 'Deep Dream 카드',
   cardNumber: '1234555624325678',
   expiry: '05/28',
 };

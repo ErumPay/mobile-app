@@ -15,12 +15,16 @@ type RecentPaymentHistoryProps = {
   histories: PaymentHistory[];
   isLoading?: boolean;
   maxVisibleCount?: number;
+  onPressHistory?: (history: PaymentHistory) => void;
+  onPressMore?: () => void;
 };
 
 export function RecentPaymentHistory({
   histories,
   isLoading = false,
   maxVisibleCount = 2,
+  onPressHistory,
+  onPressMore,
 }: RecentPaymentHistoryProps) {
   const visibleHistories = histories.slice(0, maxVisibleCount);
 
@@ -34,7 +38,7 @@ export function RecentPaymentHistory({
             <Text className="font-pretendard text-heading-3 text-neutral-black1">
               최근 결제 내역
             </Text>
-            <Pressable accessibilityRole="button">
+            <Pressable accessibilityRole="button" onPress={onPressMore}>
               <Text className="font-pretendard text-normal-bold text-erum-secondary">
                 더보기 →
               </Text>
@@ -44,7 +48,13 @@ export function RecentPaymentHistory({
           <View className="mt-3 gap-3">
             {visibleHistories.length > 0 ? (
               visibleHistories.map((history) => (
-                <PaymentHistoryRow key={history.id} history={history} />
+                <PaymentHistoryRow
+                  key={history.id}
+                  history={history}
+                  onPress={
+                    onPressHistory ? () => onPressHistory(history) : undefined
+                  }
+                />
               ))
             ) : (
               <EmptyHistoryCard />
@@ -97,9 +107,19 @@ function RecentPaymentHistorySkeletonContent() {
   );
 }
 
-function PaymentHistoryRow({ history }: { history: PaymentHistory }) {
+function PaymentHistoryRow({
+  history,
+  onPress,
+}: {
+  history: PaymentHistory;
+  onPress?: () => void;
+}) {
   return (
-    <View className="flex-row items-center justify-between rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-4">
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      className="flex-row items-center justify-between rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-4"
+      onPress={onPress}
+    >
       <View className="min-w-0 flex-1 pr-3">
         <Text className="font-pretendard text-large-bold text-neutral-black1">
           {history.merchantName}
@@ -119,7 +139,7 @@ function PaymentHistoryRow({ history }: { history: PaymentHistory }) {
           {history.paidAt}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

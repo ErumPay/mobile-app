@@ -6,7 +6,7 @@ import { Card } from '../../../shared/components/Card';
 import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
-import { mockCardRegisterResult } from '../mocks/cardMockData';
+import type { RegisteredCard } from '../types/card';
 
 type CardRegisterResultStatus = 'success' | 'failure';
 
@@ -16,6 +16,7 @@ interface CardRegisterResultScreenProps {
   onRetry?: () => void;
   onGoCardManagement?: () => void;
   onGoHome?: () => void;
+  registeredCard?: RegisteredCard | null;
 }
 
 export function CardRegisterResultScreen({
@@ -24,6 +25,7 @@ export function CardRegisterResultScreen({
   onRetry,
   onGoCardManagement,
   onGoHome,
+  registeredCard,
 }: CardRegisterResultScreenProps) {
   return (
     <PageWrap
@@ -32,6 +34,7 @@ export function CardRegisterResultScreen({
     >
       {status === 'success' ? (
         <CardRegisterSuccessResult
+          registeredCard={registeredCard}
           onGoCardManagement={onGoCardManagement}
           onGoHome={onGoHome}
         />
@@ -46,9 +49,11 @@ export function CardRegisterResultScreen({
 }
 
 function CardRegisterSuccessResult({
+  registeredCard,
   onGoCardManagement,
   onGoHome,
 }: {
+  registeredCard?: RegisteredCard | null;
   onGoCardManagement?: () => void;
   onGoHome?: () => void;
 }) {
@@ -69,9 +74,13 @@ function CardRegisterSuccessResult({
 
         <View className="mt-12 w-full">
           <Card>
-            <InfoRow label="카드사" value={mockCardRegisterResult.issuer} />
-            <InfoRow label="카드명" value={mockCardRegisterResult.name} />
-            <InfoRow label="등록일" value={mockCardRegisterResult.registeredAt} />
+            <InfoRow label="카드사" value={registeredCard?.cardCompany ?? '-'} />
+            <InfoRow label="카드명" value={registeredCard?.cardName ?? '-'} />
+            <InfoRow
+              label="카드번호"
+              value={registeredCard?.maskedNumber ?? '-'}
+            />
+            <InfoRow label="등록일" value={formatToday()} />
           </Card>
         </View>
 
@@ -165,6 +174,15 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       </Text>
     </View>
   );
+}
+
+function formatToday() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+
+  return `${year}.${month}.${day}`;
 }
 
 export default CardRegisterResultScreen;

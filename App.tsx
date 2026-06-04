@@ -10,6 +10,10 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import GuideScreen from "./src/app/screens/GuideScreen";
+import TutorialScreen from "./src/features/auth/screens/TutorialScreen";
+import TermsAgreementScreen from "./src/features/auth/screens/TermsAgreementScreen";
+import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
+import SignupCompleteScreen from "./src/features/auth/screens/SignupCompleteScreen";
 import CardRegisterScreen from "./src/features/card/screens/CardRegisterScreen";
 import MainScreen from "./src/features/main/screens/MainScreen";
 import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
@@ -25,6 +29,10 @@ import type { PaymentCancelRouteParams } from "./src/features/payment/types/paym
 import OfflinePaymentQrScreen from "./src/features/payment/screens/OfflinePaymentQrScreen";
 import type { OfflinePaymentQrRouteParams } from "./src/features/payment/types/offlinePaymentQr.types";
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
+import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
+import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
+import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
+import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -33,8 +41,12 @@ import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistorySc
 import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
 
 export type RootStackParamList = {
+  Tutorial: undefined;
   Main: undefined;
   Guide: undefined;
+  TermsAgreement: undefined;
+  SmsVerification: undefined;
+  SignupComplete: undefined;
   QrScan: undefined;
   PaymentMethodSelect:
     | {
@@ -61,6 +73,8 @@ export type RootStackParamList = {
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
   OfflinePaymentQr: OfflinePaymentQrRouteParams | undefined;
+  DutchPayGroup: DutchPayGroupRouteParams | undefined;
+  PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -73,8 +87,12 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ["http://localhost:19000"],
   config: {
     screens: {
+      Tutorial: "tutorial",
       Main: "",
       Guide: "guide",
+      TermsAgreement: "auth/terms",
+      SmsVerification: "auth/sms-verification",
+      SignupComplete: "auth/signup-complete",
       QrScan: "qr-scan",
       CardRegister: "card-register",
       PaymentMethodSelect: "payment/method-select",
@@ -83,6 +101,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
       OfflinePaymentQr: "payment/offline-qr",
+      DutchPayGroup: "payment/dutch-pay-group",
+      PaymentParticipantSelect: "payment/participant-select",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -122,8 +142,12 @@ export default function App() {
             initialRouteName="Main"
             screenOptions={{ headerShown: false }}
           >
+            <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
+            <Stack.Screen name="TermsAgreement" component={TermsAgreementScreen} />
+            <Stack.Screen name="SmsVerification" component={SmsVerificationScreen} />
+            <Stack.Screen name="SignupComplete" component={SignupCompleteScreen} />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
 
@@ -140,9 +164,17 @@ export default function App() {
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
+
             <Stack.Screen
               name="OfflinePaymentQr"
               component={OfflinePaymentQrScreen}
+            />
+
+            <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
+
+            <Stack.Screen
+              name="PaymentParticipantSelect"
+              component={PaymentParticipantSelectScreen}
             />
 
             <Stack.Screen

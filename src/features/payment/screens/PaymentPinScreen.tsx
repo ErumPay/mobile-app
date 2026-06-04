@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
@@ -8,9 +9,13 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import { Loading } from '../../../shared/components/Loading';
+import { Modal } from '../../../shared/components/Modal';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
+import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
+import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -40,7 +45,7 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
     title: '간편비밀번호 확인',
     description: '한번 더 입력해주세요.',
     showForgotLink: false,
-    showWarning: true,
+    showWarning: false,
   },
 };
 
@@ -50,15 +55,60 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const paymentParams =
     route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
   const paymentResultFlow: PaymentResultFlow =
-    paymentParams?.flow === 'DUTCH_PAY' ? 'DUTCH_PAY_PRE_AUTH' : 'NORMAL';
+    paymentParams?.flow === 'DUTCH_PAY'
+      ? 'DUTCH_PAY_PRE_AUTH'
+      : paymentParams?.flow === 'DUTCH_PAY_FINAL'
+        ? 'DUTCH_PAY_FINAL'
+        : 'NORMAL';
 
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
+  const [failModalVisible, setFailModalVisible] = useState(false);
+  const [stopModalVisible, setStopModalVisible] = useState(false);
+  const completeRemoteRequest = useRemotePaymentProgressStore(
+    (state) => state.completeRequest,
+  );
+  const idempotencyKey = useMemo(() => {
+    const paymentId = paymentParams?.paymentId;
+
+    if (paymentId == null) {
+      return undefined;
+    }
+
+    return (
+      paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId)
+    );
+  }, [paymentParams]);
 
   const handlePressClose = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (mode === 'PAYMENT_INPUT') {
+      setStopModalVisible(true);
+      return;
+    }
+
     navigation.goBack();
+  };
+
+  const handleConfirmStopPayment = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setStopModalVisible(false);
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Main');
   };
 
   const handlePressForgotPassword = () => {
@@ -72,7 +122,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
   const handleCompletePin = async (completedPin: string) => {
     if (mode === 'PAYMENT_INPUT') {
-      if (!paymentParams) {
+      if (!paymentParams || !idempotencyKey) {
         setPin('');
         setHasError(true);
         navigation.replace('PaymentResult', {
@@ -85,23 +135,35 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       try {
         setIsSubmitting(true);
 
-        await requestPayment({
-          pin: completedPin,
-          paymentId: paymentParams.paymentId,
-          totalAmount: paymentParams.amount,
-          cards: [
-            {
-              cardId: paymentParams.cardId,
-              amount: paymentParams.amount,
-            },
-          ],
-        });
+        await requestPayment(
+          {
+            pin: completedPin,
+            paymentId: paymentParams.paymentId,
+            totalAmount: paymentParams.amount,
+            cards: [
+              {
+                cardId: paymentParams.cardId,
+                amount: paymentParams.amount,
+              },
+            ],
+          },
+          idempotencyKey,
+        );
+
+        if (paymentParams.flow === 'REMOTE_PAYMENT') {
+          completeRemoteRequest();
+        }
 
         setPin('');
         setHasError(false);
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
+          dutchSessionId: paymentParams.dutchSessionId,
+          selectedUserIds: paymentParams.selectedUserIds,
+          splitMethod: paymentParams.splitMethod,
+          orderName: paymentParams.orderName,
+          merchantId: paymentParams.merchantId,
         });
       } catch {
         setPin('');
@@ -120,11 +182,32 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     if (mode === 'REGISTER') {
       setPin('');
-      navigation.replace('PaymentPin', { mode: 'CONFIRM' });
+      navigation.replace('PaymentPin', { mode: 'CONFIRM', firstPin: completedPin });
       return;
     }
 
-    Alert.alert('간편비밀번호', '간편비밀번호 등록이 완료되었습니다.');
+    // CONFIRM 모드: 첫 번째 입력과 비교
+    const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+    if (!firstPin) {
+      navigation.replace('PaymentPin', { mode: 'REGISTER' });
+      return;
+    }
+    if (completedPin !== firstPin) {
+      const nextFailCount = failCount + 1;
+      setPin('');
+      setHasError(true);
+      setFailCount(nextFailCount);
+
+      if (nextFailCount >= 10) {
+        setFailModalVisible(true);
+      } else {
+        setMismatchModalVisible(true);
+      }
+      return;
+    }
+
+    // TODO: 백엔드 PIN 설정 API 호출 (POST /api/v1/pin)
+    navigation.replace('SignupComplete');
   };
 
   const handlePressNumber = (value: string) => {
@@ -157,69 +240,113 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <Header title="" type="close" onPressRight={handlePressClose} />
       }
     >
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="flex-grow"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="flex-1">
-          <View className="flex-[0.42] items-center justify-center px-5">
-            <Text className="font-pretendard text-heading-3 text-neutral-black1">
-              {screenText.title}
-            </Text>
+      <View className="flex-1">
+        <View className="flex-[0.42] items-center justify-center px-5">
+          <Text className="font-pretendard text-heading-3 text-neutral-black1">
+            {screenText.title}
+          </Text>
 
-            <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
-              {screenText.description}
-            </Text>
+          <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
+            {screenText.description}
+          </Text>
 
-            <View className="mt-8">
-              <PinCodeDots
-                valueLength={pin.length}
-                maxLength={PIN_LENGTH}
-                hasError={hasError}
-              />
-            </View>
-
-            {hasError ? (
-              <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
-                {failCount || 1}회 틀렸습니다.
-              </Text>
-            ) : null}
-
-            {isSubmitting ? (
-              <Loading message="결제를 처리하는 중입니다." />
-            ) : null}
-
-            {screenText.showWarning && !isSubmitting ? (
-              <View className="mt-12 w-full">
-                <NoticeBox
-                  tone="warning"
-                  description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
-                />
-              </View>
-            ) : null}
-
-            {screenText.showForgotLink && !isSubmitting ? (
-              <Pressable
-                accessibilityRole="button"
-                className="mt-16"
-                onPress={handlePressForgotPassword}
-                onLongPress={handleMockError}
-              >
-                <Text className="font-pretendard text-normal-bold text-erum-main">
-                  간편 비밀번호를 잊으셨나요?
-                </Text>
-              </Pressable>
-            ) : null}
+          <View className="mt-8">
+            <PinCodeDots
+              valueLength={pin.length}
+              maxLength={PIN_LENGTH}
+              hasError={hasError}
+            />
           </View>
 
-          <PinCodeKeypad
-            onPressNumber={isSubmitting ? () => {} : handlePressNumber}
-            onPressDelete={isSubmitting ? () => {} : handlePressDelete}
-          />
+          {hasError && mode !== 'CONFIRM' ? (
+            <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
+              {`${failCount || 1}회 틀렸습니다.`}
+            </Text>
+          ) : null}
+
+          {isSubmitting ? (
+            <Loading message="결제를 처리하는 중입니다." />
+          ) : null}
+
+          {screenText.showWarning && !isSubmitting ? (
+            <View className="mt-12 w-full">
+              <NoticeBox
+                tone="warning"
+                description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
+              />
+            </View>
+          ) : null}
+
+          {screenText.showForgotLink && !isSubmitting ? (
+            <Pressable
+              accessibilityRole="button"
+              className="mt-16"
+              onPress={handlePressForgotPassword}
+              onLongPress={handleMockError}
+            >
+              <Text className="font-pretendard text-normal-bold text-erum-main">
+                간편 비밀번호를 잊으셨나요?
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
-      </ScrollView>
+
+        <PinCodeKeypad
+          onPressNumber={isSubmitting ? () => {} : handlePressNumber}
+          onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+        />
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description={
+            paymentParams?.flow === 'DUTCH_PAY'
+            || paymentParams?.flow === 'REMOTE_PAYMENT'
+              ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+              : undefined
+          }
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
+        />
+      </View>
+
+      <Modal
+        visible={mismatchModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="비밀번호가 일치하지 않습니다"
+        description={
+          failCount === 5
+            ? `다시 입력해주세요 (${failCount}회)\n5회 연속 실패하였습니다. 10회 실패 시 재인증이 필요합니다.`
+            : `다시 입력해주세요 (${failCount}회)`
+        }
+        confirmLabel="확인"
+        onConfirm={() => setMismatchModalVisible(false)}
+        onClose={() => setMismatchModalVisible(false)}
+      />
+
+      <Modal
+        visible={failModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="10회 이상 실패하였습니다"
+        description="SMS 재인증 후 PIN을 다시 설정해주세요."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+        onClose={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+      />
     </PageWrap>
   );
 }

@@ -4,13 +4,18 @@ import type {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from "react-native";
-import { Image, ScrollView, View } from "react-native";
+import { Image, Pressable, ScrollView, View } from "react-native";
 
 const BANNER_ASPECT_RATIO = 1008 / 426;
 const AUTO_SLIDE_INTERVAL_MS = 3500;
 
+export type MainBannerId =
+  | "card-recommendation"
+  | "dutchpay"
+  | "remote-payment";
+
 type MainBannerItem = {
-  id: string;
+  id: MainBannerId;
   label: string;
   source: ImageSourcePropType;
 };
@@ -33,7 +38,11 @@ const bannerItems: MainBannerItem[] = [
   },
 ];
 
-export function MainBannerCarousel() {
+type MainBannerCarouselProps = {
+  onPressItem?: (id: MainBannerId) => void;
+};
+
+export function MainBannerCarousel({ onPressItem }: MainBannerCarouselProps) {
   const scrollRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [bannerWidth, setBannerWidth] = useState(0);
@@ -92,6 +101,10 @@ export function MainBannerCarousel() {
             }}
           >
             {bannerWidth > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onPressItem?.(item.id)}
+              >
               <Image
                 accessibilityLabel={`${item.label} 배너`}
                 resizeMode="contain"
@@ -101,6 +114,7 @@ export function MainBannerCarousel() {
                   height: bannerWidth / BANNER_ASPECT_RATIO,
                 }}
               />
+              </Pressable>
             ) : null}
           </View>
         ))}

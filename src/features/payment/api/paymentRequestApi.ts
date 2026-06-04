@@ -2,20 +2,23 @@ import type {
     PaymentRequestPayload,
     PaymentRequestResponse,
 } from '../types/paymentRequest.types';
-import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import {
+    getPaymentUserId,
+    PAYMENT_API_BASE_URL,
+} from './paymentApiConfig';
 
-const PAYMENT_REQUEST_URL = 'http://localhost:8083/api/v1/payment/request';
-const DEV_USER_ID = '1';
+const PAYMENT_REQUEST_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/request`;
 
 export async function requestPayment(
     payload: PaymentRequestPayload,
+    idempotencyKey: string,
 ): Promise<PaymentRequestResponse> {
     const response = await fetch(PAYMENT_REQUEST_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': DEV_USER_ID,
-            'Idempotency-Key': createPaymentIdempotencyKey(payload.paymentId),
+            'X-User-Id': getPaymentUserId(),
+            'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(payload),
     });

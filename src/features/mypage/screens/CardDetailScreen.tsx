@@ -284,7 +284,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
       <AliasEditModal
         visible={dialog === 'alias'}
         value={aliasValue}
-        onChangeText={setAliasValue}
+        onChangeText={(value) => setAliasValue(value.slice(0, 10))}
         onCancel={() => setDialog(null)}
         onConfirm={() => {
           updateCardAlias(card.id, aliasValue);
@@ -442,7 +442,8 @@ function AliasEditModal({
           <TextInput
             className="mt-6 h-12 rounded-xl border border-neutral-grey1 px-4 font-pretendard text-large-regular text-neutral-black1"
             value={value}
-            onChangeText={onChangeText}
+            onChangeText={(text) => onChangeText(text.slice(0, 10))}
+            maxLength={10}
             placeholder="별칭을 입력해주세요."
           />
 
