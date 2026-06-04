@@ -93,6 +93,10 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   };
 
   const handleConfirmCancel = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     setCancelModalVisible(false);
     navigation.navigate('Tutorial');
   };
