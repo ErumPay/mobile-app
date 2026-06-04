@@ -7,6 +7,10 @@ import { NavigationContainer, type LinkingOptions } from '@react-navigation/nati
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import GuideScreen from './src/app/screens/GuideScreen';
+import TutorialScreen from './src/features/auth/screens/TutorialScreen';
+import TermsAgreementScreen from './src/features/auth/screens/TermsAgreementScreen';
+import SmsVerificationScreen from './src/features/auth/screens/SmsVerificationScreen';
+import SignupCompleteScreen from './src/features/auth/screens/SignupCompleteScreen';
 import CardRegisterScreen from './src/features/card/screens/CardRegisterScreen';
 import MainScreen from './src/features/main/screens/MainScreen';
 import QrScanScreen from './src/features/qr/screens/QrScanScreen';
@@ -19,13 +23,11 @@ import PaymentResultScreen from './src/features/payment/screens/PaymentResultScr
 import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
 import PaymentCancelScreen from './src/features/payment/screens/PaymentCancelScreen';
 import type { PaymentCancelRouteParams } from './src/features/payment/types/paymentCancel.types';
+import OfflinePaymentQrScreen from './src/features/payment/screens/OfflinePaymentQrScreen';
+import type { OfflinePaymentQrRouteParams } from './src/features/payment/types/offlinePaymentQr.types';
 import type { PaymentRequestSummary } from './src/features/payment/types/paymentMethod.types';
 import DutchPayGroupScreen from './src/features/payment/screens/DutchPayGroupScreen';
 import type { DutchPayGroupRouteParams } from './src/features/payment/types/dutchPay.types';
-import TutorialScreen from './src/features/auth/screens/TutorialScreen';
-import TermsAgreementScreen from './src/features/auth/screens/TermsAgreementScreen';
-import SmsVerificationScreen from './src/features/auth/screens/SmsVerificationScreen';
-import SignupCompleteScreen from './src/features/auth/screens/SignupCompleteScreen';
 import PaymentParticipantSelectScreen from './src/features/payment/screens/PaymentParticipantSelectScreen';
 import type { ParticipantSelectRouteParams } from './src/features/payment/types/paymentParticipantSelect.types';
 import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
@@ -67,6 +69,7 @@ export type RootStackParamList = {
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
+  OfflinePaymentQr: OfflinePaymentQrRouteParams | undefined;
   DutchPayGroup: DutchPayGroupRouteParams | undefined;
   PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
@@ -94,6 +97,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentPin: 'payment/pin',
       PaymentResult: 'payment/result',
       PaymentCancel: 'payment/cancel',
+      OfflinePaymentQr: 'payment/offline-qr',
       DutchPayGroup: 'payment/dutch-pay-group',
       PaymentParticipantSelect: 'payment/participant-select',
       MypageHomeScreen: 'mypage',
@@ -140,27 +144,19 @@ export default function App() {
             <Stack.Screen name="SignupComplete" component={SignupCompleteScreen} />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
-
             <Stack.Screen name="PaymentMethodSelect" component={PaymentMethodSelectScreen} />
-
             <Stack.Screen name="PaymentCardSelect" component={PaymentCardSelectScreen} />
-
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
+            <Stack.Screen name="OfflinePaymentQr" component={OfflinePaymentQrScreen} />
             <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
             <Stack.Screen name="PaymentParticipantSelect" component={PaymentParticipantSelectScreen} />
-
             <Stack.Screen name="MypageHomeScreen" component={MypageHomeScreen} />
-
             <Stack.Screen name="ProfileConfirmScreen" component={ProfileConfirmScreen} />
-
             <Stack.Screen name="PaymentHistoryScreen" component={PaymentHistoryScreen} />
-
             <Stack.Screen name="PaymentDetailScreen" component={PaymentDetailScreen} />
-
             <Stack.Screen name="CardManagementScreen" component={CardManagementScreen} />
-
             <Stack.Screen name="CardDetailScreen" component={CardDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>

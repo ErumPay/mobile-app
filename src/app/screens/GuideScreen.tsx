@@ -138,6 +138,15 @@ const guidePages: GuidePage[] = [
   },
   {
     depth1: "payment",
+    depth2: "offline-qr",
+    pageName: "오프라인 결제 QR 표시",
+    routeName: "OfflinePaymentQr",
+    route: "OfflinePaymentQr",
+    status: "done",
+    note: "담당자 : 조보름",
+  },
+  {
+    depth1: "payment",
     depth2: "method-select",
     pageName: "카드결제 결제수단 선택",
     routeName: "PaymentMethodSelect",
@@ -804,6 +813,15 @@ export default function GuideScreen({ navigation }: Props) {
 
                               if (page.route === "PaymentMethodSelect") {
                                 navigation.navigate("PaymentMethodSelect");
+                                return;
+                              }
+
+                              if (page.route === "OfflinePaymentQr") {
+                                navigation.navigate("OfflinePaymentQr", {
+                                  merchantId: 101,
+                                  amount: 777777,
+                                  orderName: "아메리카노 27잔",
+                                });
                                 return;
                               }
 
