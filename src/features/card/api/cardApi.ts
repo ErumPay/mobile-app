@@ -1,22 +1,22 @@
 import type { RegisterCardPayload, RegisteredCard } from '../types/card';
-import { detectCardIssuer } from '../types/cardFormat';
 
-const REGISTER_CARD_DELAY_MS = 500;
+const CARD_API_BASE_URL = 'http://localhost:8082';
+const REGISTER_CARD_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
 
 export async function registerCard(
   payload: RegisterCardPayload,
 ): Promise<RegisteredCard> {
-  await new Promise<void>((resolve) => {
-    setTimeout(() => resolve(), REGISTER_CARD_DELAY_MS);
+  const response = await fetch(REGISTER_CARD_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   });
 
-  return {
-    id: `card-${Date.now()}`,
-    last4: payload.cardNumber.slice(-4),
-    issuer: detectCardIssuer(payload.cardNumber),
-    holderName: '',
-    cardNickname: payload.cardNickname,
-    isDefault: false,
-    createdAt: new Date().toISOString(),
-  };
+  if (!response.ok) {
+    throw new Error(`CARD_REGISTER_REQUEST_FAILED:${response.status}`);
+  }
+
+  return response.json();
 }
