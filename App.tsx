@@ -135,7 +135,10 @@ export default function App() {
     <SafeAreaProvider>
       <View className="flex-1 bg-neutral-white">
         <NavigationContainer linking={linking}>
-          <Stack.Navigator initialRouteName="Main" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator
+            initialRouteName="Main"
+            screenOptions={{ headerShown: false }}
+          >
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
