@@ -9,6 +9,7 @@ import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import { Loading } from '../../../shared/components/Loading';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
+import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
@@ -59,6 +60,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const completeRemoteRequest = useRemotePaymentProgressStore(
+    (state) => state.completeRequest,
+  );
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
 
@@ -137,6 +141,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           },
           idempotencyKey,
         );
+
+        if (paymentParams.flow === 'REMOTE_PAYMENT') {
+          completeRemoteRequest();
+        }
 
         setPin('');
         setHasError(false);
@@ -257,6 +265,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           visible={stopModalVisible}
           description={
             paymentParams?.flow === 'DUTCH_PAY'
+            || paymentParams?.flow === 'REMOTE_PAYMENT'
               ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
               : undefined
           }

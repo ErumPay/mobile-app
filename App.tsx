@@ -15,6 +15,7 @@ import MainScreen from "./src/features/main/screens/MainScreen";
 import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
 import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMethodSelectScreen";
 import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
+import type { PaymentCardFlowType } from "./src/features/payment/types/paymentCard.types";
 import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
 import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScreen";
@@ -39,6 +40,7 @@ export type RootStackParamList = {
   QrScan: undefined;
   PaymentMethodSelect:
     | {
+        remoteRequestId?: string;
         summary?: PaymentRequestSummary;
         token?: string;
       }
@@ -47,6 +49,7 @@ export type RootStackParamList = {
     | {
         paymentId?: number | string;
         amount?: number | string;
+        flow?: PaymentCardFlowType;
         idempotencyKey?: string;
       }
     | undefined;
