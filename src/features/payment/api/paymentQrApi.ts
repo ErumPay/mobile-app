@@ -1,5 +1,6 @@
-import type { PaymentQrValidateResponse } from '../types/paymentQr.types';
 import type { OfflinePaymentQrRequestPayload } from '../types/offlinePaymentQr.types';
+import type { PaymentQrValidateResponse } from '../types/paymentQr.types';
+
 import { PAYMENT_API_BASE_URL } from './paymentApiConfig';
 
 const PAYMENT_QR_VALIDATE_URL =

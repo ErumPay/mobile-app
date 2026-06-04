@@ -2,40 +2,40 @@ import './global.css';
 
 import { useEffect, useRef } from 'react';
 import { Alert, useWindowDimensions, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import GuideScreen from './src/app/screens/GuideScreen';
-import SignupCompleteScreen from './src/features/auth/screens/SignupCompleteScreen';
-import SmsVerificationScreen from './src/features/auth/screens/SmsVerificationScreen';
-import TermsAgreementScreen from './src/features/auth/screens/TermsAgreementScreen';
 import TutorialScreen from './src/features/auth/screens/TutorialScreen';
+import TermsAgreementScreen from './src/features/auth/screens/TermsAgreementScreen';
+import SmsVerificationScreen from './src/features/auth/screens/SmsVerificationScreen';
+import SignupCompleteScreen from './src/features/auth/screens/SignupCompleteScreen';
 import CardRegisterScreen from './src/features/card/screens/CardRegisterScreen';
 import MainScreen from './src/features/main/screens/MainScreen';
+import QrScanScreen from './src/features/qr/screens/QrScanScreen';
+import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
+import PaymentCardSelectScreen from './src/features/payment/screens/PaymentCardSelectScreen';
+import type { PaymentCardFlowType } from './src/features/payment/types/paymentCard.types';
+import PaymentPinScreen from './src/features/payment/screens/PaymentPinScreen';
+import type { PaymentPinRouteParams } from './src/features/payment/types/paymentPin.types';
+import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
+import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
+import PaymentCancelScreen from './src/features/payment/screens/PaymentCancelScreen';
+import type { PaymentCancelRouteParams } from './src/features/payment/types/paymentCancel.types';
+import OfflinePaymentQrScreen from './src/features/payment/screens/OfflinePaymentQrScreen';
+import type { OfflinePaymentQrRouteParams } from './src/features/payment/types/offlinePaymentQr.types';
+import type { PaymentRequestSummary } from './src/features/payment/types/paymentMethod.types';
+import DutchPayGroupScreen from './src/features/payment/screens/DutchPayGroupScreen';
+import type { DutchPayGroupRouteParams } from './src/features/payment/types/dutchPay.types';
+import PaymentParticipantSelectScreen from './src/features/payment/screens/PaymentParticipantSelectScreen';
+import type { ParticipantSelectRouteParams } from './src/features/payment/types/paymentParticipantSelect.types';
+import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
 import CardDetailScreen from './src/features/mypage/screens/CardDetailScreen';
 import CardManagementScreen from './src/features/mypage/screens/CardManagementScreen';
-import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
 import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
 import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
 import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
-import DutchPayGroupScreen from './src/features/payment/screens/DutchPayGroupScreen';
-import OfflinePaymentQrScreen from './src/features/payment/screens/OfflinePaymentQrScreen';
-import PaymentCancelScreen from './src/features/payment/screens/PaymentCancelScreen';
-import PaymentCardSelectScreen from './src/features/payment/screens/PaymentCardSelectScreen';
-import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
-import PaymentParticipantSelectScreen from './src/features/payment/screens/PaymentParticipantSelectScreen';
-import PaymentPinScreen from './src/features/payment/screens/PaymentPinScreen';
-import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
-import type { DutchPayGroupRouteParams } from './src/features/payment/types/dutchPay.types';
-import type { OfflinePaymentQrRouteParams } from './src/features/payment/types/offlinePaymentQr.types';
-import type { PaymentCardFlowType } from './src/features/payment/types/paymentCard.types';
-import type { PaymentCancelRouteParams } from './src/features/payment/types/paymentCancel.types';
-import type { PaymentRequestSummary } from './src/features/payment/types/paymentMethod.types';
-import type { ParticipantSelectRouteParams } from './src/features/payment/types/paymentParticipantSelect.types';
-import type { PaymentPinRouteParams } from './src/features/payment/types/paymentPin.types';
-import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
-import QrScanScreen from './src/features/qr/screens/QrScanScreen';
 
 export type RootStackParamList = {
   Tutorial: undefined;
@@ -142,61 +142,25 @@ export default function App() {
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
-            <Stack.Screen
-              name="TermsAgreement"
-              component={TermsAgreementScreen}
-            />
-            <Stack.Screen
-              name="SmsVerification"
-              component={SmsVerificationScreen}
-            />
-            <Stack.Screen
-              name="SignupComplete"
-              component={SignupCompleteScreen}
-            />
+            <Stack.Screen name="TermsAgreement" component={TermsAgreementScreen} />
+            <Stack.Screen name="SmsVerification" component={SmsVerificationScreen} />
+            <Stack.Screen name="SignupComplete" component={SignupCompleteScreen} />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
-            <Stack.Screen
-              name="PaymentMethodSelect"
-              component={PaymentMethodSelectScreen}
-            />
-            <Stack.Screen
-              name="PaymentCardSelect"
-              component={PaymentCardSelectScreen}
-            />
+            <Stack.Screen name="PaymentMethodSelect" component={PaymentMethodSelectScreen} />
+            <Stack.Screen name="PaymentCardSelect" component={PaymentCardSelectScreen} />
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
-            <Stack.Screen
-              name="OfflinePaymentQr"
-              component={OfflinePaymentQrScreen}
-            />
+            <Stack.Screen name="OfflinePaymentQr" component={OfflinePaymentQrScreen} />
             <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
-            <Stack.Screen
-              name="PaymentParticipantSelect"
-              component={PaymentParticipantSelectScreen}
-            />
+            <Stack.Screen name="PaymentParticipantSelect" component={PaymentParticipantSelectScreen} />
             <Stack.Screen name="MypageHomeScreen" component={MypageHomeScreen} />
-            <Stack.Screen
-              name="ProfileConfirmScreen"
-              component={ProfileConfirmScreen}
-            />
-            <Stack.Screen
-              name="PaymentHistoryScreen"
-              component={PaymentHistoryScreen}
-            />
-            <Stack.Screen
-              name="PaymentDetailScreen"
-              component={PaymentDetailScreen}
-            />
-            <Stack.Screen
-              name="CardManagementScreen"
-              component={CardManagementScreen}
-            />
-            <Stack.Screen
-              name="CardDetailScreen"
-              component={CardDetailScreen}
-            />
+            <Stack.Screen name="ProfileConfirmScreen" component={ProfileConfirmScreen} />
+            <Stack.Screen name="PaymentHistoryScreen" component={PaymentHistoryScreen} />
+            <Stack.Screen name="PaymentDetailScreen" component={PaymentDetailScreen} />
+            <Stack.Screen name="CardManagementScreen" component={CardManagementScreen} />
+            <Stack.Screen name="CardDetailScreen" component={CardDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

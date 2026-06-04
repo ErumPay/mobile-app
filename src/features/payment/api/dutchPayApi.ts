@@ -108,8 +108,10 @@ export function getDutchPaySession(
     return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}`, {}, userId);
 }
 
-export function getActiveDutchPaySessions(): Promise<DutchPaySessionDetailResponse[]> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/active`);
+export function getActiveDutchPaySessions(
+    userId?: number | string,
+): Promise<DutchPaySessionDetailResponse[]> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/active`, {}, userId);
 }
 
 export function inviteDutchPayAppFriends({
@@ -121,28 +123,42 @@ export function inviteDutchPayAppFriends({
     userIds: number[];
     userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`, {
-        method: 'POST',
-        body: JSON.stringify({
-            user_ids: userIds,
-        }),
-    }, userId);
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                user_ids: userIds,
+            }),
+        },
+        userId,
+    );
 }
 
 export function createDutchPayInviteLink(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPayInviteLinkResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-links`, {
-        method: 'POST',
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-links`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
 }
 
 export function acceptDutchPayInviteLink(
     inviteToken: string,
+    userId?: number | string,
 ): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/invite-links/${inviteToken}/accept`, {
-        method: 'POST',
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/invite-links/${inviteToken}/accept`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
 }
 
 export function confirmDutchPayParticipants({
@@ -154,27 +170,37 @@ export function confirmDutchPayParticipants({
     splitMethod?: DutchPaySplitMethod;
     userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/confirm`, {
-        method: 'POST',
-        body: JSON.stringify({
-            split_method: splitMethod,
-        }),
-    }, userId);
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/confirm`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                split_method: splitMethod,
+            }),
+        },
+        userId,
+    );
 }
 
 export function updateDutchPaySplitMethod({
     sessionId,
     splitMethod,
+    userId,
 }: {
     sessionId: number;
     splitMethod: DutchPaySplitMethod;
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/split-method`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-            split_method: splitMethod,
-        }),
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/split-method`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify({
+                split_method: splitMethod,
+            }),
+        },
+        userId,
+    );
 }
 
 export function updateDutchPayMyAmount({
@@ -186,24 +212,38 @@ export function updateDutchPayMyAmount({
     amount: number;
     userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-amount`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-            amount,
-        }),
-    }, userId);
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-amount`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify({
+                amount,
+            }),
+        },
+        userId,
+    );
 }
 
 export function rejectDutchPayInvite(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/reject`, {
-        method: 'POST',
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/reject`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
 }
 
 export function getDutchPayMyPayment(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPayMyPaymentResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-payment`);
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-payment`,
+        {},
+        userId,
+    );
 }
