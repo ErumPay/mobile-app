@@ -4,7 +4,9 @@ import { CardOcrScreen } from './CardOcrScreen';
 import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
 import { CardRegisterResultScreen } from './CardRegisterResultScreen';
-import type { CardRegisterFormValues} from '../types/card';
+import { registerCard } from '../api/cardApi';
+import type { CardRegisterFormValues } from '../types/card';
+import { onlyDigits } from '../types/cardFormat';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
@@ -13,6 +15,7 @@ import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
+const DEV_USER_ID = 1;
 
 export function CardRegisterScreen({ navigation }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
@@ -21,13 +24,31 @@ export function CardRegisterScreen({ navigation }: Props) {
 
   const addCard = useManagedCardsStore((state) => state.addCard);
 
-  const handleSubmitManualCard = (values: CardRegisterFormValues) => {
-    addCard({
-      cardNumber: values.cardNumber,
-      alias: values.cardNickname,
-    });
+  const handleSubmitManualCard = async (values: CardRegisterFormValues) => {
+    try {
+      const registeredCard = await registerCard({
+        userId: DEV_USER_ID,
+        cardNumber: onlyDigits(values.cardNumber),
+        expiryYm: toExpiryYm(values.expiry),
+        cvc: onlyDigits(values.cvc),
+        cardPassword2: onlyDigits(values.passwordFirstTwo),
+        cardAlias: values.cardNickname.trim().slice(0, 10) || undefined,
+        isDefault: false,
+      });
 
-    setMode('success');
+      addCard({
+        id: String(registeredCard.cardId),
+        issuer: registeredCard.cardCompany,
+        name: registeredCard.cardName,
+        cardNumber: registeredCard.maskedNumber,
+        alias: registeredCard.cardAlias ?? undefined,
+        isDefault: registeredCard.isDefault,
+      });
+
+      setMode('success');
+    } catch {
+      setMode('failure');
+    }
   };
 
   const handleGoBack = () => {
@@ -100,6 +121,14 @@ export function CardRegisterScreen({ navigation }: Props) {
       onPressManual={() => setMode('manual')}
     />
   );
+}
+
+function toExpiryYm(expiry: string) {
+  const digits = onlyDigits(expiry);
+  const month = digits.slice(0, 2);
+  const year = digits.slice(2, 4);
+
+  return `20${year}${month}`;
 }
 
 export default CardRegisterScreen;
