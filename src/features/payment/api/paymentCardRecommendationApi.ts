@@ -1,7 +1,7 @@
 import type { PaymentCardRecommendationResponse } from '../types/paymentCardRecommendation.types';
 import {
+    getPaymentUserId,
     PAYMENT_API_BASE_URL,
-    TEMP_PAYMENT_USER_ID,
 } from './paymentApiConfig';
 
 const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
@@ -79,7 +79,7 @@ export async function preparePayment({
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': TEMP_PAYMENT_USER_ID,
+            'X-User-Id': getPaymentUserId(),
             'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(requestBody),
@@ -147,7 +147,7 @@ export async function subscribePaymentCardRecommendations(
     const response = await fetch(PAYMENT_SUBSCRIBE_URL(paymentId), {
         headers: {
             Accept: 'text/event-stream',
-            'X-User-Id': TEMP_PAYMENT_USER_ID,
+            'X-User-Id': getPaymentUserId(),
         },
     });
     const responseBody = (response as unknown as { body?: any }).body;

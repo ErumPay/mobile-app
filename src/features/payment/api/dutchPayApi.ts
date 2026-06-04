@@ -1,6 +1,6 @@
 import {
+    getPaymentUserId,
     PAYMENT_API_BASE_URL,
-    TEMP_PAYMENT_USER_ID,
 } from './paymentApiConfig';
 
 const DUTCH_PAY_BASE_URL = `${PAYMENT_API_BASE_URL}/api/v1/dutch-pay`;
@@ -86,7 +86,7 @@ async function requestJson<T>(
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': TEMP_PAYMENT_USER_ID,
+            'X-User-Id': getPaymentUserId(),
             ...options.headers,
         },
     });
