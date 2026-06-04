@@ -5,7 +5,7 @@ import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
 import { CardRegisterResultScreen } from './CardRegisterResultScreen';
 import { registerCard } from '../api/cardApi';
-import type { CardRegisterFormValues } from '../types/card';
+import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,6 +21,9 @@ export function CardRegisterScreen({ navigation }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
   const [ocrInitialValues, setOcrInitialValues] =
   useState<Partial<CardRegisterFormValues> | null>(null);
+  const [registeredCard, setRegisteredCard] = useState<RegisteredCard | null>(
+    null,
+  );
 
   const addCard = useManagedCardsStore((state) => state.addCard);
 
@@ -36,17 +39,24 @@ export function CardRegisterScreen({ navigation }: Props) {
         isDefault: false,
       });
 
-      addCard({
-        id: String(registeredCard.cardId),
-        issuer: registeredCard.cardCompany,
-        name: registeredCard.cardName,
-        cardNumber: registeredCard.maskedNumber,
-        alias: registeredCard.cardAlias ?? undefined,
-        isDefault: registeredCard.isDefault,
-      });
+      try {
+        addCard({
+          id: String(registeredCard.cardId),
+          issuer: registeredCard.cardCompany,
+          name: registeredCard.cardName,
+          cardNumber:
+            registeredCard.maskedNumber || maskCardNumber(values.cardNumber),
+          alias: registeredCard.cardAlias ?? undefined,
+          isDefault: registeredCard.isDefault,
+        });
+      } catch (error) {
+        console.warn('Failed to sync registered card to local store.', error);
+      }
 
+      setRegisteredCard(registeredCard);
       setMode('success');
-    } catch {
+    } catch (error) {
+      console.warn('Card registration failed.', error);
       setMode('failure');
     }
   };
@@ -96,6 +106,7 @@ export function CardRegisterScreen({ navigation }: Props) {
     return (
       <CardRegisterResultScreen
         status="success"
+        registeredCard={registeredCard}
         onClose={handleGoBack}
         onGoCardManagement={handleGoCardManagement}
         onGoHome={handleGoHome}
@@ -129,6 +140,14 @@ function toExpiryYm(expiry: string) {
   const year = digits.slice(2, 4);
 
   return `20${year}${month}`;
+}
+
+function maskCardNumber(cardNumber: string) {
+  const digits = onlyDigits(cardNumber);
+  const first4 = digits.slice(0, 4) || '****';
+  const last4 = digits.slice(-4) || '****';
+
+  return `${first4}-****-****-${last4}`;
 }
 
 export default CardRegisterScreen;
