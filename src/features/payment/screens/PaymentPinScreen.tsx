@@ -188,7 +188,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     // CONFIRM 모드: 첫 번째 입력과 비교
     const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
-    if (firstPin && completedPin !== firstPin) {
+    if (!firstPin) {
+      navigation.replace('PaymentPin', { mode: 'REGISTER' });
+      return;
+    }
+    if (completedPin !== firstPin) {
       const nextFailCount = failCount + 1;
       setPin('');
       setHasError(true);
@@ -315,7 +319,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         title="비밀번호가 일치하지 않습니다"
         description={
           failCount === 5
-            ? `다시 입력해주세요 (${failCount}회)\n5회 실패하였습니다. 5분간 입력이 제한됩니다.`
+            ? `다시 입력해주세요 (${failCount}회)\n5회 연속 실패하였습니다. 10회 실패 시 재인증이 필요합니다.`
             : `다시 입력해주세요 (${failCount}회)`
         }
         confirmLabel="확인"
