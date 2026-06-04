@@ -1,0 +1,197 @@
+const API_BASE_URL = 'http://localhost:8083';
+const DEV_USER_ID = '1';
+
+const DUTCH_PAY_BASE_URL = `${API_BASE_URL}/api/v1/dutch-pay`;
+
+export type DutchPayParticipantStatus =
+    | 'INVITED'
+    | 'PENDING'
+    | 'PAID'
+    | 'REJECTED'
+    | 'TIMEOUT'
+    | 'HOST_PAID';
+
+export type DutchPaySessionStatus =
+    | 'CREATED'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'TIMEOUT_HANDLED';
+
+export type DutchPaySplitMethod = 'EQUAL' | 'CUSTOM';
+
+export type DutchPaySessionProgressStep =
+    | 'GROUP_CREATED'
+    | 'PARTICIPANT_CONFIRM'
+    | 'AMOUNT_INPUT'
+    | 'PAYMENT_REQUEST'
+    | 'PAYMENT_IN_PROGRESS'
+    | 'FINAL_PAYMENT_REQUIRED'
+    | 'COMPLETED'
+    | 'FAILED'
+    | 'TIMEOUT_HANDLED';
+
+export type DutchPayParticipantResponse = {
+    participant_id: number;
+    user_id: number;
+    amount: number | null;
+    payment_id: number | null;
+    status: DutchPayParticipantStatus;
+    host: boolean;
+};
+
+export type DutchPaySessionDetailResponse = {
+    session_id: number;
+    dutch_order_no: string;
+    host_user_id: number;
+    merchant_id: number;
+    order_name: string;
+    host_auth_payment_id: number | null;
+    total_amount: number;
+    remaining_amount: number;
+    split_method: DutchPaySplitMethod;
+    status: DutchPaySessionStatus;
+    session_progress_step: DutchPaySessionProgressStep;
+    participants: DutchPayParticipantResponse[];
+};
+
+export type DutchPayMyPaymentResponse = {
+    session_id: number;
+    participant_id: number;
+    user_id: number;
+    host_user_id: number;
+    merchant_id: number;
+    order_name: string;
+    amount: number;
+    total_amount: number;
+    split_method: DutchPaySplitMethod;
+    session_status: DutchPaySessionStatus;
+    participant_status: DutchPayParticipantStatus;
+    payment_id: number | null;
+    payable: boolean;
+};
+
+export type DutchPayInviteLinkResponse = {
+    invite_token: string;
+    invite_url: string;
+};
+
+async function requestJson<T>(
+    url: string,
+    options: RequestInit = {},
+): Promise<T> {
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': DEV_USER_ID,
+            ...options.headers,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('더치페이 정보를 불러오지 못했습니다.');
+    }
+
+    return response.json();
+}
+
+export function getDutchPaySession(
+    sessionId: number,
+): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}`);
+}
+
+export function getActiveDutchPaySessions(): Promise<DutchPaySessionDetailResponse[]> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/active`);
+}
+
+export function inviteDutchPayAppFriends({
+    sessionId,
+    userIds,
+}: {
+    sessionId: number;
+    userIds: number[];
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`, {
+        method: 'POST',
+        body: JSON.stringify({
+            user_ids: userIds,
+        }),
+    });
+}
+
+export function createDutchPayInviteLink(
+    sessionId: number,
+): Promise<DutchPayInviteLinkResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-links`, {
+        method: 'POST',
+    });
+}
+
+export function acceptDutchPayInviteLink(
+    inviteToken: string,
+): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/invite-links/${inviteToken}/accept`, {
+        method: 'POST',
+    });
+}
+
+export function confirmDutchPayParticipants({
+    sessionId,
+    splitMethod,
+}: {
+    sessionId: number;
+    splitMethod?: DutchPaySplitMethod;
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/confirm`, {
+        method: 'POST',
+        body: JSON.stringify({
+            split_method: splitMethod,
+        }),
+    });
+}
+
+export function updateDutchPaySplitMethod({
+    sessionId,
+    splitMethod,
+}: {
+    sessionId: number;
+    splitMethod: DutchPaySplitMethod;
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/split-method`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+            split_method: splitMethod,
+        }),
+    });
+}
+
+export function updateDutchPayMyAmount({
+    sessionId,
+    amount,
+}: {
+    sessionId: number;
+    amount: number;
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-amount`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+            amount,
+        }),
+    });
+}
+
+export function rejectDutchPayInvite(
+    sessionId: number,
+): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/reject`, {
+        method: 'POST',
+    });
+}
+
+export function getDutchPayMyPayment(
+    sessionId: number,
+): Promise<DutchPayMyPaymentResponse> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-payment`);
+}

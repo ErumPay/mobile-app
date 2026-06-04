@@ -51,6 +51,12 @@ export type RootStackParamList = {
         amount?: number | string;
         flow?: PaymentCardFlowType;
         idempotencyKey?: string;
+        flow?: "NORMAL" | "DUTCH_PAY" | "DUTCH_PAY_FINAL";
+        dutchSessionId?: number;
+        selectedUserIds?: number[];
+        splitMethod?: "EQUAL" | "CUSTOM";
+        orderName?: string;
+        merchantId?: number;
       }
     | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;

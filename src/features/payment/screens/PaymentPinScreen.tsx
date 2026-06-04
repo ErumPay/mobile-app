@@ -53,7 +53,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const paymentParams =
     route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
   const paymentResultFlow: PaymentResultFlow =
-    paymentParams?.flow === 'DUTCH_PAY' ? 'DUTCH_PAY_PRE_AUTH' : 'NORMAL';
+    paymentParams?.flow === 'DUTCH_PAY'
+      ? 'DUTCH_PAY_PRE_AUTH'
+      : paymentParams?.flow === 'DUTCH_PAY_FINAL'
+        ? 'DUTCH_PAY_FINAL'
+        : 'NORMAL';
 
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -151,6 +155,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
+          dutchSessionId: paymentParams.dutchSessionId,
+          selectedUserIds: paymentParams.selectedUserIds,
+          splitMethod: paymentParams.splitMethod,
+          orderName: paymentParams.orderName,
+          merchantId: paymentParams.merchantId,
         });
       } catch {
         setPin('');
