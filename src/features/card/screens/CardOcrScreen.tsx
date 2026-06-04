@@ -6,6 +6,7 @@ import type { Action } from 'expo-image-manipulator';
 
 import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
+import { Loading } from '../../../shared/components/Loading';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
 import { uploadCardImage } from '../api/cardOcrApi';
@@ -70,10 +71,11 @@ export function CardOcrScreen({
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isTakingPicture, setIsTakingPicture] = useState(false);
+  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
 
 
   const handleTakePicture = async () => {
-    if (!cameraRef.current || isTakingPicture) {
+    if (!cameraRef.current || isTakingPicture || isProcessingOcr) {
       return;
     }
 
@@ -87,6 +89,8 @@ export function CardOcrScreen({
       if (!photo) {
         return;
       }
+
+      setIsProcessingOcr(true);
 
       const cardFrameImageActions = getCardFrameImageActions(
         photo.width,
@@ -111,6 +115,7 @@ export function CardOcrScreen({
       Alert.alert('안내', '카드 이미지를 촬영하지 못했습니다.');
     } finally {
       setIsTakingPicture(false);
+      setIsProcessingOcr(false);
     }
   };
 
@@ -159,6 +164,22 @@ export function CardOcrScreen({
     );
   }
 
+<<<<<<< Updated upstream
+  if (isTakingPicture) {
+=======
+  if (isProcessingOcr) {
+>>>>>>> Stashed changes
+    return (
+      <PageWrap
+        scroll={false}
+        padded={false}
+        backgroundClassName="bg-neutral-white"
+      >
+        <Loading message="카드 정보를 불러오는 중입니다." fullScreen />
+      </PageWrap>
+    );
+  }
+
   return (
     <PageWrap
       scroll={false}
@@ -192,7 +213,7 @@ export function CardOcrScreen({
             <Pressable
               accessibilityRole="button"
               className="mt-6 h-16 w-16 items-center justify-center rounded-full border-4 border-neutral-white bg-erum-main"
-              disabled={isTakingPicture}
+              disabled={isTakingPicture || isProcessingOcr}
               onPress={handleTakePicture}
             >
               <View className="h-11 w-11 rounded-full bg-neutral-white" />
