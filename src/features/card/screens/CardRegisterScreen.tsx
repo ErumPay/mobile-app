@@ -5,6 +5,7 @@ import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
 import { CardRegisterResultScreen } from './CardRegisterResultScreen';
 import { registerCard } from '../api/cardApi';
+import { getCardRegisterUserId } from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
 
@@ -15,7 +16,6 @@ import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
-const DEV_USER_ID = 2;
 
 export function CardRegisterScreen({ navigation }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
@@ -24,13 +24,20 @@ export function CardRegisterScreen({ navigation }: Props) {
   const [registeredCard, setRegisteredCard] = useState<RegisteredCard | null>(
     null,
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addCard = useManagedCardsStore((state) => state.addCard);
 
   const handleSubmitManualCard = async (values: CardRegisterFormValues) => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
       const registeredCard = await registerCard({
-        userId: DEV_USER_ID,
+        userId: getCardRegisterUserId(),
         cardNumber: onlyDigits(values.cardNumber),
         expiryYm: toExpiryYm(values.expiry),
         cvc: onlyDigits(values.cvc),
@@ -58,6 +65,8 @@ export function CardRegisterScreen({ navigation }: Props) {
     } catch (error) {
       console.warn('Card registration failed.', error);
       setMode('failure');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -97,6 +106,7 @@ export function CardRegisterScreen({ navigation }: Props) {
       <CardRegisterFormScreen
         onClose={handleGoBack}
         initialValues={ocrInitialValues}
+        isSubmitting={isSubmitting}
         onSubmit={handleSubmitManualCard}
       />
     );

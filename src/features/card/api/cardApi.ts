@@ -1,18 +1,22 @@
 import type { RegisterCardPayload, RegisteredCard } from '../types/card';
+import { CARD_API_BASE_URL, CARD_API_TIMEOUT_MS } from './cardApiConfig';
 
-const CARD_API_BASE_URL = 'http://192.168.0.135:8082';
 const REGISTER_CARD_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
 
 export async function registerCard(
   payload: RegisterCardPayload,
 ): Promise<RegisteredCard> {
-  const response = await fetch(REGISTER_CARD_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
+  const response = await fetchWithTimeout(
+    REGISTER_CARD_URL,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  });
+    CARD_API_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
@@ -26,8 +30,10 @@ export async function registerCard(
 
 function normalizeRegisteredCard(response: Record<string, unknown>): RegisteredCard {
   return {
-    cardId: Number(response.cardId ?? response.card_id),
-    cardProductId: Number(response.cardProductId ?? response.card_product_id),
+    cardId: toFiniteNumber(response.cardId ?? response.card_id),
+    cardProductId: toFiniteNumber(
+      response.cardProductId ?? response.card_product_id,
+    ),
     cardCompany: String(response.cardCompany ?? response.card_company ?? ''),
     cardName: String(response.cardName ?? response.card_name ?? ''),
     maskedNumber: String(response.maskedNumber ?? response.masked_number ?? ''),
@@ -38,4 +44,28 @@ function normalizeRegisteredCard(response: Record<string, unknown>): RegisteredC
     isDefault: Boolean(response.isDefault ?? response.is_default),
     status: String(response.status ?? ''),
   };
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo,
+  init: RequestInit,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function toFiniteNumber(value: unknown) {
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue) ? numberValue : 0;
 }
