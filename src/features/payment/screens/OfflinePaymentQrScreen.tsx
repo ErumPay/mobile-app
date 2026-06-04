@@ -19,6 +19,10 @@ const DEFAULT_PAYMENT_QR_REQUEST: OfflinePaymentQrRequestPayload = {
     channel_type: 'OFFLINE',
 };
 
+function formatAmount(amount: number) {
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 export default function OfflinePaymentQrScreen({ navigation, route }: Props) {
     const [qrImageUri, setQrImageUri] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +123,7 @@ export default function OfflinePaymentQrScreen({ navigation, route }: Props) {
                         </Text>
 
                         <Text className="mt-2 font-pretendard text-heading-2 text-neutral-white">
-                            {payload.amount.toLocaleString('ko-KR')}원
+                            {formatAmount(payload.amount)}원
                         </Text>
 
                         {errorMessage ? (
