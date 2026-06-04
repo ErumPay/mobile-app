@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
+import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
+import { Loading } from '../../../shared/components/Loading';
+import { Modal } from '../../../shared/components/Modal';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
-import { Loading } from '../../../shared/components/Loading';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
-import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
+import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
@@ -43,7 +46,7 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
     title: '간편비밀번호 확인',
     description: '한번 더 입력해주세요.',
     showForgotLink: false,
-    showWarning: true,
+    showWarning: false,
   },
 };
 
@@ -64,6 +67,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
+  const [failModalVisible, setFailModalVisible] = useState(false);
   const completeRemoteRequest = useRemotePaymentProgressStore(
     (state) => state.completeRequest,
   );
@@ -131,7 +136,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       try {
         setIsSubmitting(true);
 
-        await requestPayment(
+        const paymentResponse = await requestPayment(
           {
             pin: completedPin,
             paymentId: paymentParams.paymentId,
@@ -155,7 +160,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
-          dutchSessionId: paymentParams.dutchSessionId,
+          dutchSessionId:
+            paymentResponse.dutchSessionId ?? paymentParams.dutchSessionId,
           selectedUserIds: paymentParams.selectedUserIds,
           splitMethod: paymentParams.splitMethod,
           orderName: paymentParams.orderName,
@@ -178,11 +184,32 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     if (mode === 'REGISTER') {
       setPin('');
-      navigation.replace('PaymentPin', { mode: 'CONFIRM' });
+      navigation.replace('PaymentPin', {
+        mode: 'CONFIRM',
+        firstPin: completedPin,
+      });
       return;
     }
 
-    Alert.alert('간편비밀번호', '간편비밀번호 등록이 완료되었습니다.');
+    const firstPin =
+      route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+
+    if (firstPin && completedPin !== firstPin) {
+      const nextFailCount = failCount + 1;
+
+      setPin('');
+      setHasError(true);
+      setFailCount(nextFailCount);
+
+      if (nextFailCount >= 10) {
+        setFailModalVisible(true);
+      } else {
+        setMismatchModalVisible(true);
+      }
+      return;
+    }
+
+    navigation.replace('SignupComplete');
   };
 
   const handlePressNumber = (value: string) => {
@@ -233,9 +260,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {hasError ? (
+          {hasError && mode !== 'CONFIRM' ? (
             <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
-              {failCount || 1}회 틀렸습니다.
+              {`${failCount || 1}회 틀렸습니다.`}
             </Text>
           ) : null}
 
@@ -270,10 +297,12 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
         />
+
         <PaymentStopConfirmModal
           visible={stopModalVisible}
           description={
             paymentParams?.flow === 'DUTCH_PAY'
+            || paymentParams?.flow === 'DUTCH_PAY_FINAL'
             || paymentParams?.flow === 'REMOTE_PAYMENT'
               ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
               : undefined
@@ -282,6 +311,46 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onCancel={() => setStopModalVisible(false)}
         />
       </View>
+
+      <Modal
+        visible={mismatchModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="비밀번호가 일치하지 않습니다"
+        description={
+          failCount === 5
+            ? `다시 입력해주세요 (${failCount}회)\n5회 실패하였습니다. 5분간 입력이 제한됩니다.`
+            : `다시 입력해주세요 (${failCount}회)`
+        }
+        confirmLabel="확인"
+        onConfirm={() => setMismatchModalVisible(false)}
+        onClose={() => setMismatchModalVisible(false)}
+      />
+
+      <Modal
+        visible={failModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="10회 이상 실패하였습니다"
+        description="SMS 재인증 후 PIN을 다시 설정해주세요."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+        onClose={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+      />
     </PageWrap>
   );
 }

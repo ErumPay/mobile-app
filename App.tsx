@@ -11,6 +11,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import GuideScreen from "./src/app/screens/GuideScreen";
 import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
+import SignupCompleteScreen from "./src/features/auth/screens/SignupCompleteScreen";
+import TermsAgreementScreen from "./src/features/auth/screens/TermsAgreementScreen";
 import TutorialScreen from "./src/features/auth/screens/TutorialScreen";
 import CardRegisterScreen from "./src/features/card/screens/CardRegisterScreen";
 import MainScreen from "./src/features/main/screens/MainScreen";
@@ -42,7 +44,9 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Main: undefined;
   Guide: undefined;
+  TermsAgreement: undefined;
   SmsVerification: undefined;
+  SignupComplete: undefined;
   QrScan: undefined;
   PaymentMethodSelect:
     | {
@@ -86,7 +90,9 @@ const linking: LinkingOptions<RootStackParamList> = {
       Tutorial: "tutorial",
       Main: "",
       Guide: "guide",
+      TermsAgreement: "auth/terms",
       SmsVerification: "auth/sms-verification",
+      SignupComplete: "auth/signup-complete",
       QrScan: "qr-scan",
       CardRegister: "card-register",
       PaymentMethodSelect: "payment/method-select",
@@ -140,8 +146,16 @@ export default function App() {
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
             <Stack.Screen
+              name="TermsAgreement"
+              component={TermsAgreementScreen}
+            />
+            <Stack.Screen
               name="SmsVerification"
               component={SmsVerificationScreen}
+            />
+            <Stack.Screen
+              name="SignupComplete"
+              component={SignupCompleteScreen}
             />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
