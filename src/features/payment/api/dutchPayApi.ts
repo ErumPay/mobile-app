@@ -1,7 +1,9 @@
-const API_BASE_URL = 'http://localhost:8083';
-const DEV_USER_ID = '1';
+import {
+    getPaymentUserId,
+    PAYMENT_API_BASE_URL,
+} from './paymentApiConfig';
 
-const DUTCH_PAY_BASE_URL = `${API_BASE_URL}/api/v1/dutch-pay`;
+const DUTCH_PAY_BASE_URL = `${PAYMENT_API_BASE_URL}/api/v1/dutch-pay`;
 
 export type DutchPayParticipantStatus =
     | 'INVITED'
@@ -84,7 +86,7 @@ async function requestJson<T>(
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': DEV_USER_ID,
+            'X-User-Id': getPaymentUserId(),
             ...options.headers,
         },
     });

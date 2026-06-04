@@ -1,11 +1,12 @@
 import type { PaymentCardRecommendationResponse } from '../types/paymentCardRecommendation.types';
+import {
+    getPaymentUserId,
+    PAYMENT_API_BASE_URL,
+} from './paymentApiConfig';
 
-const API_BASE_URL = 'http://localhost:8083';
-const DEV_USER_ID = '1';
-
-const PAYMENT_PREPARE_URL = `${API_BASE_URL}/api/v1/payment/prepare`;
+const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
 const PAYMENT_SUBSCRIBE_URL = (paymentId: number) =>
-    `${API_BASE_URL}/api/v1/payment/${paymentId}/subscribe`;
+    `${PAYMENT_API_BASE_URL}/api/v1/payment/${paymentId}/subscribe`;
 
 type PreparePaymentParams = {
     paymentId?: number;
@@ -57,9 +58,9 @@ export async function preparePayment({
     const isDutchMember = paymentType === 'DUTCH' && dutchRole === 'MEMBER';
     const isDutchHost = paymentType === 'DUTCH' && dutchRole === 'HOST';
     const prepareUrl = isDutchMember
-        ? `${API_BASE_URL}/api/v1/payment/prepare-member`
+        ? `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare-member`
         : isDutchHost
-            ? `${API_BASE_URL}/api/v1/payment/prepare-host`
+            ? `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare-host`
             : PAYMENT_PREPARE_URL;
     const requestBody = isDutchMember || isDutchHost
         ? {
@@ -78,7 +79,7 @@ export async function preparePayment({
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': DEV_USER_ID,
+            'X-User-Id': getPaymentUserId(),
             'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(requestBody),
@@ -146,7 +147,7 @@ export async function subscribePaymentCardRecommendations(
     const response = await fetch(PAYMENT_SUBSCRIBE_URL(paymentId), {
         headers: {
             Accept: 'text/event-stream',
-            'X-User-Id': DEV_USER_ID,
+            'X-User-Id': getPaymentUserId(),
         },
     });
     const responseBody = (response as unknown as { body?: any }).body;
