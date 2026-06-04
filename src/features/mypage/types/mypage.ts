@@ -1,6 +1,6 @@
-export type PaymentMethodType =
-  | 'dutchpay'
-  | 'remote'
+export type PaymentMethodType = 'remote' | 'dutchpay' | 'solo';
+
+export type PaymentBenefitType =
   | 'singleBenefit'
   | 'singlePerformance'
   | 'splitBenefit'
@@ -33,6 +33,7 @@ export type PaymentHistoryItem = {
   id: string;
   cardId: string;
   method: PaymentMethodType;
+  benefitType: PaymentBenefitType;
   status: PaymentStatus;
   title: string;
   date: string;
@@ -40,6 +41,7 @@ export type PaymentHistoryItem = {
 };
 
 export type PaymentDetail = PaymentHistoryItem & {
+  cardIds?: string[];
   paidAt: string;
   receiptId: string;
   sellerName: string;

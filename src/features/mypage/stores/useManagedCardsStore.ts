@@ -83,7 +83,7 @@ export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
     set((state) => ({
       cards: state.cards.map((card) =>
         card.id === cardId
-          ? { ...card, alias: alias.trim() || '별칭미설정' }
+          ? { ...card, alias: alias.trim().slice(0, 10) || '별칭미설정' }
           : card
       ),
     })),

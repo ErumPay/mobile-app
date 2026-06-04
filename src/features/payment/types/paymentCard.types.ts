@@ -1,4 +1,8 @@
-export type PaymentCardFlowType = 'NORMAL' | 'DUTCH_PAY';
+export type PaymentCardFlowType =
+    | 'NORMAL'
+    | 'DUTCH_PAY'
+    | 'DUTCH_PAY_FINAL'
+    | 'REMOTE_PAYMENT';
 
 export type CardCombinationType =
     | 'SINGLE_BENEFIT'

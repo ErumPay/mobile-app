@@ -115,7 +115,20 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
         }
 
         if (content.buttonAction === 'CREATE_GROUP') {
-            Alert.alert('더치페이', '그룹 생성 화면으로 이동합니다.');
+            if (!route.params?.dutchSessionId) {
+                Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+                return;
+            }
+
+            navigation.navigate('DutchPayGroup', {
+                role: 'OWNER',
+                sessionId: route.params.dutchSessionId,
+                selectedUserIds: route.params.selectedUserIds,
+                splitMethod: route.params.splitMethod,
+                splitType: route.params.splitMethod === 'EQUAL' ? 'AUTO_SPLIT' : 'MANUAL',
+                orderName: route.params.orderName,
+                merchantId: route.params.merchantId,
+            });
             return;
         }
 

@@ -5,35 +5,69 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';
+import Modal from '../../../shared/components/Modal';
+import PaymentMockBadge from '../components/PaymentMockBadge';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import PaymentActionOptionList from '../components/PaymentActionOptionList';
 import PaymentRequestSummary from '../components/PaymentRequestSummary';
+import { getMockRemotePaymentRequestResponse } from '../constants/remotePayment.mock';
 import { getPaymentActionOptions } from '../utils/paymentMethodOptions';
 import type {
     PaymentActionType,
     PaymentRequestSummary as PaymentRequestSummaryType,
 } from '../types/paymentMethod.types';
 import { validatePaymentQr } from '../api/paymentQrApi';
+import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import { toPaymentRequestSummary } from '../utils/paymentQrAdapter';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import { toRemotePaymentRecipientSummary } from '../utils/remotePaymentAdapter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentMethodSelect'>;
 
 export default function PaymentMethodSelectScreen({ navigation, route }: Props) {
     const routeSummary = route.params?.summary;
     const routeToken = route.params?.token;
+    const routeRemoteRequestId = route.params?.remoteRequestId;
     const paymentIdempotencyKeyMap = useRef(new Map<number, string>());
     const [summary, setSummary] = useState<PaymentRequestSummaryType | null>(
         routeSummary ?? null,
     );
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
-        routeSummary || routeToken ? '' : '결제 요청 token이 없습니다.',
+        routeSummary || routeToken || routeRemoteRequestId
+            ? ''
+            : '결제 요청 token이 없습니다.',
+    );
+    const [stopModalVisible, setStopModalVisible] = useState(false);
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
+        useState(false);
+    const rejectRemoteRequest = useRemotePaymentProgressStore(
+        (state) => state.rejectRequest,
+    );
+    const setRecipientProgress = useRemotePaymentProgressStore(
+        (state) => state.setRecipientProgress,
     );
     const options = summary ? getPaymentActionOptions(summary.type) : [];
+    const stopModalDescription =
+        summary?.type === 'DUTCH_PAY_PARTICIPANT' ||
+        summary?.type === 'REMOTE_RECIPIENT'
+            ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+            : undefined;
 
     useEffect(() => {
         if (routeSummary) {
             setSummary(routeSummary);
+            setErrorMessage('');
+            return;
+        }
+
+        if (routeRemoteRequestId) {
+            const remotePaymentRequest =
+                getMockRemotePaymentRequestResponse(routeRemoteRequestId);
+
+            setRecipientProgress(remotePaymentRequest);
+            setSummary(toRemotePaymentRecipientSummary(remotePaymentRequest));
             setErrorMessage('');
             return;
         }
@@ -81,15 +115,21 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         return () => {
             isMounted = false;
         };
-    }, [routeSummary, routeToken]);
+    }, [routeRemoteRequestId, routeSummary, routeToken, setRecipientProgress]);
 
     const handlePressClose = () => {
+        setStopModalVisible(true);
+    };
+
+    const handleConfirmStopPayment = () => {
+        setStopModalVisible(false);
+
         if (navigation.canGoBack()) {
             navigation.goBack();
             return;
         }
 
-        navigation.navigate('Guide');
+        navigation.navigate('Main');
     };
 
     const handlePressOption = (type: PaymentActionType) => {
@@ -113,12 +153,54 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
             navigation.navigate('PaymentCardSelect', {
                 paymentId: summary.paymentId,
                 amount: summary.amount,
+                flow:
+                    summary.type === 'REMOTE_RECIPIENT'
+                        ? 'REMOTE_PAYMENT'
+                        : summary.type === 'DUTCH_PAY_PARTICIPANT'
+                          ? 'DUTCH_PAY'
+                          : 'NORMAL',
                 idempotencyKey,
             });
             return;
         }
 
+        if (type === 'REJECT') {
+            setRejectModalVisible(true);
+            return;
+        }
+
+        if (type === 'REMOTE_REQUEST') {
+            navigation.navigate('PaymentParticipantSelect', {
+                mode: 'REMOTE_PAYMENT',
+            });
+            return;
+        }
+
+        if (type === 'DUTCH_PAY') {
+            navigation.navigate('PaymentParticipantSelect', {
+                mode: 'DUTCH_PAY',
+                paymentId: summary?.paymentId,
+                amount: summary?.amount,
+                orderName: summary?.merchantName,
+            });
+            return;
+        }
+
         Alert.alert('결제 수단 선택', `${type} 액션이 선택되었습니다.`);
+    };
+
+    const handleConfirmReject = () => {
+        if (summary?.type === 'REMOTE_RECIPIENT') {
+            rejectRemoteRequest();
+        }
+
+        setRejectModalVisible(false);
+        navigation.navigate('Main');
+    };
+
+    const handleConfirmRemoteRequestComplete = () => {
+        setRemoteRequestCompleteModalVisible(false);
+        navigation.navigate('Main');
     };
 
     return (
@@ -151,7 +233,14 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                     ) : null}
 
                     {summary ? (
-                        <PaymentRequestSummary summary={summary} />
+                        <>
+                            {routeSummary ? (
+                                <View className="px-4 pt-4">
+                                    <PaymentMockBadge />
+                                </View>
+                            ) : null}
+                            <PaymentRequestSummary summary={summary} />
+                        </>
                     ) : null}
 
                     {summary ? (
@@ -161,6 +250,32 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                         />
                     ) : null}
                 </ScrollView>
+                <PaymentStopConfirmModal
+                    visible={stopModalVisible}
+                    description={stopModalDescription}
+                    onConfirm={handleConfirmStopPayment}
+                    onCancel={() => setStopModalVisible(false)}
+                />
+                <Modal
+                    visible={rejectModalVisible}
+                    type="two"
+                    title="결제 요청을 거절하시겠습니까?"
+                    description="거절하면 요청자에게 거절 상태가 전달됩니다."
+                    confirmLabel="예"
+                    cancelLabel="아니오"
+                    onConfirm={handleConfirmReject}
+                    onCancel={() => setRejectModalVisible(false)}
+                    onClose={() => setRejectModalVisible(false)}
+                />
+                <Modal
+                    visible={remoteRequestCompleteModalVisible}
+                    type="one"
+                    title="원격결제 요청이 전송되었습니다."
+                    description="메인에서 결제 진행상태를 확인할 수 있습니다."
+                    confirmLabel="확인"
+                    onConfirm={handleConfirmRemoteRequestComplete}
+                    onClose={handleConfirmRemoteRequestComplete}
+                />
             </View>
         </SafeAreaView>
     );
