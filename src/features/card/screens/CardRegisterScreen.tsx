@@ -15,7 +15,7 @@ import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
-const DEV_USER_ID = 1;
+const DEV_USER_ID = 2;
 
 export function CardRegisterScreen({ navigation }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
