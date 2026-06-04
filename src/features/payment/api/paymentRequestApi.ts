@@ -2,9 +2,12 @@ import type {
     PaymentRequestPayload,
     PaymentRequestResponse,
 } from '../types/paymentRequest.types';
+import {
+    PAYMENT_API_BASE_URL,
+    TEMP_PAYMENT_USER_ID,
+} from './paymentApiConfig';
 
-const PAYMENT_REQUEST_URL = 'http://localhost:8083/api/v1/payment/request';
-const DEV_USER_ID = '1';
+const PAYMENT_REQUEST_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/request`;
 
 export async function requestPayment(
     payload: PaymentRequestPayload,
@@ -14,7 +17,7 @@ export async function requestPayment(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': DEV_USER_ID,
+            'X-User-Id': TEMP_PAYMENT_USER_ID,
             'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(payload),
