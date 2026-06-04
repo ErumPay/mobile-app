@@ -3,7 +3,7 @@ import {
     PAYMENT_API_BASE_URL,
 } from './paymentApiConfig';
 
-export const DUTCH_PAY_DEV_USER_ID = Number(TEMP_PAYMENT_USER_ID) || 1;
+export const DUTCH_PAY_DEV_USER_ID = Number(getPaymentUserId()) || 1;
 
 const DUTCH_PAY_BASE_URL = `${PAYMENT_API_BASE_URL}/api/v1/dutch-pay`;
 

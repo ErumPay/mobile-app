@@ -1,44 +1,41 @@
-import "./global.css";
+import './global.css';
 
-import { useEffect, useRef } from "react";
-import { Alert, useWindowDimensions, View } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import {
-  NavigationContainer,
-  type LinkingOptions,
-} from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useEffect, useRef } from 'react';
+import { Alert, useWindowDimensions, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import GuideScreen from "./src/app/screens/GuideScreen";
-import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
-import SignupCompleteScreen from "./src/features/auth/screens/SignupCompleteScreen";
-import TermsAgreementScreen from "./src/features/auth/screens/TermsAgreementScreen";
-import TutorialScreen from "./src/features/auth/screens/TutorialScreen";
-import CardRegisterScreen from "./src/features/card/screens/CardRegisterScreen";
-import MainScreen from "./src/features/main/screens/MainScreen";
-import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
-import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
-import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
-import PaymentDetailScreen from "./src/features/mypage/screens/PaymentDetailScreen";
-import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistoryScreen";
-import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
-import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
-import OfflinePaymentQrScreen from "./src/features/payment/screens/OfflinePaymentQrScreen";
-import PaymentCancelScreen from "./src/features/payment/screens/PaymentCancelScreen";
-import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
-import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMethodSelectScreen";
-import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
-import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
-import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScreen";
-import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
-import type { OfflinePaymentQrRouteParams } from "./src/features/payment/types/offlinePaymentQr.types";
-import type { PaymentCardFlowType } from "./src/features/payment/types/paymentCard.types";
-import type { PaymentCancelRouteParams } from "./src/features/payment/types/paymentCancel.types";
-import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
-import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
-import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
-import type { PaymentResultRouteParams } from "./src/features/payment/types/paymentResult.types";
-import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
+import GuideScreen from './src/app/screens/GuideScreen';
+import SignupCompleteScreen from './src/features/auth/screens/SignupCompleteScreen';
+import SmsVerificationScreen from './src/features/auth/screens/SmsVerificationScreen';
+import TermsAgreementScreen from './src/features/auth/screens/TermsAgreementScreen';
+import TutorialScreen from './src/features/auth/screens/TutorialScreen';
+import CardRegisterScreen from './src/features/card/screens/CardRegisterScreen';
+import MainScreen from './src/features/main/screens/MainScreen';
+import CardDetailScreen from './src/features/mypage/screens/CardDetailScreen';
+import CardManagementScreen from './src/features/mypage/screens/CardManagementScreen';
+import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
+import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
+import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
+import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
+import DutchPayGroupScreen from './src/features/payment/screens/DutchPayGroupScreen';
+import OfflinePaymentQrScreen from './src/features/payment/screens/OfflinePaymentQrScreen';
+import PaymentCancelScreen from './src/features/payment/screens/PaymentCancelScreen';
+import PaymentCardSelectScreen from './src/features/payment/screens/PaymentCardSelectScreen';
+import PaymentMethodSelectScreen from './src/features/payment/screens/PaymentMethodSelectScreen';
+import PaymentParticipantSelectScreen from './src/features/payment/screens/PaymentParticipantSelectScreen';
+import PaymentPinScreen from './src/features/payment/screens/PaymentPinScreen';
+import PaymentResultScreen from './src/features/payment/screens/PaymentResultScreen';
+import type { DutchPayGroupRouteParams } from './src/features/payment/types/dutchPay.types';
+import type { OfflinePaymentQrRouteParams } from './src/features/payment/types/offlinePaymentQr.types';
+import type { PaymentCardFlowType } from './src/features/payment/types/paymentCard.types';
+import type { PaymentCancelRouteParams } from './src/features/payment/types/paymentCancel.types';
+import type { PaymentRequestSummary } from './src/features/payment/types/paymentMethod.types';
+import type { ParticipantSelectRouteParams } from './src/features/payment/types/paymentParticipantSelect.types';
+import type { PaymentPinRouteParams } from './src/features/payment/types/paymentPin.types';
+import type { PaymentResultRouteParams } from './src/features/payment/types/paymentResult.types';
+import QrScanScreen from './src/features/qr/screens/QrScanScreen';
 
 export type RootStackParamList = {
   Tutorial: undefined;
@@ -63,7 +60,7 @@ export type RootStackParamList = {
         idempotencyKey?: string;
         dutchSessionId?: number;
         selectedUserIds?: number[];
-        splitMethod?: "EQUAL" | "CUSTOM";
+        splitMethod?: 'EQUAL' | 'CUSTOM';
         orderName?: string;
         merchantId?: number;
       }
@@ -84,31 +81,31 @@ export type RootStackParamList = {
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ["http://localhost:19000"],
+  prefixes: ['http://localhost:19000'],
   config: {
     screens: {
-      Tutorial: "tutorial",
-      Main: "",
-      Guide: "guide",
-      TermsAgreement: "auth/terms",
-      SmsVerification: "auth/sms-verification",
-      SignupComplete: "auth/signup-complete",
-      QrScan: "qr-scan",
-      CardRegister: "card-register",
-      PaymentMethodSelect: "payment/method-select",
-      PaymentCardSelect: "payment/card-select",
-      PaymentPin: "payment/pin",
-      PaymentResult: "payment/result",
-      PaymentCancel: "payment/cancel",
-      OfflinePaymentQr: "payment/offline-qr",
-      DutchPayGroup: "payment/dutch-pay-group",
-      PaymentParticipantSelect: "payment/participant-select",
-      MypageHomeScreen: "mypage",
-      ProfileConfirmScreen: "mypage/profile",
-      CardManagementScreen: "mypage/cards",
-      CardDetailScreen: "mypage/cards/:cardId",
-      PaymentHistoryScreen: "mypage/payments",
-      PaymentDetailScreen: "mypage/payments/:paymentId",
+      Tutorial: 'tutorial',
+      Main: '',
+      Guide: 'guide',
+      TermsAgreement: 'auth/terms',
+      SmsVerification: 'auth/sms-verification',
+      SignupComplete: 'auth/signup-complete',
+      QrScan: 'qr-scan',
+      CardRegister: 'card-register',
+      PaymentMethodSelect: 'payment/method-select',
+      PaymentCardSelect: 'payment/card-select',
+      PaymentPin: 'payment/pin',
+      PaymentResult: 'payment/result',
+      PaymentCancel: 'payment/cancel',
+      OfflinePaymentQr: 'payment/offline-qr',
+      DutchPayGroup: 'payment/dutch-pay-group',
+      PaymentParticipantSelect: 'payment/participant-select',
+      MypageHomeScreen: 'mypage',
+      ProfileConfirmScreen: 'mypage/profile',
+      CardManagementScreen: 'mypage/cards',
+      CardDetailScreen: 'mypage/cards/:cardId',
+      PaymentHistoryScreen: 'mypage/payments',
+      PaymentDetailScreen: 'mypage/payments/:paymentId',
     },
   },
 };
@@ -131,7 +128,7 @@ export default function App() {
 
     hasShownMobileOnlyAlert.current = true;
 
-    Alert.alert("안내", "모바일로 이용해주세요.");
+    Alert.alert('안내', '모바일로 이용해주세요.');
   }, [width]);
 
   return (
