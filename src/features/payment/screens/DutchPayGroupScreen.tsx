@@ -707,6 +707,13 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     setCancelGroupModalVisible(true);
   };
 
+  const handlePressRemoveMember = (memberId: string) => {
+    setMembers((prevMembers) =>
+      prevMembers.filter((member) => member.id !== memberId),
+    );
+    setOpenMenuMemberId(null);
+  };
+
   const handleConfirmCancelGroup = () => {
     setCancelGroupModalVisible(false);
     navigation.navigate('Main');
@@ -801,6 +808,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
                       prev === memberId ? null : memberId,
                     )
                   }
+                  onPressRemoveMember={handlePressRemoveMember}
                   onChangeEditableAmount={handleChangeEditableAmount}
                 />
               ))}
