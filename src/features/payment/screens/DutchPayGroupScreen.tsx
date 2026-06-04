@@ -736,7 +736,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             </View>
             <DutchPayTotalNotice amount={data.totalAmount} />
 
-            <View className="mt-9 gap-5">
+            <View>
               {displayMembers.map((member, index) => (
                 <DutchPayMemberRow
                   key={`${data.scenario}-${member.id}`}
