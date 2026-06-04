@@ -1,6 +1,6 @@
 import {
+    getPaymentUserId,
     PAYMENT_API_BASE_URL,
-    TEMP_PAYMENT_USER_ID,
 } from './paymentApiConfig';
 
 export const DUTCH_PAY_DEV_USER_ID = Number(TEMP_PAYMENT_USER_ID) || 1;
@@ -88,7 +88,7 @@ async function requestJson<T>(
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': TEMP_PAYMENT_USER_ID,
+            'X-User-Id': getPaymentUserId(),
             ...options.headers,
         },
     });
