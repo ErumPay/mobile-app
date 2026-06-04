@@ -22,6 +22,8 @@ import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScr
 import type { PaymentResultRouteParams } from "./src/features/payment/types/paymentResult.types";
 import PaymentCancelScreen from "./src/features/payment/screens/PaymentCancelScreen";
 import type { PaymentCancelRouteParams } from "./src/features/payment/types/paymentCancel.types";
+import OfflinePaymentQrScreen from "./src/features/payment/screens/OfflinePaymentQrScreen";
+import type { OfflinePaymentQrRouteParams } from "./src/features/payment/types/offlinePaymentQr.types";
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
 import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
 import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
@@ -62,6 +64,7 @@ export type RootStackParamList = {
   CardRegister: undefined;
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
+  OfflinePaymentQr: OfflinePaymentQrRouteParams | undefined;
   DutchPayGroup: DutchPayGroupRouteParams | undefined;
   PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
@@ -85,6 +88,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentPin: "payment/pin",
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
+      OfflinePaymentQr: "payment/offline-qr",
       DutchPayGroup: "payment/dutch-pay-group",
       PaymentParticipantSelect: "payment/participant-select",
       MypageHomeScreen: "mypage",
@@ -144,6 +148,10 @@ export default function App() {
             <Stack.Screen name="PaymentPin" component={PaymentPinScreen} />
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
+            <Stack.Screen
+              name="OfflinePaymentQr"
+              component={OfflinePaymentQrScreen}
+            />
             <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
             <Stack.Screen
               name="PaymentParticipantSelect"
