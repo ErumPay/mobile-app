@@ -73,6 +73,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
     id: 'payment-1',
     cardId: 'card-1',
     method: 'dutchpay',
+    benefitType: 'splitBenefit',
     status: 'completed',
     title: 'Luxury Hotel Stay',
     date: '2026.04.23',
@@ -82,6 +83,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
     id: 'payment-2',
     cardId: 'card-1',
     method: 'remote',
+    benefitType: 'singleBenefit',
     status: 'cancelRequested',
     title: '코드보안 양성소',
     date: '2026.04.18',
@@ -90,7 +92,8 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   {
     id: 'payment-3',
     cardId: 'card-2',
-    method: 'singleBenefit',
+    method: 'solo',
+    benefitType: 'singleBenefit',
     status: 'canceled',
     title: '서울순대국',
     date: '2026.04.16',
@@ -99,7 +102,8 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   {
     id: 'payment-4',
     cardId: 'card-2',
-    method: 'singlePerformance',
+    method: 'solo',
+    benefitType: 'singlePerformance',
     status: 'completed',
     title: '스타벅스 코리아 양성점',
     date: '2026.04.05',
@@ -108,7 +112,8 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   {
     id: 'payment-5',
     cardId: 'card-1',
-    method: 'splitBenefit',
+    method: 'dutchpay',
+    benefitType: 'splitBenefit',
     status: 'canceled',
     title: '유니클로 양동포점',
     date: '2026.04.02',
@@ -117,7 +122,8 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
   {
     id: 'payment-6',
     cardId: 'card-2',
-    method: 'splitPerformance',
+    method: 'remote',
+    benefitType: 'splitPerformance',
     status: 'completed',
     title: '무인양품 청담센타운',
     date: '2026.04.01',
@@ -128,6 +134,7 @@ export const mockPaymentHistories: PaymentHistoryItem[] = [
 export const mockPaymentDetails: Record<string, PaymentDetail> = {
   'payment-1': {
     ...mockPaymentHistories[0],
+    cardIds: ['card-1', 'card-2'],
     paidAt: '2026.04.25 21:00:01',
     receiptId: '123-456-789',
     sellerName: '코보문고 작성점',

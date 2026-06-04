@@ -15,6 +15,7 @@ import MainScreen from "./src/features/main/screens/MainScreen";
 import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
 import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMethodSelectScreen";
 import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
+import type { PaymentCardFlowType } from "./src/features/payment/types/paymentCard.types";
 import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
 import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScreen";
@@ -27,6 +28,8 @@ import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutc
 import TermsAgreementScreen from "./src/features/auth/screens/TermsAgreementScreen";
 import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
 import SignupCompleteScreen from "./src/features/auth/screens/SignupCompleteScreen";
+import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
+import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -43,6 +46,7 @@ export type RootStackParamList = {
   QrScan: undefined;
   PaymentMethodSelect:
     | {
+        remoteRequestId?: string;
         summary?: PaymentRequestSummary;
         token?: string;
       }
@@ -51,7 +55,14 @@ export type RootStackParamList = {
     | {
         paymentId?: number | string;
         amount?: number | string;
+        flow?: PaymentCardFlowType;
         idempotencyKey?: string;
+        flow?: "NORMAL" | "DUTCH_PAY" | "DUTCH_PAY_FINAL";
+        dutchSessionId?: number;
+        selectedUserIds?: number[];
+        splitMethod?: "EQUAL" | "CUSTOM";
+        orderName?: string;
+        merchantId?: number;
       }
     | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
@@ -59,6 +70,7 @@ export type RootStackParamList = {
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
   DutchPayGroup: DutchPayGroupRouteParams | undefined;
+  PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -84,6 +96,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
       DutchPayGroup: "payment/dutch-pay-group",
+      PaymentParticipantSelect: "payment/participant-select",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -145,6 +158,10 @@ export default function App() {
             <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
             <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
+            <Stack.Screen
+              name="PaymentParticipantSelect"
+              component={PaymentParticipantSelectScreen}
+            />
 
             <Stack.Screen
               name="MypageHomeScreen"

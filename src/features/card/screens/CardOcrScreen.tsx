@@ -6,11 +6,10 @@ import type { Action } from 'expo-image-manipulator';
 
 import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
+import { Loading } from '../../../shared/components/Loading';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
-import { mockOcrResult } from '../mocks/cardMockData';
-import type { OcrCardResult } from '../types/card';
-import { getIssuerLabel } from '../types/cardFormat';
+import { uploadCardImage } from '../api/cardOcrApi';
 
 interface CardOcrScreenProps {
   onClose: () => void;
@@ -20,7 +19,7 @@ interface CardOcrScreenProps {
   }) => void;
 }
 
-const MAX_IMAGE_SIDE = 1024;
+const MAX_IMAGE_SIDE = 512;
 const CARD_FRAME_ASPECT_RATIO = 1.58;
 
 function getCardFrameImageActions(width: number, height: number): Action[] {
@@ -72,11 +71,11 @@ export function CardOcrScreen({
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isTakingPicture, setIsTakingPicture] = useState(false);
-  const [ocrResult, setOcrResult] = useState<OcrCardResult | null>(null);
+  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
 
 
   const handleTakePicture = async () => {
-    if (!cameraRef.current || isTakingPicture) {
+    if (!cameraRef.current || isTakingPicture || isProcessingOcr) {
       return;
     }
 
@@ -90,6 +89,8 @@ export function CardOcrScreen({
       if (!photo) {
         return;
       }
+
+      setIsProcessingOcr(true);
 
       const cardFrameImageActions = getCardFrameImageActions(
         photo.width,
@@ -105,18 +106,16 @@ export function CardOcrScreen({
         },
       );
 
-      // TODO: 백엔드 OCR API 연결 시 여기서 JPEG 이미지 파일을 전송합니다.
-      // const ocrResult = await uploadCardImage(manipulatedImage.uri);
-      // setOcrResult(ocrResult);
-
-      // API 연결 전까지는 mock OCR 결과로 화면 흐름만 확인합니다.
-      setOcrResult(mockOcrResult);
-
-
+      const ocrResult = await uploadCardImage(manipulatedImage.uri);
+      onConfirmOcrResult({
+        cardNumber: ocrResult.cardNumber,
+        expiry: ocrResult.expiry,
+      });
     } catch {
       Alert.alert('안내', '카드 이미지를 촬영하지 못했습니다.');
     } finally {
       setIsTakingPicture(false);
+      setIsProcessingOcr(false);
     }
   };
 
@@ -165,51 +164,21 @@ export function CardOcrScreen({
     );
   }
 
-  if (ocrResult) {
-  return (
-    <PageWrap
-      scroll={false}
-      padded={false}
-      backgroundClassName="bg-neutral-black3"
-    >
-      <View className="flex-1 items-center justify-center px-6">
-        <View className="w-full rounded-3xl bg-neutral-white px-6 py-8">
-          <Text className="text-center font-pretendard text-heading-2 text-neutral-black1">
-            OCR로 확인된 카드입니다!
-          </Text>
-
-          <View className="mt-8 rounded-2xl bg-neutral-grey2 px-5 py-6">
-            <OcrInfo label="카드사" value={getIssuerLabel(ocrResult.issuer)} />
-            <OcrInfo label="카드명" value={ocrResult.cardName} />
-            <OcrInfo
-              label="카드번호"
-              value={formatOcrCardNumber(ocrResult.cardNumber)}
-            />
-            <OcrInfo label="유효기간" value={ocrResult.expiry} />
-          </View>
-
-          <View className="mt-8 gap-3">
-            <Button
-              label="카드 등록하기"
-              onPress={() =>
-                onConfirmOcrResult({
-                  cardNumber: ocrResult.cardNumber,
-                  expiry: ocrResult.expiry,
-                })
-              }
-            />
-
-            <Button
-              label="다시 촬영하기"
-              variant="secondary"
-              onPress={() => setOcrResult(null)}
-            />
-          </View>
-        </View>
-      </View>
-    </PageWrap>
-  );
-}
+<<<<<<< Updated upstream
+  if (isTakingPicture) {
+=======
+  if (isProcessingOcr) {
+>>>>>>> Stashed changes
+    return (
+      <PageWrap
+        scroll={false}
+        padded={false}
+        backgroundClassName="bg-neutral-white"
+      >
+        <Loading message="카드 정보를 불러오는 중입니다." fullScreen />
+      </PageWrap>
+    );
+  }
 
   return (
     <PageWrap
@@ -244,7 +213,7 @@ export function CardOcrScreen({
             <Pressable
               accessibilityRole="button"
               className="mt-6 h-16 w-16 items-center justify-center rounded-full border-4 border-neutral-white bg-erum-main"
-              disabled={isTakingPicture}
+              disabled={isTakingPicture || isProcessingOcr}
               onPress={handleTakePicture}
             >
               <View className="h-11 w-11 rounded-full bg-neutral-white" />
@@ -253,23 +222,6 @@ export function CardOcrScreen({
         </View>
     </PageWrap>
   );
-}
-
-function OcrInfo({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="mb-5">
-      <Text className="font-pretendard text-large-regular text-neutral-black2">
-        {label}
-      </Text>
-      <Text className="mt-2 font-pretendard text-heading-3 text-neutral-black1">
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function formatOcrCardNumber(value: string) {
-  return value.replace(/(\d{4})(?=\d)/g, '$1-');
 }
 
 export default CardOcrScreen;

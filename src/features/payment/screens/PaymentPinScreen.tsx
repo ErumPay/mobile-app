@@ -10,6 +10,8 @@ import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import { Loading } from '../../../shared/components/Loading';
 import { Modal } from '../../../shared/components/Modal';
+import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
+import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
@@ -53,7 +55,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const paymentParams =
     route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
   const paymentResultFlow: PaymentResultFlow =
-    paymentParams?.flow === 'DUTCH_PAY' ? 'DUTCH_PAY_PRE_AUTH' : 'NORMAL';
+    paymentParams?.flow === 'DUTCH_PAY'
+      ? 'DUTCH_PAY_PRE_AUTH'
+      : paymentParams?.flow === 'DUTCH_PAY_FINAL'
+        ? 'DUTCH_PAY_FINAL'
+        : 'NORMAL';
 
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -61,6 +67,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
+  const [stopModalVisible, setStopModalVisible] = useState(false);
+  const completeRemoteRequest = useRemotePaymentProgressStore(
+    (state) => state.completeRequest,
+  );
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
 
@@ -74,7 +84,31 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   }, [paymentParams]);
 
   const handlePressClose = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (mode === 'PAYMENT_INPUT') {
+      setStopModalVisible(true);
+      return;
+    }
+
     navigation.goBack();
+  };
+
+  const handleConfirmStopPayment = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setStopModalVisible(false);
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Main');
   };
 
   const handlePressForgotPassword = () => {
@@ -116,11 +150,20 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           idempotencyKey,
         );
 
+        if (paymentParams.flow === 'REMOTE_PAYMENT') {
+          completeRemoteRequest();
+        }
+
         setPin('');
         setHasError(false);
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
+          dutchSessionId: paymentParams.dutchSessionId,
+          selectedUserIds: paymentParams.selectedUserIds,
+          splitMethod: paymentParams.splitMethod,
+          orderName: paymentParams.orderName,
+          merchantId: paymentParams.merchantId,
         });
       } catch {
         setPin('');
@@ -247,6 +290,17 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <PinCodeKeypad
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+        />
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description={
+            paymentParams?.flow === 'DUTCH_PAY'
+            || paymentParams?.flow === 'REMOTE_PAYMENT'
+              ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+              : undefined
+          }
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
         />
       </View>
 

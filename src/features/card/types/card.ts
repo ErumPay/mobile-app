@@ -40,8 +40,6 @@ export interface RegisteredCard {
 }
 
 export interface OcrCardResult {
-  issuer: CardIssuer;
-  cardName: string;
   cardNumber: string;
   expiry: string;
 }

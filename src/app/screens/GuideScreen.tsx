@@ -232,7 +232,7 @@ const guidePages: GuidePage[] = [
     pageName: '결제 취소 요청',
     routeName: 'PaymentCancel',
     route: 'PaymentCancel',
-    status: 'planned',
+    status: 'done',
     note: '담당자 : 조보름',
   },
   {
@@ -241,7 +241,160 @@ const guidePages: GuidePage[] = [
     pageName: '결제 취소 완료',
     routeName: 'PaymentCancel',
     route: 'PaymentCancel',
-    status: 'planned',
+    status: 'done',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-dutch-default',
+    pageName: '더치페이 그룹 생성',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-dutch-no-friends',
+    pageName: '더치페이 그룹 생성 친구 없음',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-remote-default',
+    pageName: '원격결제 요청',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'participant-select-remote-no-friends',
+    pageName: '원격결제 요청 친구 없음',
+    routeName: 'PaymentParticipantSelect',
+    route: 'PaymentParticipantSelect',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-initial',
+    pageName: '더치페이 대표자 그룹 참여',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-auto-split',
+    pageName: '더치페이 대표자 N빵',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-amount-waiting',
+    pageName: '더치페이 대표자 금액 입력 대기',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-amount-complete',
+    pageName: '더치페이 대표자 금액 입력 완료',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-payment-request',
+    pageName: '더치페이 대표자 결제 요청',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-payment-progress',
+    pageName: '더치페이 대표자 결제 진행중',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-final-ready',
+    pageName: '더치페이 대표자 최종 결제',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-owner-final-failure',
+    pageName: '더치페이 대표자 실패 반영',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-participant-initial',
+    pageName: '더치페이 참여자 그룹 참여',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-participant-amount-input',
+    pageName: '더치페이 참여자 금액 입력',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-participant-payment-request',
+    pageName: '더치페이 참여자 결제 요청',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-participant-progress',
+    pageName: '더치페이 참여자 결제 진행중',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
+    note: '담당자 : 조보름',
+  },
+  {
+    depth1: 'payment',
+    depth2: 'dutch-participant-final-progress',
+    pageName: '더치페이 참여자 최종 결제 진행',
+    routeName: 'DutchPayGroup',
+    route: 'DutchPayGroup',
+    status: 'progress',
     note: '담당자 : 조보름',
   },
 ];
@@ -659,6 +812,22 @@ export default function GuideScreen({ navigation }: Props) {
                                 return;
                               }
 
+                              if (page.route === "PaymentParticipantSelect") {
+                                const isRemote = page.depth2.includes("remote");
+                                const mode = isRemote
+                                  ? "REMOTE_PAYMENT"
+                                  : "DUTCH_PAY";
+                                const scenario = page.depth2.includes("no-friends")
+                                  ? "NO_FRIENDS"
+                                  : "DEFAULT";
+
+                                navigation.navigate("PaymentParticipantSelect", {
+                                  mode,
+                                  scenario,
+                                });
+                                return;
+                              }
+
                               if (page.route === "PaymentPin") {
                                 if (page.depth2 === "pin-register") {
                                   navigation.navigate("PaymentPin", {
@@ -734,6 +903,110 @@ export default function GuideScreen({ navigation }: Props) {
 
                                 navigation.navigate('PaymentCancel', {
                                   mode: 'REQUEST',
+                                });
+                                return;
+                              }
+
+                              if (page.route === 'DutchPayGroup') {
+                                if (page.depth2 === 'dutch-owner-auto-split') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_AUTO_SPLIT_READY',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-owner-amount-waiting') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_AMOUNT_INPUT_WAITING',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-owner-amount-complete') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_AMOUNT_INPUT_COMPLETE',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-owner-payment-request') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_PAYMENT_REQUEST',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-owner-payment-progress') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_PAYMENT_PROGRESS',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-owner-final-ready') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_FINAL_PAYMENT_READY',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-owner-final-failure') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'OWNER',
+                                    scenario: 'OWNER_FINAL_PAYMENT_FAILURE',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-participant-initial') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'PARTICIPANT',
+                                    scenario: 'PARTICIPANT_INITIAL',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-participant-amount-input') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'PARTICIPANT',
+                                    scenario: 'PARTICIPANT_AMOUNT_INPUT',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-participant-payment-request') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'PARTICIPANT',
+                                    scenario: 'PARTICIPANT_PAYMENT_REQUEST',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-participant-progress') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'PARTICIPANT',
+                                    scenario: 'PARTICIPANT_PAYMENT_PROGRESS',
+                                  });
+                                  return;
+                                }
+
+                                if (page.depth2 === 'dutch-participant-final-progress') {
+                                  navigation.navigate('DutchPayGroup', {
+                                    role: 'PARTICIPANT',
+                                    scenario: 'PARTICIPANT_FINAL_PAYMENT_PROGRESS',
+                                  });
+                                  return;
+                                }
+
+                                navigation.navigate('DutchPayGroup', {
+                                  role: 'OWNER',
+                                  scenario: 'OWNER_INITIAL',
                                 });
                                 return;
                               }
