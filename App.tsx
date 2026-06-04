@@ -25,10 +25,6 @@ import type { PaymentCancelRouteParams } from "./src/features/payment/types/paym
 import OfflinePaymentQrScreen from "./src/features/payment/screens/OfflinePaymentQrScreen";
 import type { OfflinePaymentQrRouteParams } from "./src/features/payment/types/offlinePaymentQr.types";
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
-import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
-import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
-import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
-import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
 import CardDetailScreen from "./src/features/mypage/screens/CardDetailScreen";
 import CardManagementScreen from "./src/features/mypage/screens/CardManagementScreen";
@@ -65,8 +61,6 @@ export type RootStackParamList = {
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
   OfflinePaymentQr: OfflinePaymentQrRouteParams | undefined;
-  DutchPayGroup: DutchPayGroupRouteParams | undefined;
-  PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
   CardManagementScreen: undefined;
@@ -89,8 +83,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentResult: "payment/result",
       PaymentCancel: "payment/cancel",
       OfflinePaymentQr: "payment/offline-qr",
-      DutchPayGroup: "payment/dutch-pay-group",
-      PaymentParticipantSelect: "payment/participant-select",
       MypageHomeScreen: "mypage",
       ProfileConfirmScreen: "mypage/profile",
       CardManagementScreen: "mypage/cards",
@@ -151,11 +143,6 @@ export default function App() {
             <Stack.Screen
               name="OfflinePaymentQr"
               component={OfflinePaymentQrScreen}
-            />
-            <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
-            <Stack.Screen
-              name="PaymentParticipantSelect"
-              component={PaymentParticipantSelectScreen}
             />
 
             <Stack.Screen
