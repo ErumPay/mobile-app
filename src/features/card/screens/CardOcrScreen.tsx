@@ -164,11 +164,7 @@ export function CardOcrScreen({
     );
   }
 
-<<<<<<< Updated upstream
-  if (isTakingPicture) {
-=======
   if (isProcessingOcr) {
->>>>>>> Stashed changes
     return (
       <PageWrap
         scroll={false}

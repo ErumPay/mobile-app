@@ -20,23 +20,25 @@ export interface CardRegisterFormValues {
 }
 
 export interface RegisterCardPayload {
+  userId: number;
   cardNumber: string;
-  expiryMonth: string;
-  expiryYear: string;
+  expiryYm: string;
   cvc: string;
-  passwordFirstTwo: string;
-  birthDate: string;
-  cardNickname?: string;
+  cardPassword2: string;
+  cardAlias?: string;
+  isDefault?: boolean;
 }
 
 export interface RegisteredCard {
-  id: string;
-  last4: string;
-  issuer: CardIssuer;
-  holderName: string;
-  cardNickname?: string;
+  cardId: number;
+  cardProductId: number;
+  cardCompany: string;
+  cardName: string;
+  maskedNumber: string;
+  cardAlias?: string | null;
+  expiryYm: string;
   isDefault: boolean;
-  createdAt: string;
+  status: string;
 }
 
 export interface OcrCardResult {

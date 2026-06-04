@@ -14,6 +14,7 @@ import { formatExpiry, isValidExpiry, onlyDigits } from '../types/cardFormat';
 interface CardRegisterFormScreenProps {
   onClose: () => void;
   initialValues?: Partial<CardRegisterFormValues> | null;
+  isSubmitting?: boolean;
   onSubmit: (values: CardRegisterFormValues) => void;
 }
 
@@ -36,6 +37,7 @@ function formatCardNumber(value: string) {
 export function CardRegisterFormScreen({
   onClose,
   initialValues,
+  isSubmitting = false,
   onSubmit,
 }: CardRegisterFormScreenProps) {
   const [values, setValues] = useState<CardRegisterFormValues>({
@@ -59,7 +61,7 @@ export function CardRegisterFormScreen({
   };
 
   const handleSubmit = () => {
-    if (!canSubmit) {
+    if (!canSubmit || isSubmitting) {
       return;
     }
 
@@ -175,8 +177,8 @@ export function CardRegisterFormScreen({
           <View className="mt-1 h-px w-full bg-zinc-200" />
 
           <Button
-            label="카드 등록하기"
-            disabled={!canSubmit}
+            label={isSubmitting ? '등록 중입니다' : '카드 등록하기'}
+            disabled={!canSubmit || isSubmitting}
             onPress={handleSubmit}
           />
         </View>
