@@ -104,7 +104,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const [data, setData] = useState<PaymentCardSelectData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
-        canPreparePayment ? '' : '寃곗젣 ?뺣낫媛 ?놁뒿?덈떎.',
+        canPreparePayment ? '' : '결제 정보가 없습니다.',
     );
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [pendingCardId, setPendingCardId] = useState<string | null>(null);
@@ -166,7 +166,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     useEffect(() => {
         if (!canPreparePayment || !idempotencyKey) {
             setData(null);
-            setErrorMessage('寃곗젣 ?뺣낫媛 ?놁뒿?덈떎.');
+            setErrorMessage('결제 정보가 없습니다.');
             return;
         }
 
@@ -221,7 +221,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     setErrorMessage(
                         error instanceof Error
                             ? error.message
-                            : '寃곗젣 移대뱶 異붿쿇 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??',
+                            : '결제 카드 추천 정보를 불러오지 못했습니다.',
                     );
                 }
             } finally {
@@ -364,7 +364,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
             <View className="flex-1 bg-neutral-white">
                 <Header
-                    title="寃곗젣 移대뱶 ?좏깮"
+                    title="결제 카드 선택"
                     type="close"
                     onPressRight={handlePressClose}
                 />
@@ -389,7 +389,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                             recommendedCard={displayedRecommendedCard}
                             selected={isRecommendedSelected}
                             showBenefitDescription={!isDutchPay}
-                            actionLabel={isDutchPay ? '?ㅻⅨ 寃곗젣 移대뱶 ?좏깮' : undefined}
+                            actionLabel={isDutchPay ? '다른 결제 카드 선택' : undefined}
                             onPress={handlePressRecommendedCard}
                             onPressAction={isDutchPay ? handleOpenBottomSheet : undefined}
                         />
@@ -397,7 +397,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                         {isDutchPay ? (
                             <View className="mt-2">
                                 <Text className="text-small-regular text-neutral-black2">
-                                    쨌 {data.cardCombinations[0]?.benefitDescription}
+                                    • {data.cardCombinations[0]?.benefitDescription}
                                 </Text>
                             </View>
                         ) : (
@@ -430,14 +430,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     onPressSubmit={handleSubmitBottomSheet}
                     submitDisabled={!pendingCardId}
                     notice={
-                        isDutchPay ? '??寃곗젣??媛寃곗젣濡?癒쇱? 吏꾪뻾?쇱슂!' : undefined
+                        isDutchPay ? '이 결제는 가결제로 먼저 진행돼요!' : undefined
                     }
                 />
                 <PaymentStopConfirmModal
                     visible={stopModalVisible}
                     description={
                         isDutchPay || isRemotePayment
-                            ? '以묒??섏뀛??硫붿씤?먯꽌 寃곗젣 吏꾪뻾?곹깭瑜??뺤씤?????덉뒿?덈떎.'
+                            ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
                             : undefined
                     }
                     onConfirm={handleConfirmStopPayment}

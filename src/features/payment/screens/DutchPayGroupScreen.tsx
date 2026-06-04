@@ -26,6 +26,7 @@ import {
   getDutchPaySession,
   inviteDutchPayAppFriends,
   updateDutchPayMyAmount,
+  DUTCH_PAY_DEV_USER_ID,
   type DutchPayParticipantResponse,
   type DutchPaySessionDetailResponse,
 } from '../api/dutchPayApi';
@@ -47,8 +48,6 @@ const nextScenarioByScenario = {
   PARTICIPANT_PAYMENT_REQUEST: 'PARTICIPANT_PAYMENT_PROGRESS',
   PARTICIPANT_FINAL_PAYMENT_PROGRESS: 'PARTICIPANT_FINAL_PAYMENT_PROGRESS',
 } as const;
-
-const DEV_USER_ID = 1;
 
 function DutchPayHeader({
   title,
@@ -218,7 +217,10 @@ function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
   return 'EMPTY' as const;
 }
 
-function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMember {
+function toDutchPayMember(
+  participant: DutchPayParticipantResponse,
+  currentUserId: number,
+): DutchPayMember {
   const name = participant.host ? '대표자' : `참여자 ${participant.user_id}`;
   const phoneSuffix = String(participant.user_id).padStart(4, '0').slice(-4);
 
@@ -228,7 +230,7 @@ function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMem
     phoneSuffix,
     initial: name.slice(0, 1),
     isOwner: participant.host,
-    isMe: participant.user_id === DEV_USER_ID,
+    isMe: participant.user_id === currentUserId,
     amount: participant.amount ?? undefined,
     status: toDutchPayMemberStatus(participant),
     canOpenMenu: !participant.host,
@@ -238,9 +240,12 @@ function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMem
 function toDutchPayGroupData(
   session: DutchPaySessionDetailResponse,
   role: 'OWNER' | 'PARTICIPANT',
+  currentUserId: number,
 ): DutchPayGroupData {
   const scenario = toDutchPayScenario(session, role);
-  const members = session.participants.map(toDutchPayMember);
+  const members = session.participants.map((participant) =>
+    toDutchPayMember(participant, currentUserId),
+  );
 
   return {
     role,
@@ -311,20 +316,23 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const scenario = route.params?.scenario;
   const splitType = route.params?.splitType ?? 'MANUAL';
   const sessionId = route.params?.sessionId;
+  const isServerMode = typeof sessionId === 'number';
+  const currentUserId = DUTCH_PAY_DEV_USER_ID;
   const selectedUserIds = useMemo(
     () => route.params?.selectedUserIds ?? [],
     [route.params?.selectedUserIds],
   );
   const [serverSession, setServerSession] =
     useState<DutchPaySessionDetailResponse | null>(null);
+  const [serverErrorMessage, setServerErrorMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const invitedSessionIdsRef = useRef<Set<number>>(new Set());
   const data = useMemo(
     () =>
       serverSession
-        ? toDutchPayGroupData(serverSession, role)
+        ? toDutchPayGroupData(serverSession, role, currentUserId)
         : getMockDutchPayGroupData({ role, scenario }),
-    [role, scenario, serverSession],
+    [currentUserId, role, scenario, serverSession],
   );
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
@@ -421,6 +429,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     const syncSession = async () => {
       try {
         setIsSyncing(true);
+        setServerErrorMessage('');
 
         if (
           selectedUserIds.length > 0 &&
@@ -447,6 +456,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         }
       } catch (error) {
         if (isMounted) {
+          setServerErrorMessage(
+            error instanceof Error
+              ? error.message
+              : '더치페이 세션 정보를 불러오지 못했습니다.',
+          );
           Alert.alert(
             '더치페이',
             error instanceof Error
@@ -711,6 +725,43 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     );
   };
 
+  if (isServerMode && !serverSession) {
+    return (
+      <PageWrap
+        scroll={false}
+        padded={false}
+        backgroundClassName="bg-neutral-white"
+        header={
+          <DutchPayHeader
+            title={getHeaderTitle(data.scenario)}
+            onPressClose={handlePressClose}
+          />
+        }
+      >
+        <View className="flex-1 items-center justify-center px-4">
+          <Text className="text-center font-pretendard text-large-bold text-neutral-black1">
+            {isSyncing
+              ? '더치페이 정보를 확인 중입니다.'
+              : '더치페이 정보를 불러오지 못했습니다.'}
+          </Text>
+
+          {serverErrorMessage ? (
+            <Text className="mt-3 text-center font-pretendard text-normal-regular text-neutral-black2">
+              {serverErrorMessage}
+            </Text>
+          ) : null}
+        </View>
+
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description="중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다."
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
+        />
+      </PageWrap>
+    );
+  }
+
   return (
     <PageWrap
       scroll={false}
@@ -731,9 +782,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-sm self-center">
-            <View className="mb-3">
-              <PaymentMockBadge />
-            </View>
+            {!isServerMode ? (
+              <View className="mb-3">
+                <PaymentMockBadge />
+              </View>
+            ) : null}
             <DutchPayTotalNotice amount={data.totalAmount} />
 
             <View className="mt-9 gap-5">

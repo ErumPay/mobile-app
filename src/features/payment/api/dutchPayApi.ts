@@ -1,5 +1,6 @@
 const API_BASE_URL = 'http://localhost:8083';
 const DEV_USER_ID = '1';
+export const DUTCH_PAY_DEV_USER_ID = Number(DEV_USER_ID) || 1;
 
 const DUTCH_PAY_BASE_URL = `${API_BASE_URL}/api/v1/dutch-pay`;
 
