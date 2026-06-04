@@ -8,6 +8,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -21,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
+import { loginWithKakao } from '../api/kakaoAuth';
 
 type TutorialSlide = {
   id: string;
@@ -85,14 +87,25 @@ export default function TutorialScreen({ navigation }: Props) {
     setCurrentIndex(clamped);
   };
 
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   const handleSignup = () => {
-    // TODO: 회원가입 브랜치에서 TermsAgreement로 연결
-    navigation.navigate('Main');
+    navigation.navigate('TermsAgreement');
   };
 
-  const handleLogin = () => {
-    // TODO: 카카오 로그인 후 기존 회원이면 Main, 신규면 회원가입 프로세스
-    navigation.navigate('Main');
+  const handleLogin = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    try {
+      const userInfo = await loginWithKakao();
+      // TODO: 백엔드에 userInfo 전달 → 신규/기존 회원 분기
+      // 현재는 로그인 성공 시 Main으로 이동
+      navigation.navigate('Main');
+    } catch (err) {
+      Alert.alert('로그인 실패', err instanceof Error ? err.message : '카카오 로그인에 실패했습니다.');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   return (
@@ -184,9 +197,10 @@ export default function TutorialScreen({ navigation }: Props) {
               onPress={handleSignup}
             />
             <Button
-              label="카카오톡으로 로그인"
+              label={isLoggingIn ? '로그인 중...' : '카카오톡으로 로그인'}
               variant="secondary"
               size="large"
+              disabled={isLoggingIn}
               onPress={handleLogin}
             />
           </View>
