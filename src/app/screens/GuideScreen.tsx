@@ -839,6 +839,7 @@ export default function GuideScreen({ navigation }: Props) {
                                 if (page.depth2 === "pin-confirm") {
                                   navigation.navigate("PaymentPin", {
                                     mode: "CONFIRM",
+                                    firstPin: "123456",
                                   });
                                   return;
                                 }

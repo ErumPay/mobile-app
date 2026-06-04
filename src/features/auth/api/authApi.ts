@@ -1,5 +1,4 @@
-const AUTH_BASE_URL = 'http://localhost:8081/api/v1/auth';
-const DEV_USER_ID = '1';
+import { AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
 
 export type SendSmsResponse = {
   verificationId: number;
@@ -17,11 +16,11 @@ export type SetupPinResponse = {
 };
 
 export async function sendSmsCode(phoneNumber: string): Promise<SendSmsResponse> {
-  const response = await fetch(`${AUTH_BASE_URL}/sms/send`, {
+  const response = await fetch(`${AUTH_API_URL}/sms/send`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-User-Id': DEV_USER_ID,
+      'X-User-Id': getAuthDevUserId(),
     },
     body: JSON.stringify({ phoneNumber }),
   });
@@ -38,7 +37,7 @@ export async function verifySmsCode(
   verificationId: number,
   code: string,
 ): Promise<VerifySmsResponse> {
-  const response = await fetch(`${AUTH_BASE_URL}/sms/verify`, {
+  const response = await fetch(`${AUTH_API_URL}/sms/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,11 +57,11 @@ export async function setupPin(
   pin: string,
   pinConfirm: string,
 ): Promise<SetupPinResponse> {
-  const response = await fetch(`${AUTH_BASE_URL}/pin/setup`, {
+  const response = await fetch(`${AUTH_API_URL}/pin/setup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-User-Id': DEV_USER_ID,
+      'X-User-Id': getAuthDevUserId(),
     },
     body: JSON.stringify({ pin, pinConfirm }),
   });
