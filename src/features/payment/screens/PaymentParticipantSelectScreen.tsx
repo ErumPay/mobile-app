@@ -4,7 +4,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
   Modal as RNModal,
   Pressable,
   ScrollView,
@@ -16,6 +15,7 @@ import {
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
 import Checkbox from '../../../shared/components/Checkbox';
+import FriendListItem from '../../../shared/components/FriendListItem';
 import ConfirmModal from '../../../shared/components/Modal';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
@@ -100,27 +100,6 @@ function ParticipantSelectHeader({
   );
 }
 
-function Avatar({ friend }: { friend: ParticipantFriend }) {
-  if (friend.profileImageUrl) {
-    return (
-      <Image
-        source={{ uri: friend.profileImageUrl }}
-        className="h-12 w-12 rounded-full"
-      />
-    );
-  }
-
-  return (
-    <View
-      className={`h-12 w-12 items-center justify-center rounded-full ${friend.colorClassName}`}
-    >
-      <Text className="font-pretendard text-large-bold text-neutral-white">
-        {friend.initial}
-      </Text>
-    </View>
-  );
-}
-
 function CheckCircle({ selected }: { selected: boolean }) {
   return (
     <View
@@ -137,24 +116,22 @@ function CheckCircle({ selected }: { selected: boolean }) {
 
 function OwnerCard({ owner }: { owner: ParticipantFriend }) {
   return (
-    <View className="mb-5 flex-row items-center rounded-xl border border-erum-secondary bg-[#EDFFF8] px-4 py-4">
-      <Avatar friend={owner} />
-      <View className="ml-4 min-w-0 flex-1">
-        <View className="flex-row items-center">
-          <Text className="font-pretendard text-large-bold text-neutral-black1">
-            {owner.name}
+    <FriendListItem
+      name={owner.name}
+      initial={owner.initial}
+      phoneNumber={owner.phoneNumber}
+      profileImageUrl={owner.profileImageUrl}
+      avatarColorClassName={owner.colorClassName}
+      containerClassName="mb-5 flex-row items-center rounded-xl border border-erum-secondary bg-[#EDFFF8] px-4 py-4"
+      contentClassName="ml-4 min-w-0 flex-1"
+      nameSuffix={
+        <View className="ml-2 rounded-full bg-erum-main px-2 py-1">
+          <Text className="font-pretendard text-small-bold text-neutral-white">
+            나
           </Text>
-          <View className="ml-2 rounded-full bg-erum-main px-2 py-1">
-            <Text className="font-pretendard text-small-bold text-neutral-white">
-              나
-            </Text>
-          </View>
         </View>
-        <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-          {owner.phoneNumber}
-        </Text>
-      </View>
-    </View>
+      }
+    />
   );
 }
 
@@ -168,41 +145,37 @@ function FriendRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      className={`flex-row items-center rounded-xl px-3 py-3 ${
+    <FriendListItem
+      name={friend.name}
+      initial={friend.initial}
+      phoneSuffix={friend.phoneSuffix}
+      phoneNumber={friend.phoneNumber}
+      profileImageUrl={friend.profileImageUrl}
+      avatarColorClassName={friend.colorClassName}
+      containerClassName={`flex-row items-center rounded-xl px-3 py-3 ${
         selected
           ? 'border border-erum-main bg-[#EDFFF8]'
           : 'border border-transparent bg-neutral-grey2'
       }`}
+      leading={<CheckCircle selected={selected} />}
+      avatarWrapperClassName="ml-3"
+      nameSuffix={
+        friend.favorite ? (
+          <Feather
+            name="star"
+            size={13}
+            color="#F2B705"
+            style={{ marginLeft: 4 }}
+          />
+        ) : null
+      }
+      right={
+        selected ? (
+          <Feather name="check" size={18} color={colors.erum.main} />
+        ) : null
+      }
       onPress={onPress}
-    >
-      <CheckCircle selected={selected} />
-      <View className="ml-3">
-        <Avatar friend={friend} />
-      </View>
-      <View className="ml-3 min-w-0 flex-1">
-        <View className="flex-row items-center">
-          <Text className="font-pretendard text-large-bold text-neutral-black1">
-            {friend.name}({friend.phoneSuffix})
-          </Text>
-          {friend.favorite ? (
-            <Feather
-              name="star"
-              size={13}
-              color="#F2B705"
-              style={{ marginLeft: 4 }}
-            />
-          ) : null}
-        </View>
-        <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-          {friend.phoneNumber}
-        </Text>
-      </View>
-      {selected ? (
-        <Feather name="check" size={18} color={colors.erum.main} />
-      ) : null}
-    </Pressable>
+    />
   );
 }
 
