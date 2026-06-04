@@ -11,6 +11,7 @@ type Props = {
   isLast: boolean;
   menuOpen?: boolean;
   onPressMenu?: (memberId: string) => void;
+  onPressRemoveMember?: (memberId: string) => void;
   onChangeEditableAmount?: (memberId: string, value: string) => void;
 };
 
@@ -149,6 +150,7 @@ export default function DutchPayMemberRow({
   isLast,
   menuOpen = false,
   onPressMenu,
+  onPressRemoveMember,
   onChangeEditableAmount,
 }: Props) {
   return (
@@ -194,7 +196,7 @@ export default function DutchPayMemberRow({
             key: 'remove',
             label: '내보내기',
             tone: 'danger',
-            onPress: () => onPressMenu?.(member.id),
+            onPress: () => onPressRemoveMember?.(member.id),
           },
         ]}
       />
