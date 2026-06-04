@@ -25,6 +25,9 @@ import type { PaymentCancelRouteParams } from "./src/features/payment/types/paym
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
 import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
 import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
+import TermsAgreementScreen from "./src/features/auth/screens/TermsAgreementScreen";
+import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
+import SignupCompleteScreen from "./src/features/auth/screens/SignupCompleteScreen";
 import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
 import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
@@ -37,6 +40,9 @@ import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmSc
 export type RootStackParamList = {
   Main: undefined;
   Guide: undefined;
+  TermsAgreement: undefined;
+  SmsVerification: undefined;
+  SignupComplete: undefined;
   QrScan: undefined;
   PaymentMethodSelect:
     | {
@@ -79,6 +85,9 @@ const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       Main: "",
       Guide: "guide",
+      TermsAgreement: "auth/terms",
+      SmsVerification: "auth/sms-verification",
+      SignupComplete: "auth/signup-complete",
       QrScan: "qr-scan",
       CardRegister: "card-register",
       PaymentMethodSelect: "payment/method-select",
@@ -129,6 +138,9 @@ export default function App() {
           >
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
+            <Stack.Screen name="TermsAgreement" component={TermsAgreementScreen} />
+            <Stack.Screen name="SmsVerification" component={SmsVerificationScreen} />
+            <Stack.Screen name="SignupComplete" component={SignupCompleteScreen} />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
 
