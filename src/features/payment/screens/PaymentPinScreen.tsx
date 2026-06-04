@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
@@ -8,6 +9,7 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import { Loading } from '../../../shared/components/Loading';
+import { Modal } from '../../../shared/components/Modal';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
@@ -41,7 +43,7 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
     title: '간편비밀번호 확인',
     description: '한번 더 입력해주세요.',
     showForgotLink: false,
-    showWarning: true,
+    showWarning: false,
   },
 };
 
@@ -57,6 +59,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
+  const [failModalVisible, setFailModalVisible] = useState(false);
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
 
@@ -135,11 +139,28 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     if (mode === 'REGISTER') {
       setPin('');
-      navigation.replace('PaymentPin', { mode: 'CONFIRM' });
+      navigation.replace('PaymentPin', { mode: 'CONFIRM', firstPin: completedPin });
       return;
     }
 
-    Alert.alert('간편비밀번호', '간편비밀번호 등록이 완료되었습니다.');
+    // CONFIRM 모드: 첫 번째 입력과 비교
+    const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+    if (firstPin && completedPin !== firstPin) {
+      const nextFailCount = failCount + 1;
+      setPin('');
+      setHasError(true);
+      setFailCount(nextFailCount);
+
+      if (nextFailCount >= 10) {
+        setFailModalVisible(true);
+      } else {
+        setMismatchModalVisible(true);
+      }
+      return;
+    }
+
+    // TODO: 백엔드 PIN 설정 API 호출 (POST /api/v1/pin)
+    navigation.replace('SignupComplete');
   };
 
   const handlePressNumber = (value: string) => {
@@ -190,9 +211,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {hasError ? (
+          {hasError && mode !== 'CONFIRM' ? (
             <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
-              {failCount || 1}회 틀렸습니다.
+              {`${failCount || 1}회 틀렸습니다.`}
             </Text>
           ) : null}
 
@@ -228,6 +249,46 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
         />
       </View>
+
+      <Modal
+        visible={mismatchModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="비밀번호가 일치하지 않습니다"
+        description={
+          failCount === 5
+            ? `다시 입력해주세요 (${failCount}회)\n5회 실패하였습니다. 5분간 입력이 제한됩니다.`
+            : `다시 입력해주세요 (${failCount}회)`
+        }
+        confirmLabel="확인"
+        onConfirm={() => setMismatchModalVisible(false)}
+        onClose={() => setMismatchModalVisible(false)}
+      />
+
+      <Modal
+        visible={failModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="10회 이상 실패하였습니다"
+        description="SMS 재인증 후 PIN을 다시 설정해주세요."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+        onClose={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+      />
     </PageWrap>
   );
 }

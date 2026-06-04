@@ -1,0 +1,50 @@
+/******************************************************************************
+ * File: SignupCompleteScreen.tsx
+ * Description: 회원가입 완료 화면 (JOIN_006)
+ * Worker: [FE] 고민균
+ * Created: 2026-06-02
+ * Note: 가입 완료 안내 + 메인화면으로 이동
+ ******************************************************************************/
+
+import { Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../../../App';
+import { PageWrap } from '../../../shared/components/PageWrap';
+import { Button } from '../../../shared/components/Button';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'SignupComplete'>;
+
+export default function SignupCompleteScreen({ navigation }: Props) {
+  const handleGoMain = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Main' }],
+    });
+  };
+
+  return (
+    <PageWrap scroll={false} padded={false} backgroundClassName="bg-neutral-white">
+      <View className="flex-1 items-center justify-center px-8">
+        <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-erum-main">
+          <Feather name="check" size={48} color="#FFFFFF" />
+        </View>
+        <Text className="mb-3 text-center font-pretendard text-heading-2 text-neutral-black1">
+          회원가입이 완료되었어요!
+        </Text>
+        <Text className="text-center font-pretendard text-large-regular text-neutral-black2 leading-6">
+          이제 이룸페이의 다양한 서비스를{'\n'}이용해보세요.
+        </Text>
+      </View>
+
+      <View className="px-8 pb-10">
+        <Button
+          label="시작하기"
+          variant="primary"
+          size="large"
+          onPress={handleGoMain}
+        />
+      </View>
+    </PageWrap>
+  );
+}
