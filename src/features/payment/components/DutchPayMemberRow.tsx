@@ -1,6 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
+import ActionMenu from '../../../shared/components/ActionMenu';
+import FriendListItem from '../../../shared/components/FriendListItem';
 import { colors } from '../../../shared/styles/designTokens';
 import type { DutchPayMember } from '../types/dutchPay.types';
 
@@ -9,6 +11,7 @@ type Props = {
   isLast: boolean;
   menuOpen?: boolean;
   onPressMenu?: (memberId: string) => void;
+  onPressRemoveMember?: (memberId: string) => void;
   onChangeEditableAmount?: (memberId: string, value: string) => void;
 };
 
@@ -147,51 +150,56 @@ export default function DutchPayMemberRow({
   isLast,
   menuOpen = false,
   onPressMenu,
+  onPressRemoveMember,
   onChangeEditableAmount,
 }: Props) {
   return (
-    <View className="relative flex-row gap-3">
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-erum-main">
-        <Text className="font-pretendard text-large-bold text-neutral-white">
-          {member.initial}
-        </Text>
-      </View>
-
-      <View className={`min-w-0 flex-1 pb-5 ${isLast ? '' : 'border-b border-neutral-grey1'}`}>
-        <View className="min-h-12 justify-center">
-          <View className="flex-row items-center">
+    <View className="relative">
+      <FriendListItem
+        name={member.name}
+        initial={member.initial}
+        phoneSuffix={member.phoneSuffix}
+        containerClassName="flex-row items-center gap-3"
+        contentClassName={`min-w-0 flex-1 py-5 ${isLast ? '' : 'border-b border-neutral-grey1'}`}
+        nameClassName="min-w-0 flex-1 font-pretendard text-large-regular text-neutral-black1"
+        badges={
+          <>
             {member.isOwner ? <MemberBadge label="대표자" filled /> : null}
             {member.isMe ? <MemberBadge label="나" /> : null}
-            <Text className="min-w-0 flex-1 font-pretendard text-large-regular text-neutral-black1">
-              {member.name}({member.phoneSuffix})
-            </Text>
-            {member.canOpenMenu ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${member.name} 내보내기 메뉴`}
-                hitSlop={10}
-                className="h-8 w-8 items-center justify-center"
-                onPress={() => onPressMenu?.(member.id)}
-              >
-                <Feather name="more-vertical" size={18} color={colors.neutral.black2} />
-              </Pressable>
-            ) : null}
-          </View>
+          </>
+        }
+        nameRight={
+          member.canOpenMenu ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${member.name} 내보내기 메뉴`}
+              hitSlop={10}
+              className="h-8 w-8 items-center justify-center"
+              onPress={() => onPressMenu?.(member.id)}
+            >
+              <Feather name="more-vertical" size={18} color={colors.neutral.black2} />
+            </Pressable>
+          ) : null
+        }
+      >
+        <MemberStatusLine
+          member={member}
+          onChangeEditableAmount={onChangeEditableAmount}
+        />
+      </FriendListItem>
 
-          <MemberStatusLine
-            member={member}
-            onChangeEditableAmount={onChangeEditableAmount}
-          />
-        </View>
-      </View>
-
-      {menuOpen ? (
-        <View className="absolute right-3 top-9 z-10 rounded-lg bg-neutral-white px-5 py-4 shadow-lg">
-          <Text className="font-pretendard text-normal-bold text-state-error">
-            내보내기
-          </Text>
-        </View>
-      ) : null}
+      <ActionMenu
+        visible={menuOpen}
+        className="absolute right-3 top-9 z-10"
+        items={[
+          {
+            key: 'remove',
+            label: '내보내기',
+            tone: 'danger',
+            onPress: () => onPressRemoveMember?.(member.id),
+          },
+        ]}
+      />
     </View>
   );
 }
