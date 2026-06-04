@@ -92,6 +92,24 @@ type ComponentPreview =
 
 const guidePages: GuidePage[] = [
   {
+    depth1: "auth",
+    depth2: "tutorial",
+    pageName: "튜토리얼",
+    routeName: "Tutorial",
+    route: "Tutorial",
+    status: "done",
+    note: "담당자 : 고민균",
+  },
+  {
+    depth1: "auth",
+    depth2: "terms-agreement",
+    pageName: "약관동의",
+    routeName: "TermsAgreement",
+    route: "TermsAgreement",
+    status: "planned",
+    note: "담당자 : 고민균",
+  },
+  {
     depth1: "app",
     depth2: "main",
     pageName: "메인",
@@ -759,6 +777,16 @@ export default function GuideScreen({ navigation }: Props) {
                       onPress={
                         page.route
                           ? () => {
+                              if (page.route === "Tutorial") {
+                                navigation.navigate("Tutorial");
+                                return;
+                              }
+
+                              if (page.route === "TermsAgreement") {
+                                navigation.navigate("TermsAgreement");
+                                return;
+                              }
+
                               if (page.route === "Main") {
                                 navigation.navigate("Main");
                                 return;

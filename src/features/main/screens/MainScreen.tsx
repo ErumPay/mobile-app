@@ -21,6 +21,7 @@ import { RejectConfirmModal } from "../../../shared/components/Modal";
 import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
 import { mockPaymentRequestSummary } from "../../payment/constants/paymentMethod.mock";
+import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
 
@@ -94,7 +95,25 @@ const paymentMethodSelectParams = {
 };
 
 export default function MainScreen({ navigation }: Props) {
-  const paymentProgressVariant = activePaymentProgressVariant;
+  const remoteProgress = useRemotePaymentProgressStore((state) => state.progress);
+  const remoteProgressVariant = useRemotePaymentProgressStore((state) =>
+    state.getProgressVariant(),
+  );
+  const acceptRemoteRequest = useRemotePaymentProgressStore(
+    (state) => state.acceptRequest,
+  );
+  const rejectRemoteRequest = useRemotePaymentProgressStore(
+    (state) => state.rejectRequest,
+  );
+  const recipientSummary = useRemotePaymentProgressStore((state) =>
+    state.getRecipientSummary(),
+  );
+  const paymentProgressVariant =
+    remoteProgressVariant ?? activePaymentProgressVariant;
+  const hasVisiblePaymentProgress =
+    hasActivePaymentProgress || !!remoteProgress;
+  const hasRemoteNotification =
+    remoteProgress?.role === "RECIPIENT" && remoteProgress.status === "REQUESTED";
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
 
   const quickMenus: QuickMenu[] = [
@@ -129,6 +148,7 @@ export default function MainScreen({ navigation }: Props) {
   };
 
   const confirmRejectPaymentProgress = () => {
+    rejectRemoteRequest();
     setIsRejectConfirmVisible(false);
   };
 
@@ -138,10 +158,28 @@ export default function MainScreen({ navigation }: Props) {
       return;
     }
 
+    if (remoteProgress?.role === "RECIPIENT" && recipientSummary) {
+      navigation.navigate("PaymentMethodSelect", {
+        remoteRequestId: remoteProgress.requestId,
+        summary: recipientSummary,
+      });
+      return;
+    }
+
     navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
   };
 
   const handlePressPaymentProgressAccept = () => {
+    acceptRemoteRequest();
+
+    if (recipientSummary) {
+      navigation.navigate("PaymentMethodSelect", {
+        remoteRequestId: remoteProgress?.requestId,
+        summary: recipientSummary,
+      });
+      return;
+    }
+
     navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
   };
 
@@ -156,7 +194,9 @@ export default function MainScreen({ navigation }: Props) {
       return;
     }
 
-    navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+    navigation.navigate("PaymentParticipantSelect", {
+      mode: "REMOTE_PAYMENT",
+    });
   };
 
   return (
@@ -179,7 +219,7 @@ export default function MainScreen({ navigation }: Props) {
                 </Pressable>
               </View>
               <MainHeader
-                hasNotification={hasNotification}
+                hasNotification={hasNotification || hasRemoteNotification}
                 isNotificationLoading={isNotificationLoading}
               />
             </>
@@ -222,12 +262,13 @@ export default function MainScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            {isPaymentProgressLoading || hasActivePaymentProgress ? (
+            {isPaymentProgressLoading || hasVisiblePaymentProgress ? (
               <View className="mt-10">
                 {isPaymentProgressLoading ? (
                   <PaymentProgressCardSkeleton />
                 ) : (
                   <PaymentProgressCard
+                    participantName={remoteProgress?.participantName}
                     variant={paymentProgressVariant}
                     onPressAccept={handlePressPaymentProgressAccept}
                     onPressPrimary={handlePressPaymentProgressPrimary}

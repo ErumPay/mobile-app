@@ -1,7 +1,8 @@
 import type { PaymentQrValidateResponse } from '../types/paymentQr.types';
+import { PAYMENT_API_BASE_URL } from './paymentApiConfig';
 
 const PAYMENT_QR_VALIDATE_URL =
-    'http://localhost:8083/api/v1/payment/qr/validate';
+    `${PAYMENT_API_BASE_URL}/api/v1/payment/qr/validate`;
 
 export async function validatePaymentQr(
     token: string,

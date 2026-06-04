@@ -15,6 +15,7 @@ import MainScreen from "./src/features/main/screens/MainScreen";
 import QrScanScreen from "./src/features/qr/screens/QrScanScreen";
 import PaymentMethodSelectScreen from "./src/features/payment/screens/PaymentMethodSelectScreen";
 import PaymentCardSelectScreen from "./src/features/payment/screens/PaymentCardSelectScreen";
+import type { PaymentCardFlowType } from "./src/features/payment/types/paymentCard.types";
 import PaymentPinScreen from "./src/features/payment/screens/PaymentPinScreen";
 import type { PaymentPinRouteParams } from "./src/features/payment/types/paymentPin.types";
 import PaymentResultScreen from "./src/features/payment/screens/PaymentResultScreen";
@@ -24,6 +25,10 @@ import type { PaymentCancelRouteParams } from "./src/features/payment/types/paym
 import type { PaymentRequestSummary } from "./src/features/payment/types/paymentMethod.types";
 import DutchPayGroupScreen from "./src/features/payment/screens/DutchPayGroupScreen";
 import type { DutchPayGroupRouteParams } from "./src/features/payment/types/dutchPay.types";
+import TutorialScreen from "./src/features/auth/screens/TutorialScreen";
+import TermsAgreementScreen from "./src/features/auth/screens/TermsAgreementScreen";
+import SmsVerificationScreen from "./src/features/auth/screens/SmsVerificationScreen";
+import SignupCompleteScreen from "./src/features/auth/screens/SignupCompleteScreen";
 import PaymentParticipantSelectScreen from "./src/features/payment/screens/PaymentParticipantSelectScreen";
 import type { ParticipantSelectRouteParams } from "./src/features/payment/types/paymentParticipantSelect.types";
 import MypageHomeScreen from "./src/features/mypage/screens/MypageHomeScreen";
@@ -34,11 +39,16 @@ import PaymentHistoryScreen from "./src/features/mypage/screens/PaymentHistorySc
 import ProfileConfirmScreen from "./src/features/mypage/screens/ProfileConfirmScreen";
 
 export type RootStackParamList = {
+  Tutorial: undefined;
   Main: undefined;
   Guide: undefined;
+  TermsAgreement: undefined;
+  SmsVerification: undefined;
+  SignupComplete: undefined;
   QrScan: undefined;
   PaymentMethodSelect:
     | {
+        remoteRequestId?: string;
         summary?: PaymentRequestSummary;
         token?: string;
       }
@@ -47,7 +57,14 @@ export type RootStackParamList = {
     | {
         paymentId?: number | string;
         amount?: number | string;
+        flow?: PaymentCardFlowType;
         idempotencyKey?: string;
+        flow?: "NORMAL" | "DUTCH_PAY" | "DUTCH_PAY_FINAL";
+        dutchSessionId?: number;
+        selectedUserIds?: number[];
+        splitMethod?: "EQUAL" | "CUSTOM";
+        orderName?: string;
+        merchantId?: number;
       }
     | undefined;
   PaymentPin: PaymentPinRouteParams | undefined;
@@ -68,8 +85,12 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ["http://localhost:19000"],
   config: {
     screens: {
+      Tutorial: "tutorial",
       Main: "",
       Guide: "guide",
+      TermsAgreement: "auth/terms",
+      SmsVerification: "auth/sms-verification",
+      SignupComplete: "auth/signup-complete",
       QrScan: "qr-scan",
       CardRegister: "card-register",
       PaymentMethodSelect: "payment/method-select",
@@ -118,8 +139,12 @@ export default function App() {
             initialRouteName="Main"
             screenOptions={{ headerShown: false }}
           >
+            <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
+            <Stack.Screen name="TermsAgreement" component={TermsAgreementScreen} />
+            <Stack.Screen name="SmsVerification" component={SmsVerificationScreen} />
+            <Stack.Screen name="SignupComplete" component={SignupCompleteScreen} />
             <Stack.Screen name="CardRegister" component={CardRegisterScreen} />
             <Stack.Screen name="QrScan" component={QrScanScreen} />
 
