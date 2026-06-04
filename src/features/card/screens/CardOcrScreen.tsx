@@ -6,6 +6,7 @@ import type { Action } from 'expo-image-manipulator';
 
 import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
+import { Loading } from '../../../shared/components/Loading';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
 import { uploadCardImage } from '../api/cardOcrApi';
@@ -155,6 +156,18 @@ export function CardOcrScreen({
 
           <Button label="카메라 권한 허용" onPress={requestPermission} />
         </View>
+      </PageWrap>
+    );
+  }
+
+  if (isTakingPicture) {
+    return (
+      <PageWrap
+        scroll={false}
+        padded={false}
+        backgroundClassName="bg-neutral-white"
+      >
+        <Loading message="카드 정보를 불러오는 중입니다." fullScreen />
       </PageWrap>
     );
   }
