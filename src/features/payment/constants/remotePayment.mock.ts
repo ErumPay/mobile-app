@@ -11,3 +11,12 @@ export const mockRemotePaymentRequestResponse: RemotePaymentRequestResponse = {
   recipientPhoneSuffix: '1111',
   status: 'REQUESTED',
 };
+
+export function getMockRemotePaymentRequestResponse(
+  remotePaymentRequestId: string,
+): RemotePaymentRequestResponse {
+  return {
+    ...mockRemotePaymentRequestResponse,
+    remotePaymentRequestId,
+  };
+}

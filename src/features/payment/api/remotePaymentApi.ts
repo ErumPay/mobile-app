@@ -5,6 +5,13 @@ import type {
 
 const MOCK_REQUESTER_NAME = '나이룸';
 
+function createMockRemotePaymentRequestId({
+  paymentId,
+  recipientUserId,
+}: RemotePaymentRequestPayload) {
+  return `remote-${paymentId}-${recipientUserId}-${Date.now()}`;
+}
+
 export async function requestRemotePayment(
   payload: RemotePaymentRequestPayload,
 ): Promise<RemotePaymentRequestResponse> {
@@ -15,7 +22,7 @@ export async function requestRemotePayment(
   return {
     ...payload,
     requesterName: MOCK_REQUESTER_NAME,
-    remotePaymentRequestId: `remote-${payload.paymentId}-${payload.recipientUserId}`,
+    remotePaymentRequestId: createMockRemotePaymentRequestId(payload),
     status: 'REQUESTED',
   };
 }

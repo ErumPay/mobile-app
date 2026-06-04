@@ -10,7 +10,7 @@ import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import PaymentActionOptionList from '../components/PaymentActionOptionList';
 import PaymentRequestSummary from '../components/PaymentRequestSummary';
-import { mockRemotePaymentRequestResponse } from '../constants/remotePayment.mock';
+import { getMockRemotePaymentRequestResponse } from '../constants/remotePayment.mock';
 import { getPaymentActionOptions } from '../utils/paymentMethodOptions';
 import type {
     PaymentActionType,
@@ -63,8 +63,11 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         }
 
         if (routeRemoteRequestId) {
-            setRecipientProgress(mockRemotePaymentRequestResponse);
-            setSummary(toRemotePaymentRecipientSummary(mockRemotePaymentRequestResponse));
+            const remotePaymentRequest =
+                getMockRemotePaymentRequestResponse(routeRemoteRequestId);
+
+            setRecipientProgress(remotePaymentRequest);
+            setSummary(toRemotePaymentRecipientSummary(remotePaymentRequest));
             setErrorMessage('');
             return;
         }

@@ -69,7 +69,11 @@ export const useRemotePaymentProgressStore =
     getRecipientSummary: () => {
       const progress = get().progress;
 
-      if (!progress || progress.role !== 'RECIPIENT') {
+      if (
+        !progress ||
+        progress.role !== 'RECIPIENT' ||
+        !['REQUESTED', 'ACCEPTED'].includes(progress.status)
+      ) {
         return null;
       }
 
@@ -88,10 +92,33 @@ function setRemoteProgressStatus(
     return;
   }
 
+  if (!canTransitionRemoteProgress(progress.status, status)) {
+    return;
+  }
+
   set({
     progress: {
       ...progress,
       status,
     },
   });
+}
+
+function canTransitionRemoteProgress(
+  currentStatus: RemotePaymentRequestStatus,
+  nextStatus: RemotePaymentRequestStatus,
+) {
+  if (currentStatus === 'COMPLETED' || currentStatus === 'REJECTED') {
+    return false;
+  }
+
+  if (nextStatus === 'ACCEPTED' || nextStatus === 'REJECTED') {
+    return currentStatus === 'REQUESTED';
+  }
+
+  if (nextStatus === 'COMPLETED') {
+    return currentStatus === 'ACCEPTED';
+  }
+
+  return false;
 }

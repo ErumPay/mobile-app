@@ -160,6 +160,7 @@ export default function MainScreen({ navigation }: Props) {
 
     if (remoteProgress?.role === "RECIPIENT" && recipientSummary) {
       navigation.navigate("PaymentMethodSelect", {
+        remoteRequestId: remoteProgress.requestId,
         summary: recipientSummary,
       });
       return;
@@ -173,6 +174,7 @@ export default function MainScreen({ navigation }: Props) {
 
     if (recipientSummary) {
       navigation.navigate("PaymentMethodSelect", {
+        remoteRequestId: remoteProgress?.requestId,
         summary: recipientSummary,
       });
       return;
