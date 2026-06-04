@@ -1,6 +1,6 @@
 import type { OcrCardResult } from '../types/card';
+import { CARD_OCR_BASE_URL } from './cardApiConfig';
 
-const CARD_OCR_BASE_URL = 'http://192.168.0.135:8086';
 const CARD_OCR_URL = `${CARD_OCR_BASE_URL}/api/v1/cards/ocr`;
 
 interface CardOcrApiResponse {
