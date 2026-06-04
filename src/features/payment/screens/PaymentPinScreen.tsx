@@ -16,6 +16,7 @@ import type { PaymentPinMode } from '../types/paymentPin.types';
 import { requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import { setupPin } from '../../auth/api/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -206,8 +207,17 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    // TODO: 백엔드 PIN 설정 API 호출 (POST /api/v1/pin)
-    navigation.replace('SignupComplete');
+    try {
+      setIsSubmitting(true);
+      await setupPin(completedPin, firstPin);
+      navigation.replace('SignupComplete');
+    } catch {
+      setPin('');
+      setHasError(true);
+      setMismatchModalVisible(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePressNumber = (value: string) => {
