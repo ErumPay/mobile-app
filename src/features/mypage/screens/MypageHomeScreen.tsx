@@ -1,23 +1,42 @@
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
-import { Card } from '../../../shared/components/Card';
 import { Button } from '../../../shared/components/Button';
-import { ListItem } from '../../../shared/components/ListItem';
+import { Card } from '../../../shared/components/Card';
 import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
-
+import { fetchUserProfile } from '../api/mypageApi';
 import { mockUserProfile } from '../mocks/mypageMockData';
+import type { UserProfile } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MypageHomeScreen'>;
 
 export function MypageHomeScreen({ navigation }: Props) {
+  const [profile, setProfile] = useState<UserProfile>(mockUserProfile);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    fetchUserProfile()
+      .then((nextProfile) => {
+        if (isActive) {
+          setProfile(nextProfile);
+        }
+      })
+      .catch((error) => {
+        console.warn('Failed to fetch user profile.', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleGoBack = () => {
     if (navigation.canGoBack()) {
@@ -29,19 +48,9 @@ export function MypageHomeScreen({ navigation }: Props) {
   };
 
   const handleChangeBottomNav = (value: string) => {
-    if (value === 'home') {
-      navigation.navigate('Main');
-      return;
-    }
-
-    if (value === 'payment') {
-      navigation.navigate('PaymentMethodSelect');
-      return;
-    }
-
-    if (value === 'my') {
-      navigation.navigate('MypageHomeScreen');
-    }
+    if (value === 'home') navigation.navigate('Main');
+    if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+    if (value === 'my') navigation.navigate('MypageHomeScreen');
   };
 
   return (
@@ -55,23 +64,23 @@ export function MypageHomeScreen({ navigation }: Props) {
             <View className="flex-row items-center">
               <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-erum-main">
                 <Text className="font-pretendard text-heading-2 text-neutral-white">
-                  {mockUserProfile.name.slice(0, 1)}
+                  {profile.name.slice(0, 1)}
                 </Text>
               </View>
 
               <View className="min-w-0 flex-1">
                 <Text className="font-pretendard text-heading-3 text-neutral-black1">
-                  {mockUserProfile.name} ({mockUserProfile.maskedId})
+                  {profile.name} ({profile.maskedId})
                 </Text>
                 <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-                  {mockUserProfile.phone}
+                  {profile.phone}
                 </Text>
               </View>
             </View>
 
             <View className="mt-4">
               <Button
-                label="내 정보 확인"
+                label="내정보 확인"
                 onPress={() => navigation.navigate('ProfileConfirmScreen')}
               />
             </View>
@@ -81,7 +90,6 @@ export function MypageHomeScreen({ navigation }: Props) {
             <View className="flex-1">
               <ShortcutCard title="친구관리" icon="👥" />
             </View>
-
             <View className="flex-1">
               <ShortcutCard title="알림" icon="🔔" />
             </View>
@@ -91,58 +99,25 @@ export function MypageHomeScreen({ navigation }: Props) {
             <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
               나의 관리
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-[48px] flex-row items-center justify-between"
+            <MenuActionRow
+              title="결제내역"
+              icon="🧾"
               onPress={() => navigation.navigate('PaymentHistoryScreen')}
-            >
-              <View className="flex-row items-center">
-                <MenuIcon value="💳" />
-                <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
-                  결제내역
-                </Text>
-              </View>
-
-              <Chevron />
-            </Pressable>
+            />
             <Divider />
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-[48px] flex-row items-center justify-between"
+            <MenuActionRow
+              title="카드관리"
+              icon="💳"
               onPress={() => navigation.navigate('CardManagementScreen')}
-            >
-              <View className="flex-row items-center">
-                <MenuIcon value="💼" />
-                <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
-                  카드관리
-                </Text>
-              </View>
-
-              <Chevron />
-            </Pressable>
+            />
             <Divider />
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-[48px] flex-row items-center justify-between"
-              //onPress={() => navigation.navigate(''문자인증라우트이름'')}
-            >
-              <View className="flex-row items-center">
-                <MenuIcon value="🔐" />
-                <Text className="ml-3 font-pretendard text-large-bold text-neutral-black1">
-                  간편 비밀번호 수정
-                </Text>
-              </View>
-
-              <Chevron />
-            </Pressable>
+            <MenuActionRow title="간편 비밀번호 수정" icon="🔐" />
           </View>
-          
 
           <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-3">
             <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
               설정
             </Text>
-
             <MenuActionRow title="알림 설정" />
             <Divider />
             <MenuActionRow title="보안 설정" />
@@ -160,19 +135,12 @@ export function MypageHomeScreen({ navigation }: Props) {
           </View>
 
           <View className="flex-row items-center justify-center gap-6">
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsWithdrawVisible(true)}
-            >
+            <Pressable onPress={() => setIsWithdrawVisible(true)}>
               <Text className="font-pretendard text-normal-regular text-neutral-black2 underline">
                 회원탈퇴
               </Text>
             </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsLogoutVisible(true)}
-            >
+            <Pressable onPress={() => setIsLogoutVisible(true)}>
               <Text className="font-pretendard text-normal-regular text-neutral-black2 underline">
                 로그아웃
               </Text>
@@ -186,7 +154,6 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isLogoutVisible}
         type="two"
-        icon={<Text className="text-[52px]">👋</Text>}
         title="로그아웃 하시겠습니까?"
         confirmLabel="로그아웃하기"
         cancelLabel="닫기"
@@ -197,9 +164,8 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isWithdrawVisible}
         type="two"
-        icon={<Text className="text-[52px]">⚠️</Text>}
         title="정말 회원 탈퇴를 하시겠습니까?"
-        description={'탈퇴 후 모든 데이터가 삭제되며\n복구할 수 없습니다'}
+        description={'탈퇴 시 모든 데이터가 삭제되며\n복구할 수 없습니다.'}
         confirmLabel="회원탈퇴하기"
         cancelLabel="닫기"
         onConfirm={() => setIsWithdrawVisible(false)}
@@ -223,22 +189,6 @@ function ShortcutCard({ title, icon }: { title: string; icon: string }) {
   );
 }
 
-function MenuIcon({ value }: { value: string }) {
-  return (
-    <View className="h-9 w-9 items-center justify-center rounded-full bg-neutral-grey2">
-      <Text className="text-heading-3">{value}</Text>
-    </View>
-  );
-}
-
-function Chevron() {
-  return <Text className="text-heading-3 text-neutral-black2">›</Text>;
-}
-
-function Divider() {
-  return <View className="my-2 h-px w-full bg-neutral-grey1" />;
-}
-
 function MenuActionRow({
   title,
   icon,
@@ -258,7 +208,6 @@ function MenuActionRow({
     >
       <View className="min-w-0 flex-1 flex-row items-center">
         {icon ? <MenuIcon value={icon} /> : null}
-
         <Text
           numberOfLines={1}
           className={`${icon ? 'ml-3' : ''} font-pretendard text-large-bold text-neutral-black1`}
@@ -266,10 +215,25 @@ function MenuActionRow({
           {title}
         </Text>
       </View>
-
       {right}
     </Pressable>
   );
+}
+
+function MenuIcon({ value }: { value: string }) {
+  return (
+    <View className="h-9 w-9 items-center justify-center rounded-full bg-neutral-grey2">
+      <Text className="text-heading-3">{value}</Text>
+    </View>
+  );
+}
+
+function Chevron() {
+  return <Text className="text-heading-3 text-neutral-black2">›</Text>;
+}
+
+function Divider() {
+  return <View className="my-2 h-px w-full bg-neutral-grey1" />;
 }
 
 export default MypageHomeScreen;

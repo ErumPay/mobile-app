@@ -1,22 +1,27 @@
-import { useState, useEffect } from 'react';
-import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { SkeletonCard } from '../../../shared/components/Skeleton';
+import { useEffect, useState } from 'react';
+import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
+
 import type { RootStackParamList } from '../../../../App';
 import { Accordion } from '../../../shared/components/Accordion';
 import { Button } from '../../../shared/components/Button';
 import { Card } from '../../../shared/components/Card';
-import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { Modal } from '../../../shared/components/Modal';
+import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
+import { SkeletonCard } from '../../../shared/components/Skeleton';
 import {
-  mockCardBenefits,
-  mockPaymentHistories,
-} from '../mocks/mypageMockData';
+  deleteManagedCard,
+  fetchCardBenefits,
+  setManagedDefaultCard,
+  updateManagedCardAlias,
+} from '../api/mypageApi';
+import { mockCardBenefits, mockPaymentHistories } from '../mocks/mypageMockData';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
+import type { CardBenefit } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
 type PaymentDetailTab = 'all' | 'completed' | 'canceled';
@@ -29,38 +34,59 @@ const statusLabel = {
 
 export function CardDetailScreen({ navigation, route }: Props) {
   const [dialog, setDialog] = useState<
-  'default' | 'alias' | 'delete' | 'deleteComplete' | null
+    'default' | 'alias' | 'delete' | 'deleteComplete' | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-  const timer = setTimeout(() => {
-    setIsLoading(false);
-  }, 700);
-
-  return () => clearTimeout(timer);
-}, []);
-
   const [activePaymentTab, setActivePaymentTab] =
     useState<PaymentDetailTab>('all');
-  const [expandedBenefitIndex, setExpandedBenefitIndex] = useState<number | null>(
-    null,
-  );
+  const [expandedBenefitIndex, setExpandedBenefitIndex] = useState<
+    number | null
+  >(null);
+  const [aliasValue, setAliasValue] = useState('');
+  const [cardBenefits, setCardBenefits] =
+    useState<CardBenefit[]>(mockCardBenefits);
 
   const cards = useManagedCardsStore((state) => state.cards);
   const setDefaultCard = useManagedCardsStore((state) => state.setDefaultCard);
   const deleteCard = useManagedCardsStore((state) => state.deleteCard);
   const updateCardAlias = useManagedCardsStore((state) => state.updateCardAlias);
-
   const card = cards.find((item) => item.id === route.params.cardId);
 
-  const [aliasValue, setAliasValue] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (card) {
       setAliasValue(card.alias);
     }
   }, [card?.alias]);
+
+  useEffect(() => {
+    if (!card) {
+      return;
+    }
+
+    let isActive = true;
+
+    fetchCardBenefits(card.id)
+      .then((nextBenefits) => {
+        if (isActive) {
+          setCardBenefits(nextBenefits);
+        }
+      })
+      .catch((error) => {
+        console.warn('Failed to fetch card benefits.', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [card?.id]);
 
   if (!card) {
     return (
@@ -82,20 +108,11 @@ export function CardDetailScreen({ navigation, route }: Props) {
   const cardPayments = mockPaymentHistories.filter(
     (payment) => payment.cardId === card.id,
   );
-
   const filteredCardPayments = cardPayments.filter((payment) => {
-    if (activePaymentTab === 'all') {
-      return true;
-    }
-
-    if (activePaymentTab === 'completed') {
-      return payment.status === 'completed';
-    }
-
+    if (activePaymentTab === 'all') return true;
+    if (activePaymentTab === 'completed') return payment.status === 'completed';
     return payment.status === 'canceled' || payment.status === 'cancelRequested';
   });
-
-  
 
   return (
     <>
@@ -115,12 +132,11 @@ export function CardDetailScreen({ navigation, route }: Props) {
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
-              <SkeletonCard />
             </>
           ) : (
             <>
               {card.disabled ? (
-                <NoticeBox tone="error" description="사용 정지된 카드입니다." />
+                <NoticeBox tone="error" description="사용 정지 카드입니다." />
               ) : null}
 
               <Card title="카드 정보">
@@ -131,38 +147,17 @@ export function CardDetailScreen({ navigation, route }: Props) {
                     </Text>
                   </View>
                 ) : null}
-
                 <InfoRow label="카드사" value={card.issuer} />
                 <InfoRow label="카드명" value={card.name} />
                 <InfoRow label="카드번호" value={card.cardNumber} />
-                <InfoRow label="등록일" value={card.registeredAt} />
-              </Card>
-
-              <Card title="이번 달 실적">
-                <InfoRow
-                  label="사용금액"
-                  value="245,000원"
-                  valueClassName="text-erum-secondary"
-                />
-                <InfoRow
-                  label="할인받은 금액"
-                  value="12,250원"
-                  valueClassName="text-erum-main"
-                />
-                <View className="mt-3 h-2 w-full rounded-full bg-neutral-grey1">
-                  <View className="h-2 w-[84%] rounded-full bg-erum-secondary" />
-                </View>
-              </Card>
-
-              <Card>
-                <InfoRow label="연회비" value="면제" />
+                <InfoRow label="등록일" value={card.registeredAt || '-'} />
               </Card>
 
               <Card title="혜택">
                 <View className="gap-2">
-                  {mockCardBenefits.map((benefit, index) => (
+                  {cardBenefits.map((benefit, index) => (
                     <Accordion
-                      key={benefit.title}
+                      key={`${benefit.title}-${index}`}
                       title={benefit.title}
                       expanded={expandedBenefitIndex === index}
                       onToggle={() =>
@@ -179,68 +174,68 @@ export function CardDetailScreen({ navigation, route }: Props) {
                 </View>
               </Card>
 
-          <Card>
-            <View className="mb-3 flex-row border-b border-neutral-grey1">
-              <PaymentHistoryTab
-                label="전체"
-                active={activePaymentTab === 'all'}
-                onPress={() => setActivePaymentTab('all')}
-              />
-
-              <PaymentHistoryTab
-                label="결제완료"
-                active={activePaymentTab === 'completed'}
-                onPress={() => setActivePaymentTab('completed')}
-              />
-
-              <PaymentHistoryTab
-                label="결제취소"
-                active={activePaymentTab === 'canceled'}
-                onPress={() => setActivePaymentTab('canceled')}
-              />
-            </View>
-
-            {filteredCardPayments.length > 0 ? (
-              filteredCardPayments.map((payment, index) => (
-                <View key={payment.id}>
-                  {index > 0 ? <Divider /> : null}
-
-                  <PaymentMiniRow
-                    title={payment.title}
-                    status={statusLabel[payment.status]}
-                    date={payment.date}
-                    amount={payment.amount}
+              <Card>
+                <View className="mb-3 flex-row border-b border-neutral-grey1">
+                  <PaymentHistoryTab
+                    label="전체"
+                    active={activePaymentTab === 'all'}
+                    onPress={() => setActivePaymentTab('all')}
+                  />
+                  <PaymentHistoryTab
+                    label="결제완료"
+                    active={activePaymentTab === 'completed'}
+                    onPress={() => setActivePaymentTab('completed')}
+                  />
+                  <PaymentHistoryTab
+                    label="결제취소"
+                    active={activePaymentTab === 'canceled'}
+                    onPress={() => setActivePaymentTab('canceled')}
                   />
                 </View>
-              ))
-            ) : (
-              <Text className="py-4 text-center font-pretendard text-large-regular text-neutral-black2">
-                결제 내역이 없습니다.
-              </Text>
-            )}
-          </Card>
 
-          <View className="gap-3">
-            <Button label="대표카드로 설정" onPress={() => setDialog('default')} />
-            <Button
-              label="카드 별칭 수정"
-              variant="secondary"
-              onPress={() => {
-                setAliasValue(card.alias);
-                setDialog('alias');
-              }}
-            />
-            <Button
-              label="카드 삭제하기"
-              variant="danger"
-              onPress={() => setDialog('delete')}
-            />
-          </View>
+                {filteredCardPayments.length > 0 ? (
+                  filteredCardPayments.map((payment, index) => (
+                    <View key={payment.id}>
+                      {index > 0 ? <Divider /> : null}
+                      <PaymentMiniRow
+                        title={payment.title}
+                        status={statusLabel[payment.status]}
+                        date={payment.date}
+                        amount={payment.amount}
+                      />
+                    </View>
+                  ))
+                ) : (
+                  <Text className="py-4 text-center font-pretendard text-large-regular text-neutral-black2">
+                    결제 내역이 없습니다.
+                  </Text>
+                )}
+              </Card>
 
-          <NoticeBox
-            tone="error"
-            description="카드를 삭제하면 모든 결제 내역은 유지되지만 해당 카드로는 더 이상 결제할 수 없습니다."
-          />
+              <View className="gap-3">
+                <Button
+                  label="대표카드로 설정"
+                  onPress={() => setDialog('default')}
+                />
+                <Button
+                  label="카드 별칭 수정"
+                  variant="secondary"
+                  onPress={() => {
+                    setAliasValue(card.alias);
+                    setDialog('alias');
+                  }}
+                />
+                <Button
+                  label="카드 삭제하기"
+                  variant="danger"
+                  onPress={() => setDialog('delete')}
+                />
+              </View>
+
+              <NoticeBox
+                tone="error"
+                description="카드를 삭제하면 해당 카드로는 더 이상 결제할 수 없습니다."
+              />
             </>
           )}
         </View>
@@ -249,33 +244,28 @@ export function CardDetailScreen({ navigation, route }: Props) {
       <FloatingButton
         value="my"
         onChange={(value) => {
-          if (value === 'home') {
-            navigation.navigate('Main');
-            return;
-          }
-
-          if (value === 'payment') {
-            navigation.navigate('PaymentMethodSelect');
-            return;
-          }
-
-          if (value === 'my') {
-            navigation.navigate('MypageHomeScreen');
-          }
+          if (value === 'home') navigation.navigate('Main');
+          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'my') navigation.navigate('MypageHomeScreen');
         }}
       />
 
       <Modal
         visible={dialog === 'default'}
         type="two"
-        icon={<Text className="text-[52px]">⭐</Text>}
-        title={`${card.name} 카드를\n대표카드로 지정 하시겠습니까?`}
-        description="결제 시 우선으로 사용됩니다"
+        title={`${card.name} 카드를 대표카드로 지정하시겠습니까?`}
+        description="결제 시 우선순위로 사용됩니다."
         confirmLabel="대표카드 설정하기"
         cancelLabel="닫기"
-        onConfirm={() => {
-          setDefaultCard(card.id);
-          setDialog(null);
+        onConfirm={async () => {
+          try {
+            await setManagedDefaultCard(card.id);
+            setDefaultCard(card.id);
+          } catch (error) {
+            console.warn('Failed to set default card.', error);
+          } finally {
+            setDialog(null);
+          }
         }}
         onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
@@ -286,22 +276,33 @@ export function CardDetailScreen({ navigation, route }: Props) {
         value={aliasValue}
         onChangeText={(value) => setAliasValue(value.slice(0, 10))}
         onCancel={() => setDialog(null)}
-        onConfirm={() => {
-          updateCardAlias(card.id, aliasValue);
-          setDialog(null);
+        onConfirm={async () => {
+          try {
+            await updateManagedCardAlias(card.id, aliasValue);
+            updateCardAlias(card.id, aliasValue);
+          } catch (error) {
+            console.warn('Failed to update card alias.', error);
+          } finally {
+            setDialog(null);
+          }
         }}
       />
 
       <Modal
         visible={dialog === 'delete'}
         type="two"
-        icon={<Text className="text-[52px]">🗑️</Text>}
-        title={`${card.name} 카드를\n삭제하시겠습니까?`}
+        title={`${card.name} 카드를 삭제하시겠습니까?`}
         confirmLabel="삭제하기"
         cancelLabel="닫기"
-        onConfirm={() => {
-          deleteCard(card.id);
-          setDialog('deleteComplete');
+        onConfirm={async () => {
+          try {
+            await deleteManagedCard(card.id);
+            deleteCard(card.id);
+            setDialog('deleteComplete');
+          } catch (error) {
+            console.warn('Failed to delete card.', error);
+            setDialog(null);
+          }
         }}
         onCancel={() => setDialog(null)}
         onClose={() => setDialog(null)}
@@ -310,7 +311,6 @@ export function CardDetailScreen({ navigation, route }: Props) {
       <Modal
         visible={dialog === 'deleteComplete'}
         type="one"
-        icon={<Text className="text-[52px]">✅</Text>}
         title="카드 삭제가 완료되었습니다."
         confirmLabel="확인"
         onConfirm={() => {
@@ -375,7 +375,6 @@ function PaymentMiniRow({
           {status}
         </Text>
       </View>
-
       <View className="mt-2 flex-row items-center justify-between">
         <Text className="font-pretendard text-normal-regular text-neutral-black2">
           {date}
@@ -433,12 +432,10 @@ function AliasEditModal({
     <RNModal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
       <View className="flex-1 items-center justify-center bg-neutral-black3 px-9">
         <Pressable className="absolute inset-0" onPress={onCancel} />
-
         <View className="w-full max-w-[320px] rounded-3xl bg-neutral-white px-6 pb-6 pt-8">
           <Text className="text-center font-pretendard text-heading-3 text-neutral-black1">
             카드 별칭 수정
           </Text>
-
           <TextInput
             className="mt-6 h-12 rounded-xl border border-neutral-grey1 px-4 font-pretendard text-large-regular text-neutral-black1"
             value={value}
@@ -446,7 +443,6 @@ function AliasEditModal({
             maxLength={10}
             placeholder="별칭을 입력해주세요."
           />
-
           <View className="mt-7 gap-3">
             <Button label="저장하기" size="medium" onPress={onConfirm} />
             <Button label="닫기" variant="secondary" size="medium" onPress={onCancel} />
