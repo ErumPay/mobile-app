@@ -345,7 +345,8 @@ function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
   const brandNames = Array.isArray(response.brandNames)
     ? response.brandNames.map(String).join(', ')
     : '';
-  const description = [benefitDesc, brandNames ? `대상 ${brandNames}` : '']
+  const descriptionBody = removeFirstBenefitSentence(benefitDesc, title);
+  const description = [descriptionBody, brandNames ? `대상 ${brandNames}` : '']
     .filter(Boolean)
     .join('\n');
 
@@ -366,6 +367,18 @@ function getFirstBenefitSentence(description: string) {
   const sentenceMatch = firstLine.match(/^.*?[.!?](?=\s|$)/);
 
   return (sentenceMatch?.[0] ?? firstLine).trim();
+}
+
+function removeFirstBenefitSentence(description: string, title: string) {
+  const normalized = description.trim();
+
+  if (!normalized || !title) {
+    return normalized;
+  }
+
+  return normalized.startsWith(title)
+    ? normalized.slice(title.length).trim()
+    : normalized;
 }
 
 function normalizePaymentHistoryItem(
