@@ -36,6 +36,47 @@ export async function fetchUserProfile(): Promise<UserProfile> {
   return normalizeUserProfile(await response.json());
 }
 
+export async function logoutUser() {
+  const accessToken = await getMypageAccessToken();
+  const response = await fetchWithTimeout(
+    `${MYPAGE_AUTH_API_BASE_URL}/api/v1/auth/logout`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({ deviceId: 'mobile-app-dev' }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_LOGOUT_REQUEST_FAILED:${response.status}`);
+  }
+}
+
+export async function withdrawUser(pin: string) {
+  const accessToken = await getMypageAccessToken();
+  const response = await fetchWithTimeout(
+    `${MYPAGE_AUTH_API_BASE_URL}/api/v1/auth/withdraw`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({ pin }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(
+      `MYPAGE_WITHDRAW_REQUEST_FAILED:${response.status}:${errorBody}`,
+    );
+  }
+}
+
 export async function fetchManagedCards(): Promise<ManagedCard[]> {
   const response = await fetchWithTimeout(
     `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards?${new URLSearchParams({
@@ -194,14 +235,40 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   }
 }
 
+async function getMypageAccessToken() {
+  const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;
+
+  if (configuredToken) {
+    return configuredToken;
+  }
+
+  const response = await fetchWithTimeout(
+    `${MYPAGE_AUTH_API_BASE_URL}/api/v1/auth/dev/token/${getMypageUserId()}`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_DEV_TOKEN_REQUEST_FAILED:${response.status}`);
+  }
+
+  const data = await response.json();
+  const accessToken = toStringValue(data.accessToken);
+
+  if (!accessToken) {
+    throw new Error('MYPAGE_DEV_TOKEN_EMPTY');
+  }
+
+  return accessToken;
+}
+
 function normalizeUserProfile(response: Record<string, unknown>): UserProfile {
   const name = toStringValue(response.name);
   const phone = formatPhoneNumber(toStringValue(response.phoneNumber));
   const birthDate = formatBirthDate(toStringValue(response.birthDate));
+  const phoneLast4 = phone.replace(/\D/g, '').slice(-4);
 
   return {
     name,
-    maskedId: toStringValue(response.userId).slice(-4),
+    maskedId: phoneLast4 || toStringValue(response.userId).slice(-4),
     phone,
     birthDate,
   };
@@ -296,6 +363,7 @@ function normalizePaymentDetail(response: Record<string, unknown>): PaymentDetai
     ...history,
     cardId: toStringValue(cards[0]?.cardId ?? cards[0]?.card_id),
     cardIds: cards.map((card) => toStringValue(card.cardId ?? card.card_id)),
+    cards: cards.map(normalizePaymentDetailCard),
     paidAt: formatDateTime(paidAt),
     receiptId: toStringValue(response.orderNo ?? response.order_no) || history.id,
     sellerName: history.title,
@@ -308,6 +376,22 @@ function normalizePaymentDetail(response: Record<string, unknown>): PaymentDetai
     tax: '0원',
     finalAmount: formatCurrency(finalAmount),
     status: canceledAt ? 'canceled' : history.status,
+  };
+}
+
+function normalizePaymentDetailCard(
+  response: Record<string, unknown>,
+) {
+  const id = toStringValue(response.cardId ?? response.card_id);
+  const name = toStringValue(response.cardName ?? response.card_name);
+  const maskedNumber = toStringValue(
+    response.maskedNumber ?? response.masked_number,
+  );
+
+  return {
+    id,
+    name: name || '등록 카드',
+    maskedNumber: maskedNumber || '-',
   };
 }
 

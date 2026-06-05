@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
@@ -23,8 +23,7 @@ function isRequiredFilled(values: CardRegisterFormValues): boolean {
     onlyDigits(values.cardNumber).length === 16 &&
     onlyDigits(values.expiry).length === 4 &&
     onlyDigits(values.cvc).length === 3 &&
-    onlyDigits(values.passwordFirstTwo).length === 2 &&
-    onlyDigits(values.birthDate).length === 6
+    onlyDigits(values.passwordFirstTwo).length === 2
   );
 }
 
@@ -44,7 +43,6 @@ export function CardRegisterFormScreen({
     ...initialCardRegisterFormValues,
     ...initialValues,
   });
-
   const [isExpiryErrorModalVisible, setIsExpiryErrorModalVisible] =
     useState(false);
 
@@ -146,26 +144,6 @@ export function CardRegisterFormScreen({
 
           <View className="w-full min-w-0 overflow-hidden">
             <Input
-              label="생년월일"
-              type="number"
-              placeholder="930315"
-              value={values.birthDate}
-              maxLength={6}
-              onChangeText={(value) =>
-                handleChange('birthDate', onlyDigits(value).slice(0, 6))
-              }
-            />
-
-            <Text
-              numberOfLines={1}
-              className="mt-2 w-full min-w-0 text-xs text-slate-500"
-            >
-              예: 1993년 3월 15일 → 930315
-            </Text>
-          </View>
-
-          <View className="w-full min-w-0 overflow-hidden">
-            <Input
               label="카드 별칭 (선택)"
               type="text"
               placeholder="카드 별칭을 입력해주세요."
@@ -187,7 +165,7 @@ export function CardRegisterFormScreen({
       <Modal
         visible={isExpiryErrorModalVisible}
         type="one"
-        title="잘못된 유효기간 입니다."
+        title="올바르지 않은 유효기간입니다."
         confirmLabel="확인"
         onConfirm={() => setIsExpiryErrorModalVisible(false)}
         onClose={() => setIsExpiryErrorModalVisible(false)}

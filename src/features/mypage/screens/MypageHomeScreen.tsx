@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
@@ -9,7 +9,11 @@ import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
-import { fetchUserProfile } from '../api/mypageApi';
+import {
+  fetchUserProfile,
+  logoutUser,
+  withdrawUser,
+} from '../api/mypageApi';
 import { mockUserProfile } from '../mocks/mypageMockData';
 import type { UserProfile } from '../types/mypage';
 
@@ -19,6 +23,11 @@ export function MypageHomeScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile>(mockUserProfile);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
+  const [isWithdrawPinVisible, setIsWithdrawPinVisible] = useState(false);
+  const [withdrawPin, setWithdrawPin] = useState('');
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [isSubmittingAccountAction, setIsSubmittingAccountAction] =
+    useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -51,6 +60,47 @@ export function MypageHomeScreen({ navigation }: Props) {
     if (value === 'home') navigation.navigate('Main');
     if (value === 'payment') navigation.navigate('PaymentMethodSelect');
     if (value === 'my') navigation.navigate('MypageHomeScreen');
+  };
+
+  const handleLogout = async () => {
+    if (isSubmittingAccountAction) return;
+
+    setIsSubmittingAccountAction(true);
+
+    try {
+      await logoutUser();
+      setIsLogoutVisible(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Tutorial' }],
+      });
+    } catch (error) {
+      console.warn('Failed to logout.', error);
+      setActionMessage('로그아웃에 실패했습니다.');
+    } finally {
+      setIsSubmittingAccountAction(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (isSubmittingAccountAction) return;
+
+    setIsSubmittingAccountAction(true);
+
+    try {
+      await withdrawUser(withdrawPin);
+      setIsWithdrawPinVisible(false);
+      setWithdrawPin('');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Tutorial' }],
+      });
+    } catch (error) {
+      console.warn('Failed to withdraw.', error);
+      setActionMessage('회원탈퇴에 실패했습니다.');
+    } finally {
+      setIsSubmittingAccountAction(false);
+    }
   };
 
   return (
@@ -155,22 +205,49 @@ export function MypageHomeScreen({ navigation }: Props) {
         visible={isLogoutVisible}
         type="two"
         title="로그아웃 하시겠습니까?"
-        confirmLabel="로그아웃하기"
+        confirmLabel={
+          isSubmittingAccountAction ? '처리 중...' : '로그아웃하기'
+        }
         cancelLabel="닫기"
-        onConfirm={() => setIsLogoutVisible(false)}
+        onConfirm={handleLogout}
         onCancel={() => setIsLogoutVisible(false)}
         onClose={() => setIsLogoutVisible(false)}
       />
+
       <Modal
         visible={isWithdrawVisible}
         type="two"
         title="정말 회원 탈퇴를 하시겠습니까?"
         description={'탈퇴 시 모든 데이터가 삭제되며\n복구할 수 없습니다.'}
-        confirmLabel="회원탈퇴하기"
+        confirmLabel="PIN 입력하기"
         cancelLabel="닫기"
-        onConfirm={() => setIsWithdrawVisible(false)}
+        onConfirm={() => {
+          setIsWithdrawVisible(false);
+          setIsWithdrawPinVisible(true);
+        }}
         onCancel={() => setIsWithdrawVisible(false)}
         onClose={() => setIsWithdrawVisible(false)}
+      />
+
+      <WithdrawPinModal
+        visible={isWithdrawPinVisible}
+        pin={withdrawPin}
+        isSubmitting={isSubmittingAccountAction}
+        onChangePin={setWithdrawPin}
+        onCancel={() => {
+          setIsWithdrawPinVisible(false);
+          setWithdrawPin('');
+        }}
+        onConfirm={handleWithdraw}
+      />
+
+      <Modal
+        visible={Boolean(actionMessage)}
+        type="one"
+        title={actionMessage ?? ''}
+        confirmLabel="확인"
+        onConfirm={() => setActionMessage(null)}
+        onClose={() => setActionMessage(null)}
       />
     </>
   );
@@ -217,6 +294,53 @@ function MenuActionRow({
       </View>
       {right}
     </Pressable>
+  );
+}
+
+function WithdrawPinModal({
+  visible,
+  pin,
+  isSubmitting,
+  onChangePin,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  pin: string;
+  isSubmitting: boolean;
+  onChangePin: (pin: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <RNModal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
+      <View className="flex-1 items-center justify-center bg-neutral-black3 px-9">
+        <Pressable className="absolute inset-0" onPress={onCancel} />
+        <View className="w-full max-w-[320px] rounded-3xl bg-neutral-white px-6 pb-6 pt-8">
+          <Text className="text-center font-pretendard text-heading-3 text-neutral-black1">
+            간편 비밀번호 입력
+          </Text>
+          <TextInput
+            className="mt-6 h-12 rounded-xl border border-neutral-grey1 px-4 text-center font-pretendard text-large-regular text-neutral-black1"
+            value={pin}
+            onChangeText={(value) => onChangePin(value.replace(/\D/g, '').slice(0, 6))}
+            maxLength={6}
+            keyboardType="number-pad"
+            secureTextEntry
+            placeholder="PIN 입력"
+          />
+          <View className="mt-7 gap-3">
+            <Button
+              label={isSubmitting ? '처리 중...' : '회원탈퇴하기'}
+              size="medium"
+              variant="danger"
+              onPress={onConfirm}
+            />
+            <Button label="닫기" variant="secondary" size="medium" onPress={onCancel} />
+          </View>
+        </View>
+      </View>
+    </RNModal>
   );
 }
 

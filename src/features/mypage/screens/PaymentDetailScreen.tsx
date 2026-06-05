@@ -131,7 +131,7 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <Card title="카드 정보">
-                <InfoRow label="카드 ID" value={payment.cardIds?.join('\n') || '-'} />
+                <PaymentCardInfoRows payment={payment} />
               </Card>
 
               <Card title="판매자 정보">
@@ -207,6 +207,28 @@ function InfoRow({
       >
         {value}
       </Text>
+    </View>
+  );
+}
+
+function PaymentCardInfoRows({ payment }: { payment: PaymentDetail }) {
+  const cards = payment.cards ?? [];
+
+  if (cards.length === 0) {
+    return <InfoRow label="카드 정보" value="-" />;
+  }
+
+  return (
+    <View className="gap-2">
+      {cards.map((card, index) => (
+        <View
+          key={`${card.id || card.maskedNumber}-${index}`}
+          className="rounded bg-neutral-grey2 px-3 py-2"
+        >
+          <InfoRow label="카드명" value={card.name} />
+          <InfoRow label="카드번호" value={card.maskedNumber} />
+        </View>
+      ))}
     </View>
   );
 }

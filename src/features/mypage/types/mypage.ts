@@ -42,6 +42,7 @@ export type PaymentHistoryItem = {
 
 export type PaymentDetail = PaymentHistoryItem & {
   cardIds?: string[];
+  cards?: PaymentDetailCard[];
   paidAt: string;
   receiptId: string;
   sellerName: string;
@@ -53,6 +54,12 @@ export type PaymentDetail = PaymentHistoryItem & {
   discountAmount: string;
   tax: string;
   finalAmount: string;
+};
+
+export type PaymentDetailCard = {
+  id: string;
+  name: string;
+  maskedNumber: string;
 };
 
 export type CardBenefit = {
