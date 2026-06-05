@@ -228,4 +228,5 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     const nextPin = `${pin}${value}`;
 
     setPin(nextPin);
-   
+  }
+}
