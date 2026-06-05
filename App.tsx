@@ -36,6 +36,7 @@ import CardManagementScreen from './src/features/mypage/screens/CardManagementSc
 import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScreen';
 import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
 import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
+import NotificationScreen from './src/features/notification/screens/NotificationScreen';
 
 export type RootStackParamList = {
   Tutorial: undefined;
@@ -78,6 +79,7 @@ export type RootStackParamList = {
   CardDetailScreen: { cardId: string };
   PaymentHistoryScreen: undefined;
   PaymentDetailScreen: { paymentId: string };
+  NotificationScreen: undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -106,6 +108,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       CardDetailScreen: 'mypage/cards/:cardId',
       PaymentHistoryScreen: 'mypage/payments',
       PaymentDetailScreen: 'mypage/payments/:paymentId',
+      NotificationScreen: 'notification',
     },
   },
 };
@@ -161,6 +164,8 @@ export default function App() {
             <Stack.Screen name="PaymentDetailScreen" component={PaymentDetailScreen} />
             <Stack.Screen name="CardManagementScreen" component={CardManagementScreen} />
             <Stack.Screen name="CardDetailScreen" component={CardDetailScreen} />
+
+            <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>
