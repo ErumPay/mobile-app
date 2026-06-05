@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { Image, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import FloatingButton from '../../../shared/components/FloatingButton/FloatingButton';
-import Header from '../../../shared/components/Header';
 import PageWrap from '../../../shared/components/PageWrap';
 import Tab from '../../../shared/components/Tab';
 
@@ -101,9 +101,43 @@ function formatNotificationDate(createdAt: string) {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+function NotificationHeader({
+  unreadCount,
+  onPressBack,
+}: {
+  unreadCount: number;
+  onPressBack: () => void;
+}) {
+  return (
+    <View className="w-full flex-row items-center justify-between bg-neutral-white px-5 py-3">
+      <Pressable
+        accessibilityRole="button"
+        className="h-10 w-10 items-center justify-center"
+        onPress={onPressBack}
+      >
+        <Feather name="chevron-left" size={28} color="#1D1F1F" />
+      </Pressable>
+
+      <View className="min-w-0 flex-1 flex-row items-center justify-center">
+        <Text className="font-pretendard text-heading-2 text-neutral-black1">
+          알림
+        </Text>
+        <View className="ml-2 h-5 min-w-5 items-center justify-center rounded-full bg-state-error px-1.5">
+          <Text className="font-pretendard text-small-bold text-neutral-white">
+            {unreadCount}
+          </Text>
+        </View>
+      </View>
+
+      <View className="h-10 w-10" />
+    </View>
+  );
+}
+
 const NotificationScreen = ({ navigation }: Props) => {
   const [activeType, setActiveType] = useState<NotificationFilter>('all');
   const notifications = notificationResponse.items;
+  const unreadCount = notifications.filter((notification) => !notification.isRead).length;
 
   const filteredNotifications =
     activeType === 'all'
@@ -139,7 +173,7 @@ const NotificationScreen = ({ navigation }: Props) => {
     <>
       <PageWrap
         backgroundClassName="bg-neutral-grey2"
-        header={<Header title="알림" type="back" onPressLeft={handleGoBack} />}
+        header={<NotificationHeader unreadCount={unreadCount} onPressBack={handleGoBack} />}
       >
         <View className="gap-4 pb-28">
           <Tab
