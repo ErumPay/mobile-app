@@ -77,6 +77,21 @@ export async function withdrawUser(pin: string) {
   }
 }
 
+export async function checkWithdrawPendingTransactions(): Promise<{
+  hasPending: boolean;
+  reason?: string;
+}> {
+  const response = await fetchWithTimeout(
+    `${MYPAGE_PAYMENT_API_BASE_URL}/internal/v1/payments/users/${getMypageUserId()}/pending`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_WITHDRAW_PENDING_REQUEST_FAILED:${response.status}`);
+  }
+
+  return response.json();
+}
+
 export async function fetchManagedCards(): Promise<ManagedCard[]> {
   const response = await fetchWithTimeout(
     `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards?${new URLSearchParams({

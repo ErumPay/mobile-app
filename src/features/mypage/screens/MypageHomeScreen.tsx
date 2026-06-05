@@ -10,6 +10,7 @@ import { Header } from '../../../shared/components/Header';
 import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import {
+  checkWithdrawPendingTransactions,
   fetchUserProfile,
   logoutUser,
   withdrawUser,
@@ -23,6 +24,10 @@ export function MypageHomeScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile>(mockUserProfile);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
+  const [isWithdrawPendingVisible, setIsWithdrawPendingVisible] =
+    useState(false);
+  const [isWithdrawCompleteVisible, setIsWithdrawCompleteVisible] =
+    useState(false);
   const [isWithdrawPinVisible, setIsWithdrawPinVisible] = useState(false);
   const [withdrawPin, setWithdrawPin] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -76,7 +81,35 @@ export function MypageHomeScreen({ navigation }: Props) {
       });
     } catch (error) {
       console.warn('Failed to logout.', error);
+      setIsLogoutVisible(false);
       setActionMessage('로그아웃에 실패했습니다.');
+    } finally {
+      setIsSubmittingAccountAction(false);
+    }
+  };
+
+  const handleRequestWithdraw = async () => {
+    if (isSubmittingAccountAction) return;
+
+    setIsSubmittingAccountAction(true);
+
+    try {
+      const pending = await checkWithdrawPendingTransactions();
+
+      if (pending.hasPending) {
+        setIsWithdrawVisible(false);
+        setIsWithdrawPendingVisible(true);
+        return;
+      }
+
+      setIsWithdrawVisible(false);
+      // TODO: PIN 번호 화면 작업 완료 후 이 위치에서 PIN 화면으로 이동시키기.
+      // navigation.navigate('PaymentPin', { ... });
+      // PIN 확인 성공 후 handleWithdraw()를 호출하면 회원 탈퇴 완료 후 튜토리얼로 이동한다.
+    } catch (error) {
+      console.warn('Failed to check withdraw pending transactions.', error);
+      setIsWithdrawVisible(false);
+      setActionMessage('회원탈퇴 가능 여부를 확인하지 못했습니다.');
     } finally {
       setIsSubmittingAccountAction(false);
     }
@@ -91,12 +124,11 @@ export function MypageHomeScreen({ navigation }: Props) {
       await withdrawUser(withdrawPin);
       setIsWithdrawPinVisible(false);
       setWithdrawPin('');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Tutorial' }],
-      });
+      setIsWithdrawCompleteVisible(true);
     } catch (error) {
       console.warn('Failed to withdraw.', error);
+      setIsWithdrawVisible(false);
+      setIsWithdrawPinVisible(false);
       setActionMessage('회원탈퇴에 실패했습니다.');
     } finally {
       setIsSubmittingAccountAction(false);
@@ -204,6 +236,7 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isLogoutVisible}
         type="two"
+        icon={<Text className="text-[52px]">👋</Text>}
         title="로그아웃 하시겠습니까?"
         confirmLabel={
           isSubmittingAccountAction ? '처리 중...' : '로그아웃하기'
@@ -217,16 +250,45 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isWithdrawVisible}
         type="two"
+        icon={<Text className="text-[52px]">⚠️</Text>}
         title="정말 회원 탈퇴를 하시겠습니까?"
-        description={'탈퇴 시 모든 데이터가 삭제되며\n복구할 수 없습니다.'}
-        confirmLabel="PIN 입력하기"
+        description={'탈퇴 후 모든 데이터가 삭제되며\n복구할 수 없습니다'}
+        confirmLabel={
+          isSubmittingAccountAction ? '확인 중...' : '회원탈퇴하기'
+        }
         cancelLabel="닫기"
-        onConfirm={() => {
-          setIsWithdrawVisible(false);
-          setIsWithdrawPinVisible(true);
-        }}
+        onConfirm={handleRequestWithdraw}
         onCancel={() => setIsWithdrawVisible(false)}
         onClose={() => setIsWithdrawVisible(false)}
+      />
+
+      <Modal
+        visible={isWithdrawPendingVisible}
+        type="one"
+        icon={<Text className="text-[52px]">💰</Text>}
+        title="진행 중인 결제가 있어요!"
+        description={
+          '아직 정산이 완료되지 않은\n더치페이 또는 원격결제가 있습니다.\n결제를 완료 한 후 다시 시도해 주세요.'
+        }
+        confirmLabel="확인"
+        onConfirm={() => setIsWithdrawPendingVisible(false)}
+        onClose={() => setIsWithdrawPendingVisible(false)}
+      />
+
+      <Modal
+        visible={isWithdrawCompleteVisible}
+        type="one"
+        icon={<Text className="text-[52px]">✅</Text>}
+        title="회원 탈퇴가 완료되었습니다."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setIsWithdrawCompleteVisible(false);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Tutorial' }],
+          });
+        }}
+        onClose={() => setIsWithdrawCompleteVisible(false)}
       />
 
       <WithdrawPinModal
