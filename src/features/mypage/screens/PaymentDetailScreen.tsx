@@ -223,7 +223,7 @@ function PaymentCardInfoRows({ payment }: { payment: PaymentDetail }) {
       {cards.map((card, index) => (
         <View
           key={`${card.id || card.maskedNumber}-${index}`}
-          className="rounded bg-neutral-grey2 px-3 py-2"
+          className="rounded bg-neutral-white px-3 py-2"
         >
           <InfoRow label="카드명" value={card.name} />
           <InfoRow label="카드번호" value={card.maskedNumber} />

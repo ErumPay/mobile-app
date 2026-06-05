@@ -16,12 +16,13 @@ import { SkeletonCard } from '../../../shared/components/Skeleton';
 import {
   deleteManagedCard,
   fetchCardBenefits,
+  fetchPaymentHistoriesByCard,
   setManagedDefaultCard,
   updateManagedCardAlias,
 } from '../api/mypageApi';
-import { mockCardBenefits, mockPaymentHistories } from '../mocks/mypageMockData';
+import { mockCardBenefits } from '../mocks/mypageMockData';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
-import type { CardBenefit } from '../types/mypage';
+import type { CardBenefit, PaymentHistoryItem } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
 type PaymentDetailTab = 'all' | 'completed' | 'canceled';
@@ -34,7 +35,13 @@ const statusLabel = {
 
 export function CardDetailScreen({ navigation, route }: Props) {
   const [dialog, setDialog] = useState<
-    'default' | 'alias' | 'delete' | 'deleteComplete' | null
+    | 'default'
+    | 'defaultComplete'
+    | 'alias'
+    | 'aliasComplete'
+    | 'delete'
+    | 'deleteComplete'
+    | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activePaymentTab, setActivePaymentTab] =
@@ -45,6 +52,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
   const [aliasValue, setAliasValue] = useState('');
   const [cardBenefits, setCardBenefits] =
     useState<CardBenefit[]>(mockCardBenefits);
+  const [cardPayments, setCardPayments] = useState<PaymentHistoryItem[]>([]);
 
   const cards = useManagedCardsStore((state) => state.cards);
   const setDefaultCard = useManagedCardsStore((state) => state.setDefaultCard);
@@ -88,6 +96,31 @@ export function CardDetailScreen({ navigation, route }: Props) {
     };
   }, [card?.id]);
 
+  useEffect(() => {
+    if (!card) {
+      return;
+    }
+
+    let isActive = true;
+
+    fetchPaymentHistoriesByCard(card.id)
+      .then((nextPayments) => {
+        if (isActive) {
+          setCardPayments(nextPayments);
+        }
+      })
+      .catch((error) => {
+        console.warn('Failed to fetch card payment histories.', error);
+        if (isActive) {
+          setCardPayments([]);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [card?.id]);
+
   if (!card) {
     return (
       <PageWrap
@@ -105,9 +138,6 @@ export function CardDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const cardPayments = mockPaymentHistories.filter(
-    (payment) => payment.cardId === card.id,
-  );
   const filteredCardPayments = cardPayments.filter((payment) => {
     if (activePaymentTab === 'all') return true;
     if (activePaymentTab === 'completed') return payment.status === 'completed';
@@ -261,9 +291,9 @@ export function CardDetailScreen({ navigation, route }: Props) {
           try {
             await setManagedDefaultCard(card.id);
             setDefaultCard(card.id);
+            setDialog('defaultComplete');
           } catch (error) {
             console.warn('Failed to set default card.', error);
-          } finally {
             setDialog(null);
           }
         }}
@@ -280,9 +310,9 @@ export function CardDetailScreen({ navigation, route }: Props) {
           try {
             await updateManagedCardAlias(card.id, aliasValue);
             updateCardAlias(card.id, aliasValue);
+            setDialog('aliasComplete');
           } catch (error) {
             console.warn('Failed to update card alias.', error);
-          } finally {
             setDialog(null);
           }
         }}
@@ -297,7 +327,6 @@ export function CardDetailScreen({ navigation, route }: Props) {
         onConfirm={async () => {
           try {
             await deleteManagedCard(card.id);
-            deleteCard(card.id);
             setDialog('deleteComplete');
           } catch (error) {
             console.warn('Failed to delete card.', error);
@@ -309,15 +338,47 @@ export function CardDetailScreen({ navigation, route }: Props) {
       />
 
       <Modal
-        visible={dialog === 'deleteComplete'}
+        visible={dialog === 'defaultComplete'}
         type="one"
-        title="카드 삭제가 완료되었습니다."
+        title="대표카드 설정이 완료되었습니다."
         confirmLabel="확인"
         onConfirm={() => {
           setDialog(null);
           navigation.navigate('CardManagementScreen');
         }}
         onClose={() => {
+          setDialog(null);
+          navigation.navigate('CardManagementScreen');
+        }}
+      />
+
+      <Modal
+        visible={dialog === 'aliasComplete'}
+        type="one"
+        title="카드 별칭 수정이 완료되었습니다."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setDialog(null);
+          navigation.navigate('CardManagementScreen');
+        }}
+        onClose={() => {
+          setDialog(null);
+          navigation.navigate('CardManagementScreen');
+        }}
+      />
+
+      <Modal
+        visible={dialog === 'deleteComplete'}
+        type="one"
+        title="카드 삭제가 완료되었습니다."
+        confirmLabel="확인"
+        onConfirm={() => {
+          deleteCard(card.id);
+          setDialog(null);
+          navigation.navigate('CardManagementScreen');
+        }}
+        onClose={() => {
+          deleteCard(card.id);
           setDialog(null);
           navigation.navigate('CardManagementScreen');
         }}

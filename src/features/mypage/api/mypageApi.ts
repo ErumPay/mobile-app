@@ -221,6 +221,36 @@ export async function fetchPaymentDetail(
   return normalizePaymentDetail(await response.json());
 }
 
+export async function fetchPaymentHistoriesByCard(
+  cardId: string,
+): Promise<PaymentHistoryItem[]> {
+  const payments = await fetchPaymentHistories();
+  const paymentDetails = await Promise.all(
+    payments.map((payment) =>
+      fetchPaymentDetail(payment.id).catch((error) => {
+        console.warn('Failed to fetch payment detail for card matching.', error);
+        return null;
+      }),
+    ),
+  );
+
+  return paymentDetails
+    .filter((payment): payment is PaymentDetail => Boolean(payment))
+    .filter((payment) =>
+      (payment.cards ?? []).some((card) => card.id === cardId),
+    )
+    .map((payment) => ({
+      id: payment.id,
+      cardId,
+      method: payment.method,
+      benefitType: payment.benefitType,
+      status: payment.status,
+      title: payment.title,
+      date: payment.date,
+      amount: payment.amount,
+    }));
+}
+
 async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), MYPAGE_API_TIMEOUT_MS);
@@ -306,15 +336,16 @@ function normalizeManagedCard(
 }
 
 function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
+  const benefitDesc = toStringValue(response.benefitDesc);
   const title =
+    getFirstBenefitSentence(benefitDesc) ||
     toStringValue(response.serviceCategory) ||
     toStringValue(response.benefitType) ||
     '카드 혜택';
   const brandNames = Array.isArray(response.brandNames)
     ? response.brandNames.map(String).join(', ')
     : '';
-  const benefitDesc = toStringValue(response.benefitDesc);
-  const description = [benefitDesc, brandNames ? `대상: ${brandNames}` : '']
+  const description = [benefitDesc, brandNames ? `대상 ${brandNames}` : '']
     .filter(Boolean)
     .join('\n');
 
@@ -322,6 +353,19 @@ function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
     title,
     description: description || '혜택 정보가 없습니다.',
   };
+}
+
+function getFirstBenefitSentence(description: string) {
+  const normalized = description.trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const [firstLine] = normalized.split(/\r?\n/);
+  const sentenceMatch = firstLine.match(/^.*?[.!?](?=\s|$)/);
+
+  return (sentenceMatch?.[0] ?? firstLine).trim();
 }
 
 function normalizePaymentHistoryItem(
