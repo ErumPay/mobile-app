@@ -1,6 +1,11 @@
 import type {
   CardBenefit,
   ManagedCard,
+  PaymentBenefitType,
+  PaymentDetail,
+  PaymentHistoryItem,
+  PaymentMethodType,
+  PaymentStatus,
   UserProfile,
 } from '../types/mypage';
 import {
@@ -8,6 +13,7 @@ import {
   MYPAGE_API_TIMEOUT_MS,
   MYPAGE_AUTH_API_BASE_URL,
   MYPAGE_CARD_API_BASE_URL,
+  MYPAGE_PAYMENT_API_BASE_URL,
 } from './mypageApiConfig';
 
 const CARD_COLORS = [
@@ -113,6 +119,67 @@ export async function fetchCardBenefits(cardId: string): Promise<CardBenefit[]> 
   return items.map(normalizeCardBenefit);
 }
 
+type FetchPaymentHistoriesParams = {
+  status?: 'ALL' | 'PAID' | 'CANCELED';
+  period?: 'WEEK' | 'MONTH' | 'YEAR';
+  start?: string;
+  end?: string;
+  paymentType?: 'SINGLE' | 'DUTCH' | 'REMOTE';
+  strategyType?: 'BENEFIT_SINGLE' | 'BENEFIT_SPLIT' | 'PERF_SINGLE' | 'PERF_SPLIT';
+};
+
+export async function fetchPaymentHistories(
+  params: FetchPaymentHistoriesParams = {},
+): Promise<PaymentHistoryItem[]> {
+  const searchParams = new URLSearchParams({
+    page: '0',
+    status: params.status ?? 'ALL',
+  });
+
+  if (params.period) searchParams.append('period', params.period);
+  if (params.start) searchParams.append('start', params.start);
+  if (params.end) searchParams.append('end', params.end);
+  if (params.paymentType) searchParams.append('paymentType', params.paymentType);
+  if (params.strategyType) searchParams.append('strategyType', params.strategyType);
+
+  const response = await fetchWithTimeout(
+    `${MYPAGE_PAYMENT_API_BASE_URL}/api/v1/payment?${searchParams}`,
+    {
+      headers: {
+        'X-User-Id': String(getMypageUserId()),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_PAYMENTS_REQUEST_FAILED:${response.status}`);
+  }
+
+  const data = await response.json();
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  return items.map(normalizePaymentHistoryItem);
+}
+
+export async function fetchPaymentDetail(
+  paymentId: string,
+): Promise<PaymentDetail> {
+  const response = await fetchWithTimeout(
+    `${MYPAGE_PAYMENT_API_BASE_URL}/api/v1/payment/${paymentId}`,
+    {
+      headers: {
+        'X-User-Id': String(getMypageUserId()),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_PAYMENT_DETAIL_REQUEST_FAILED:${response.status}`);
+  }
+
+  return normalizePaymentDetail(await response.json());
+}
+
 async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), MYPAGE_API_TIMEOUT_MS);
@@ -190,8 +257,107 @@ function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
   };
 }
 
+function normalizePaymentHistoryItem(
+  response: Record<string, unknown>,
+): PaymentHistoryItem {
+  const paymentId = toStringValue(response.paymentId ?? response.payment_id);
+  const method = normalizePaymentMethod(response.paymentType);
+  const benefitType = normalizePaymentBenefit(response.strategyType);
+  const status = normalizePaymentStatus(response.status);
+  const paidAt = toStringValue(response.paidAt ?? response.paid_at);
+
+  return {
+    id: paymentId,
+    cardId: '',
+    method,
+    benefitType,
+    status,
+    title: toStringValue(response.orderName ?? response.order_name) || '결제',
+    date: formatDateTimeToDate(paidAt),
+    amount: formatCurrency(toNumberValue(response.amount)),
+  };
+}
+
+function normalizePaymentDetail(response: Record<string, unknown>): PaymentDetail {
+  const history = normalizePaymentHistoryItem(response);
+  const cards = Array.isArray(response.cards)
+    ? (response.cards as Record<string, unknown>[])
+    : [];
+  const paidAt = toStringValue(response.paidAt ?? response.paid_at);
+  const canceledAt = toStringValue(response.canceledAt ?? response.canceled_at);
+  const discountAmount = cards.reduce(
+    (sum, card) => sum + toNumberValue(card.discountAmount ?? card.discount_amount),
+    0,
+  );
+  const productAmount = toNumberValue(response.amount);
+  const finalAmount = Math.max(productAmount - discountAmount, 0);
+
+  return {
+    ...history,
+    cardId: toStringValue(cards[0]?.cardId ?? cards[0]?.card_id),
+    cardIds: cards.map((card) => toStringValue(card.cardId ?? card.card_id)),
+    paidAt: formatDateTime(paidAt),
+    receiptId: toStringValue(response.orderNo ?? response.order_no) || history.id,
+    sellerName: history.title,
+    businessNumber: '-',
+    address: '-',
+    ownerName: '-',
+    phone: '-',
+    productAmount: formatCurrency(productAmount),
+    discountAmount: discountAmount > 0 ? `-${formatCurrency(discountAmount)}` : '0원',
+    tax: '0원',
+    finalAmount: formatCurrency(finalAmount),
+    status: canceledAt ? 'canceled' : history.status,
+  };
+}
+
+function normalizePaymentMethod(value: unknown): PaymentMethodType {
+  const type = toStringValue(value).toUpperCase();
+
+  if (type === 'REMOTE') return 'remote';
+  if (type === 'DUTCH') return 'dutchpay';
+  return 'solo';
+}
+
+function normalizePaymentBenefit(value: unknown): PaymentBenefitType {
+  const type = toStringValue(value).toUpperCase();
+
+  if (type === 'BENEFIT_SPLIT') return 'splitBenefit';
+  if (type === 'PERF_SINGLE') return 'singlePerformance';
+  if (type === 'PERF_SPLIT') return 'splitPerformance';
+  return 'singleBenefit';
+}
+
+function normalizePaymentStatus(value: unknown): PaymentStatus {
+  const status = toStringValue(value).toUpperCase();
+
+  if (status === 'CANCELED' || status === 'VOIDED') return 'canceled';
+  if (status === 'CANCEL_REQUESTED') return 'cancelRequested';
+  return 'completed';
+}
+
 function toStringValue(value: unknown) {
   return value == null ? '' : String(value);
+}
+
+function toNumberValue(value: unknown) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function formatCurrency(value: number) {
+  return `${Math.trunc(value).toLocaleString('ko-KR')}원`;
+}
+
+function formatDateTimeToDate(value: string) {
+  if (!value) return '-';
+  return value.slice(0, 10).replace(/-/g, '.');
+}
+
+function formatDateTime(value: string) {
+  if (!value) return '-';
+
+  return value.replace('T', ' ').slice(0, 19);
 }
 
 function formatPhoneNumber(phoneNumber: string) {
