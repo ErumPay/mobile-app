@@ -52,8 +52,7 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 export default function PaymentPinScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'PAYMENT_INPUT';
   const screenText = screenTextByMode[mode];
-  const paymentParams =
-    route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+  const paymentParams = route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
 
   const paymentResultFlow: PaymentResultFlow =
     paymentParams?.flow === 'DUTCH_PAY'
@@ -70,9 +69,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
 
-  const completeRemoteRequest = useRemotePaymentProgressStore(
-    (state) => state.completeRequest,
-  );
+  const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
 
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
@@ -81,9 +78,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return undefined;
     }
 
-    return (
-      paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId)
-    );
+    return paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
   }, [paymentParams]);
 
   const handlePressClose = () => {
@@ -162,8 +157,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
-          dutchSessionId:
-            paymentResponse.dutchSessionId ?? paymentParams.dutchSessionId,
+          dutchSessionId: paymentResponse.dutchSessionId ?? paymentParams.dutchSessionId,
           selectedUserIds: paymentParams.selectedUserIds,
           splitMethod: paymentParams.splitMethod,
           orderName: paymentParams.orderName,
@@ -193,8 +187,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    const firstPin =
-      route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+    const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
 
     if (!firstPin) {
       navigation.replace('PaymentPin', { mode: 'REGISTER' });
@@ -228,5 +221,5 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     const nextPin = `${pin}${value}`;
 
     setPin(nextPin);
-  }
+  };
 }
