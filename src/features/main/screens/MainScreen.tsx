@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
 
@@ -7,6 +8,7 @@ import type { RootStackParamList } from "../../../../App";
 import {
   PaymentProgressCard,
   PaymentProgressCardSkeleton,
+  type PaymentProgressVariant,
 } from "../components/PaymentProgressCard";
 import {
   MainBannerCarousel,
@@ -18,6 +20,10 @@ import { FloatingButton } from "../../../shared/components/FloatingButton";
 import { RejectConfirmModal } from "../../../shared/components/Modal";
 import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
+import {
+  getActiveDutchPaySessions,
+  type DutchPaySessionDetailResponse,
+} from "../../payment/api/dutchPayApi";
 import {
   getActiveRemotePaymentRequests,
   rejectRemotePaymentRequest,
@@ -34,6 +40,12 @@ import type {
 } from "../../mypage/types/mypage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
+
+type ActiveDutchPayProgress = {
+  role: "OWNER" | "PARTICIPANT";
+  session: DutchPaySessionDetailResponse;
+  variant: PaymentProgressVariant;
+};
 
 type QuickMenu = {
   label: string;
@@ -75,10 +87,19 @@ export default function MainScreen({ navigation }: Props) {
   const setRecipientProgress = useRemotePaymentProgressStore(
     (state) => state.setRecipientProgress,
   );
-  const paymentProgressVariant = remoteProgressVariant ?? undefined;
-  const hasVisiblePaymentProgress = !!remoteProgress && !!paymentProgressVariant;
+  const clearRemoteProgress = useRemotePaymentProgressStore(
+    (state) => state.clearProgress,
+  );
+  const [dutchProgress, setDutchProgress] =
+    useState<ActiveDutchPayProgress | null>(null);
+  const paymentProgressVariant =
+    dutchProgress?.variant ?? remoteProgressVariant ?? undefined;
+  const hasVisiblePaymentProgress =
+    !!dutchProgress || (!!remoteProgress && !!paymentProgressVariant);
   const hasRemoteNotification =
-    remoteProgress?.role === "RECIPIENT" && remoteProgress.status === "REQUESTED";
+    !dutchProgress &&
+    remoteProgress?.role === "RECIPIENT" &&
+    remoteProgress.status === "REQUESTED";
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
 
   useEffect(() => {
@@ -153,49 +174,71 @@ export default function MainScreen({ navigation }: Props) {
     };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    const loadActiveRemoteRequests = async () => {
-      setIsPaymentProgressLoading(true);
+      const loadActivePaymentProgress = async () => {
+        setIsPaymentProgressLoading(true);
 
-      try {
-        const requests = await getActiveRemotePaymentRequests();
-        const currentUserId = getPaymentUserId();
-        const incomingRequest = requests.find(
-          (request) => request.recipientUserId === currentUserId,
-        );
-        const outgoingRequest = requests.find(
-          (request) => request.requesterUserId === currentUserId,
-        );
+        try {
+          const currentUserId = Number(getPaymentUserId()) || 1;
+          const [dutchSessions, requests] = await Promise.allSettled([
+            getActiveDutchPaySessions(currentUserId),
+            getActiveRemotePaymentRequests(),
+          ]);
 
-        if (!isMounted) {
-          return;
+          if (!isActive) {
+            return;
+          }
+
+          if (dutchSessions.status === "fulfilled") {
+            setDutchProgress(
+              getActiveDutchPayProgress(dutchSessions.value, currentUserId),
+            );
+          } else {
+            setDutchProgress(null);
+          }
+
+          if (requests.status !== "fulfilled") {
+            clearRemoteProgress();
+            return;
+          }
+
+          const incomingRequest = requests.value.find(
+            (request) => Number(request.recipientUserId) === currentUserId,
+          );
+          const outgoingRequest = requests.value.find(
+            (request) => Number(request.requesterUserId) === currentUserId,
+          );
+
+          if (incomingRequest) {
+            setRecipientProgress(incomingRequest);
+            return;
+          }
+
+          if (outgoingRequest) {
+            setRequesterProgress(outgoingRequest);
+            return;
+          }
+
+          clearRemoteProgress();
+        } catch {
+          // 메인 진입은 진행 결제 상태 조회 실패로 막지 않는다.
+        } finally {
+          if (isActive) {
+            setIsPaymentProgressLoading(false);
+          }
         }
+      };
 
-        if (incomingRequest) {
-          setRecipientProgress(incomingRequest);
-          return;
-        }
+      void loadActivePaymentProgress();
 
-        if (outgoingRequest) {
-          setRequesterProgress(outgoingRequest);
-        }
-      } catch {
-        // 메인 진입은 원격결제 상태 조회 실패로 막지 않는다.
-      } finally {
-        if (isMounted) {
-          setIsPaymentProgressLoading(false);
-        }
-      }
-    };
-
-    void loadActiveRemoteRequests();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [setRecipientProgress, setRequesterProgress]);
+      return () => {
+        isActive = false;
+      };
+    }, [clearRemoteProgress, setRecipientProgress, setRequesterProgress]),
+  );
 
   const quickMenus: QuickMenu[] = [
     {
@@ -221,6 +264,10 @@ export default function MainScreen({ navigation }: Props) {
   ];
 
   const handleRejectPaymentProgress = () => {
+    if (dutchProgress) {
+      return;
+    }
+
     if (paymentProgressVariant !== "REMOTE_INCOMING_REQUEST_RECEIVED") {
       return;
     }
@@ -242,8 +289,13 @@ export default function MainScreen({ navigation }: Props) {
   };
 
   const handlePressPaymentProgressPrimary = () => {
-    if (paymentProgressVariant?.startsWith("DUTCHPAY_")) {
-      navigation.navigate("DutchPayGroup");
+    if (dutchProgress) {
+      navigation.navigate("DutchPayGroup", {
+        role: dutchProgress.role,
+        scenario: getDutchPayRouteScenario(dutchProgress.variant),
+        sessionId: dutchProgress.session.session_id,
+        userId: getPaymentUserId(),
+      });
       return;
     }
 
@@ -341,7 +393,9 @@ export default function MainScreen({ navigation }: Props) {
                   <PaymentProgressCardSkeleton />
                 ) : (
                   <PaymentProgressCard
-                    participantName={remoteProgress?.participantName}
+                    participantName={
+                      dutchProgress ? undefined : remoteProgress?.participantName
+                    }
                     variant={paymentProgressVariant}
                     onPressAccept={handlePressPaymentProgressAccept}
                     onPressPrimary={handlePressPaymentProgressPrimary}
@@ -474,6 +528,130 @@ function formatGreeting(profile: UserProfile | null) {
   const maskedId = profile.maskedId ? `(${profile.maskedId})` : "";
 
   return `${profile.name}${maskedId}님! 오늘도 좋은 하루 되세요 ✨`;
+}
+
+function getActiveDutchPayProgress(
+  sessions: DutchPaySessionDetailResponse[],
+  currentUserId: number,
+): ActiveDutchPayProgress | null {
+  for (const session of sessions) {
+    const isMySession = session.participants.some(
+      (participant) => participant.user_id === currentUserId,
+    );
+
+    if (!isMySession) {
+      continue;
+    }
+
+    const role = session.host_user_id === currentUserId ? "OWNER" : "PARTICIPANT";
+    const variant = toDutchPayProgressVariant(session, currentUserId, role);
+
+    if (variant) {
+      return {
+        role,
+        session,
+        variant,
+      };
+    }
+  }
+
+  return null;
+}
+
+function toDutchPayProgressVariant(
+  session: DutchPaySessionDetailResponse,
+  currentUserId: number,
+  role: "OWNER" | "PARTICIPANT",
+): PaymentProgressVariant | null {
+  if (
+    session.status === "COMPLETED" ||
+    session.status === "FAILED" ||
+    session.session_progress_step === "COMPLETED"
+  ) {
+    return null;
+  }
+
+  const hasParticipantBeyondOwner = session.participants.some(
+    (participant) => participant.user_id !== session.host_user_id,
+  );
+
+  if (
+    role === "OWNER" &&
+    session.status === "CREATED" &&
+    !hasParticipantBeyondOwner
+  ) {
+    return null;
+  }
+
+  if (role === "OWNER") {
+    switch (session.session_progress_step) {
+      case "GROUP_CREATED":
+      case "PARTICIPANT_CONFIRM":
+        return "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY";
+      case "AMOUNT_INPUT":
+        return "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
+      case "PAYMENT_REQUEST":
+        return "DUTCHPAY_OWNER_WAITING_MEMBERS";
+      case "PAYMENT_IN_PROGRESS":
+        return "DUTCHPAY_OWNER_WAITING_MEMBERS";
+      case "FINAL_PAYMENT_REQUIRED":
+      case "TIMEOUT_HANDLED":
+        return "DUTCHPAY_OWNER_FINAL_PAYMENT_READY";
+      default:
+        return "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY";
+    }
+  }
+
+  const myParticipant = session.participants.find(
+    (participant) => participant.user_id === currentUserId,
+  );
+
+  if (!myParticipant || myParticipant.status === "REJECTED") {
+    return null;
+  }
+
+  if (myParticipant.status === "INVITED") {
+    return "DUTCHPAY_MEMBER_REQUEST_RECEIVED";
+  }
+
+  if (myParticipant.status === "PAID" || myParticipant.status === "HOST_PAID") {
+    return "DUTCHPAY_MEMBER_WAITING_OTHERS";
+  }
+
+  if (myParticipant.payment_id != null) {
+    return "DUTCHPAY_MEMBER_WAITING_OTHERS";
+  }
+
+  if (session.session_progress_step === "AMOUNT_INPUT" && myParticipant.amount == null) {
+    return "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY";
+  }
+
+  if (myParticipant.amount != null) {
+    return "DUTCHPAY_MEMBER_PAYMENT_READY";
+  }
+
+  return "DUTCHPAY_MEMBER_REQUEST_RECEIVED";
+}
+
+function getDutchPayRouteScenario(variant: PaymentProgressVariant) {
+  switch (variant) {
+    case "DUTCHPAY_OWNER_WAITING_MEMBERS":
+      return "OWNER_PAYMENT_PROGRESS" as const;
+    case "DUTCHPAY_OWNER_FINAL_PAYMENT_READY":
+      return "OWNER_FINAL_PAYMENT_READY" as const;
+    case "DUTCHPAY_OWNER_COMPLETED":
+      return "OWNER_FINAL_PAYMENT_READY" as const;
+    case "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY":
+      return "PARTICIPANT_AMOUNT_INPUT" as const;
+    case "DUTCHPAY_MEMBER_PAYMENT_READY":
+      return "PARTICIPANT_PAYMENT_REQUEST" as const;
+    case "DUTCHPAY_MEMBER_WAITING_OTHERS":
+      return "PARTICIPANT_PAYMENT_PROGRESS" as const;
+    case "DUTCHPAY_MEMBER_COMPLETED":
+      return "PARTICIPANT_FINAL_PAYMENT_PROGRESS" as const;
+    default:
+      return undefined;
+  }
 }
 
 function createMonthlyPayment(payments: PaymentHistoryItem[]) {

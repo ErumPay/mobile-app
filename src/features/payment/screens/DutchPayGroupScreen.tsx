@@ -235,6 +235,25 @@ function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
   return 'EMPTY' as const;
 }
 
+function toOwnerPaymentProgressMember(member: DutchPayMember): DutchPayMember {
+  if (member.isOwner) {
+    return member;
+  }
+
+  if (
+    member.status === 'PAYMENT_COMPLETED' ||
+    member.status === 'PAYMENT_FAILED' ||
+    member.status === 'PAYMENT_PENDING'
+  ) {
+    return member;
+  }
+
+  return {
+    ...member,
+    status: 'PAYMENT_PENDING',
+  };
+}
+
 function toDutchPayMember(
   participant: DutchPayParticipantResponse,
   currentUserId: number,
@@ -292,7 +311,7 @@ function getServerFooter(scenario: DutchPayScenario) {
   if (scenario === 'OWNER_PAYMENT_PROGRESS') {
     return {
       type: 'button' as const,
-      label: '결제 전체 상태 보기',
+      label: '최종 결제하기',
       disabled: true,
     };
   }
@@ -305,13 +324,24 @@ function getServerFooter(scenario: DutchPayScenario) {
     };
   }
 
-  if (
-    scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
-    scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
-  ) {
+  if (scenario === 'OWNER_AMOUNT_INPUT_WAITING') {
     return {
       type: 'button' as const,
       label: '금액 확정하기',
+    };
+  }
+
+  if (scenario === 'OWNER_AMOUNT_INPUT_COMPLETE') {
+    return {
+      type: 'button' as const,
+      label: '참여자에게 결제 요청하기',
+    };
+  }
+
+  if (scenario === 'OWNER_PAYMENT_REQUEST') {
+    return {
+      type: 'button' as const,
+      label: '결제 전체 상태 보기',
     };
   }
 
@@ -353,13 +383,36 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     useState<DutchPaySessionDetailResponse | null>(null);
   const [serverErrorMessage, setServerErrorMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLeavingForPayment, setIsLeavingForPayment] = useState(false);
+  const [forcedScenario, setForcedScenario] = useState<DutchPayScenario | null>(
+    isServerMode ? scenario ?? null : null,
+  );
   const invitedSessionIdsRef = useRef<Set<number>>(new Set());
+  const isPollingSessionRef = useRef(false);
   const data = useMemo(
-    () =>
-      serverSession
+    () => {
+      const nextData = serverSession
         ? toDutchPayGroupData(serverSession, role, currentUserId)
-        : getMockDutchPayGroupData({ role, scenario }),
-    [currentUserId, role, scenario, serverSession],
+        : getMockDutchPayGroupData({ role, scenario });
+
+      if (
+        !forcedScenario ||
+        nextData.scenario !== 'OWNER_AMOUNT_INPUT_COMPLETE'
+      ) {
+        return nextData;
+      }
+
+      return {
+        ...nextData,
+        scenario: forcedScenario,
+        footer: getServerFooter(forcedScenario),
+        members:
+          forcedScenario === 'OWNER_PAYMENT_PROGRESS'
+            ? nextData.members.map(toOwnerPaymentProgressMember)
+            : nextData.members,
+      };
+    },
+    [currentUserId, forcedScenario, role, scenario, serverSession],
   );
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
@@ -378,13 +431,27 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       member.status === 'AMOUNT_CONFIRMED' ? total + (member.amount ?? 0) : total,
     0,
   );
-  const ownerAmount = Math.max(data.totalAmount - confirmedParticipantAmount, 0);
-  const allParticipantsConfirmed =
-    participantMembers.length > 0 &&
-    participantMembers.every((member) => member.status === 'AMOUNT_CONFIRMED');
+  const assignedParticipantAmount = participantMembers.reduce(
+    (total, member) => total + (member.amount ?? 0),
+    0,
+  );
+  const isParticipantAmountOverLimit =
+    Math.max(confirmedParticipantAmount, assignedParticipantAmount) >
+    data.totalAmount;
   const isOwnerAmountCheckScenario =
     data.scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
     data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE';
+  const ownerAmount = Math.max(
+    data.totalAmount -
+      (isOwnerAmountCheckScenario ? confirmedParticipantAmount : assignedParticipantAmount),
+    0,
+  );
+  const allParticipantsConfirmed =
+    participantMembers.length > 0 &&
+    participantMembers.every((member) => member.status === 'AMOUNT_CONFIRMED');
+  const isOwnerFinalPaymentScenario =
+    data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
+    data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE';
   const myMember = members.find((member) => member.isMe);
   const myEditableAmount = parseAmount(myMember?.editableAmount);
   const isMyAmountConfirmed =
@@ -399,6 +466,15 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           ...member,
           amount: ownerAmount,
           status: 'AMOUNT_CONFIRMED',
+          showAmountCheck: false,
+        };
+      }
+
+      if (member.isOwner && isOwnerFinalPaymentScenario) {
+        return {
+          ...member,
+          amount: ownerAmount,
+          showAmountCheck: true,
         };
       }
 
@@ -409,6 +485,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     data.footer.type === 'button' &&
     (isSyncing ||
       (data.footer.disabled && !isOwnerAmountCheckScenario) ||
+      (isOwnerFinalPaymentScenario && isParticipantAmountOverLimit) ||
+      (isOwnerAmountCheckScenario && isParticipantAmountOverLimit) ||
       (isOwnerAmountCheckScenario && !allParticipantsConfirmed) ||
       (isParticipantAmountInputScenario &&
         !isMyAmountConfirmed &&
@@ -515,6 +593,49 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   }, [myPaymentAmount]);
 
   useEffect(() => {
+    if (!forcedScenario || !serverSession) {
+      return;
+    }
+
+    const serverScenario = toDutchPayScenario(serverSession, role);
+
+    if (serverScenario !== 'OWNER_AMOUNT_INPUT_COMPLETE') {
+      setForcedScenario(null);
+    }
+  }, [forcedScenario, role, serverSession]);
+
+  useEffect(() => {
+    if (!isServerMode || sessionId == null || isLeavingForPayment) {
+      return;
+    }
+
+    const shouldPollSession =
+      data.scenario === 'OWNER_PAYMENT_PROGRESS' ||
+      data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE' ||
+      data.scenario === 'PARTICIPANT_PAYMENT_PROGRESS' ||
+      data.scenario === 'PARTICIPANT_FINAL_PAYMENT_PROGRESS';
+
+    if (!shouldPollSession) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      if (isPollingSessionRef.current) {
+        return;
+      }
+
+      isPollingSessionRef.current = true;
+      void refreshServerSession().finally(() => {
+        isPollingSessionRef.current = false;
+      });
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [data.scenario, isLeavingForPayment, isServerMode, refreshServerSession, sessionId]);
+
+  useEffect(() => {
     if (isAutoSplitParticipantInput) {
       if (data.members.length === 0) {
         setMembers([]);
@@ -603,8 +724,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
           if (
             data.scenario === 'OWNER_INITIAL' ||
-            data.scenario === 'OWNER_AUTO_SPLIT_READY' ||
-            data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
+            data.scenario === 'OWNER_AUTO_SPLIT_READY'
           ) {
             const nextSession = await confirmDutchPayParticipants({
               sessionId,
@@ -612,6 +732,26 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               userId: currentUserId,
             });
             setServerSession(nextSession);
+            return;
+          }
+
+          if (data.scenario === 'OWNER_AMOUNT_INPUT_WAITING') {
+            await refreshServerSession();
+            return;
+          }
+
+          if (data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE') {
+            const nextSession = await confirmDutchPayParticipants({
+              sessionId,
+              userId: currentUserId,
+            });
+            setServerSession(nextSession);
+            setForcedScenario('OWNER_PAYMENT_PROGRESS');
+            return;
+          }
+
+          if (data.scenario === 'OWNER_PAYMENT_REQUEST') {
+            await refreshServerSession();
             return;
           }
 
@@ -626,6 +766,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           }
 
           if (data.scenario === 'PARTICIPANT_PAYMENT_REQUEST') {
+            setIsLeavingForPayment(true);
             navigation.navigate('PaymentCardSelect', {
               amount: myPaymentAmount,
               flow: 'DUTCH_PAY',
@@ -640,6 +781,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
             data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE'
           ) {
+            setIsLeavingForPayment(true);
             navigation.navigate('PaymentCardSelect', {
               amount: ownerDisplayAmount,
               flow: 'DUTCH_PAY_FINAL',
@@ -843,6 +985,16 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
                 />
               ))}
             </View>
+
+            {(isOwnerAmountCheckScenario || isOwnerFinalPaymentScenario) &&
+            isParticipantAmountOverLimit ? (
+              <View className="mt-7">
+                <NoticeBox
+                  tone="error"
+                  description="참여자 금액 합계가 총 결제금액을 초과했습니다."
+                />
+              </View>
+            ) : null}
 
             {data.contentNotice ? (
               <View className="mt-7">

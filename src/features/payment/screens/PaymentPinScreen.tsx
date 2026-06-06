@@ -25,7 +25,7 @@ import {
 } from '../utils/biometricPaymentAuth';
 import { resetPin, setupPin } from '../../auth/api/authApi';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
+type Props = Partial<NativeStackScreenProps<RootStackParamList, 'PaymentPin'>>;
 
 type PaymentPinScreenText = {
   title: string;
@@ -61,11 +61,12 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 };
 
 export default function PaymentPinScreen({ navigation, route }: Props) {
-  const mode = route.params?.mode ?? 'PAYMENT_INPUT';
-  const paymentParams = route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+  const routeParams = route?.params;
+  const mode = routeParams?.mode ?? 'PAYMENT_INPUT';
+  const paymentParams = routeParams?.mode === 'PAYMENT_INPUT' ? routeParams : null;
   const setupFlow =
-    route.params?.mode === 'REGISTER' || route.params?.mode === 'CONFIRM'
-      ? route.params.flow ?? 'SIGNUP'
+    routeParams?.mode === 'REGISTER' || routeParams?.mode === 'CONFIRM'
+      ? routeParams.flow ?? 'SIGNUP'
       : 'SIGNUP';
   const isPinResetFlow = setupFlow === 'PIN_RESET';
   const screenText = isPinResetFlow && mode === 'REGISTER'
@@ -103,6 +104,23 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
   const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
 
+  const navigateToMain = () => {
+    navigation?.navigate('Main');
+  };
+
+  const navigateToMypage = () => {
+    navigation?.navigate('MypageHomeScreen');
+  };
+
+  const goBackOrMain = () => {
+    if (navigation?.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigateToMain();
+  };
+
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
 
@@ -112,6 +130,21 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     return paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
   }, [paymentParams]);
+
+  const retryPaymentResultParams = paymentParams
+    ? {
+        paymentId: paymentParams.paymentId,
+        remoteRequestId: paymentParams.remoteRequestId,
+        amount: paymentParams.amount,
+        retryFlow: paymentParams.flow,
+        idempotencyKey,
+        dutchSessionId: paymentParams.dutchSessionId,
+        selectedUserIds: paymentParams.selectedUserIds,
+        splitMethod: paymentParams.splitMethod,
+        orderName: paymentParams.orderName,
+        merchantId: paymentParams.merchantId,
+      }
+    : {};
 
   useEffect(() => {
     let isMounted = true;
@@ -182,7 +215,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    navigation.goBack();
+    goBackOrMain();
   };
 
   const handleConfirmStopFlow = () => {
@@ -193,20 +226,15 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     setStopModalVisible(false);
 
     if (isPinResetFlow) {
-      navigation.navigate('MypageHomeScreen');
+      navigateToMypage();
       return;
     }
 
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation.navigate('Main');
+    goBackOrMain();
   };
 
   const handlePressForgotPassword = () => {
-    navigation.replace('SmsVerification', { flow: 'PIN_RESET' });
+    navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
   };
 
   const handlePressDelete = () => {
@@ -224,9 +252,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       if (!paymentParams || !idempotencyKey) {
         setPin('');
         setHasError(true);
-        navigation.replace('PaymentResult', {
+        navigation?.replace('PaymentResult', {
           status: 'FAILURE',
           flow: paymentResultFlow,
+          ...retryPaymentResultParams,
         });
         return;
       }
@@ -261,7 +290,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setHasError(false);
         setSetupErrorMessage('');
         setPinLockedUntil(null);
-        navigation.replace('PaymentResult', {
+        navigation?.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
           paymentId: paymentResponse.paymentId ?? paymentParams.paymentId,
@@ -301,9 +330,14 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setPin('');
         setHasError(true);
         setFailCount((prev) => prev + 1);
-        navigation.replace('PaymentResult', {
+        navigation?.replace('PaymentResult', {
           status: 'FAILURE',
           flow: paymentResultFlow,
+          failureMessage:
+            error instanceof Error
+              ? error.message
+              : '결제 요청에 실패했습니다. 다시 시도해주세요.',
+          ...retryPaymentResultParams,
         });
       } finally {
         setIsSubmitting(false);
@@ -322,21 +356,21 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
       setPin('');
       setSetupErrorMessage('');
-      navigation.replace('PaymentPin', {
+      navigation?.replace('PaymentPin', {
         mode: 'CONFIRM',
         firstPin: completedPin,
         flow: setupFlow,
-        verificationId: route.params?.mode === 'REGISTER'
-          ? route.params.verificationId
+        verificationId: routeParams?.mode === 'REGISTER'
+          ? routeParams.verificationId
           : undefined,
       });
       return;
     }
 
-    const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+    const firstPin = routeParams?.mode === 'CONFIRM' ? routeParams.firstPin : null;
 
     if (!firstPin) {
-      navigation.replace('PaymentPin', { mode: 'REGISTER' });
+      navigation?.replace('PaymentPin', { mode: 'REGISTER' });
       return;
     }
 
@@ -351,7 +385,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       setIsSubmitting(true);
       if (isPinResetFlow) {
         const verificationId =
-          route.params?.mode === 'CONFIRM' ? route.params.verificationId : undefined;
+          routeParams?.mode === 'CONFIRM' ? routeParams.verificationId : undefined;
 
         if (verificationId == null) {
           throw new Error('SMS 인증 정보가 없습니다. 다시 인증해주세요.');
@@ -382,7 +416,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         return;
       }
 
-      navigation.replace('SignupComplete');
+      navigation?.replace('SignupComplete');
     } catch (error) {
       setPin('');
       setHasError(true);
@@ -403,7 +437,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    navigation.replace('SignupComplete');
+    navigation?.replace('SignupComplete');
   };
 
   const handleConfirmBiometricSetup = async () => {
@@ -551,13 +585,21 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           {screenText.showForgotLink && !isSubmitting ? (
             <Pressable
               accessibilityRole="button"
-              className="mt-16"
+              className="mt-12 flex-row items-center rounded-lg border border-[#FF6B35] bg-[#FFFBEA] px-4 py-3 shadow-sm"
               onPress={handlePressForgotPassword}
               onLongPress={__DEV__ ? handleMockError : undefined}
             >
-              <Text className="font-pretendard text-normal-bold text-erum-main">
-                간편 비밀번호를 잊으셨나요?
-              </Text>
+              <View className="mr-3 h-7 w-7 items-center justify-center rounded-full bg-[#FF6B35]">
+                <Feather name="alert-circle" size={18} color="#FFFFFF" />
+              </View>
+              <View className="min-w-0">
+                <Text className="font-pretendard text-normal-bold text-neutral-black1">
+                  간편비밀번호를 잊으셨나요?
+                </Text>
+                <Text className="mt-1 font-pretendard text-normal-bold text-neutral-black2">
+                  마이페이지에서 재설정할 수 있어요.
+                </Text>
+              </View>
             </Pressable>
           ) : null}
         </View>
@@ -670,11 +712,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         confirmLabel="확인"
         onConfirm={() => {
           setResetCompleteModalVisible(false);
-          navigation.navigate('MypageHomeScreen');
+          navigateToMypage();
         }}
         onClose={() => {
           setResetCompleteModalVisible(false);
-          navigation.navigate('MypageHomeScreen');
+          navigateToMypage();
         }}
       />
 
@@ -691,11 +733,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         confirmLabel="확인"
         onConfirm={() => {
           setFailModalVisible(false);
-          navigation.replace('SmsVerification', { flow: 'PIN_RESET' });
+          navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
         onClose={() => {
           setFailModalVisible(false);
-          navigation.replace('SmsVerification', { flow: 'PIN_RESET' });
+          navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
       />
     </PageWrap>

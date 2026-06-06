@@ -110,6 +110,10 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
     const [isReceiptLoading, setIsReceiptLoading] = useState(false);
 
     const content = getPaymentResultContent({ status, flow });
+    const description =
+        status === 'FAILURE' && route.params?.failureMessage
+            ? route.params.failureMessage
+            : content.description;
 
     const handlePressClose = () => {
         navigation.navigate('Main');
@@ -117,7 +121,26 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
 
     const handlePressButton = () => {
         if (content.buttonAction === 'CARD_SELECT') {
-            navigation.navigate('PaymentCardSelect');
+            const retryPaymentId = route.params?.paymentId;
+            const retryAmount = route.params?.amount;
+
+            if (retryPaymentId == null || retryAmount == null) {
+                Alert.alert('결제', '결제 정보를 찾을 수 없습니다. QR을 다시 스캔해주세요.');
+                return;
+            }
+
+            navigation.navigate('PaymentCardSelect', {
+                paymentId: retryPaymentId,
+                remoteRequestId: route.params?.remoteRequestId,
+                amount: retryAmount,
+                flow: route.params?.retryFlow ?? 'NORMAL',
+                idempotencyKey: route.params?.idempotencyKey,
+                dutchSessionId: route.params?.dutchSessionId,
+                selectedUserIds: route.params?.selectedUserIds,
+                splitMethod: route.params?.splitMethod,
+                orderName: route.params?.orderName,
+                merchantId: route.params?.merchantId,
+            });
             return;
         }
 
@@ -203,7 +226,7 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                             </Text>
 
                             <Text className="mt-3 text-center font-pretendard text-large-regular text-neutral-black2">
-                                {content.description}
+                                {description}
                             </Text>
 
                             {content.linkLabel ? (

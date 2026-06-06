@@ -106,11 +106,6 @@ function applyPaymentCardFlowUi(
         return {
             ...data,
             flowType,
-            recommendedCard: {
-                ...data.recommendedCard,
-                title: '더치페이 결제를 진행합니다',
-                badgeText: undefined,
-            },
         };
     }
 
@@ -187,8 +182,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
     const [stopModalVisible, setStopModalVisible] = useState(false);
     const paymentFlow = data?.flowType ?? routeFlow;
-    const isDutchPay =
-        paymentFlow === 'DUTCH_PAY' || paymentFlow === 'DUTCH_PAY_FINAL';
+    const isDutchPay = paymentFlow === 'DUTCH_PAY';
     const isRemotePayment = paymentFlow === 'REMOTE_PAYMENT';
     const hasPreparedPaymentId =
         typeof preparedPaymentId === 'number' && Number.isFinite(preparedPaymentId);

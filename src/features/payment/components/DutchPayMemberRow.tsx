@@ -123,7 +123,9 @@ function MemberStatusLine({
 
   if (member.amount) {
     const autoSplit = member.status === 'AUTO_SPLIT';
-    const confirmed = member.status === 'AMOUNT_CONFIRMED' && !member.isOwner;
+    const confirmed =
+      member.status === 'AMOUNT_CONFIRMED' &&
+      (!member.isOwner || member.showAmountCheck);
 
     return (
       <View className="mt-1 flex-row items-center">
