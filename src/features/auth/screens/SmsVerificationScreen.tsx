@@ -122,6 +122,23 @@ export default function SmsVerificationScreen({ navigation }: Props) {
     }
   };
 
+  const handleEditPhone = () => {
+    if (isLoading) return;
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setStep('request');
+    setRemainSeconds(TIMER_SECONDS);
+    setVerificationId(null);
+    setVerificationCode('');
+    setSmsReceiverNumber('');
+    setCode('');
+    setCodeError('');
+  };
+
   const startRequestCooldown = () => {
     setRequestCooldownSeconds(REQUEST_COOLDOWN_SECONDS);
     if (requestCooldownTimerRef.current) {
@@ -244,6 +261,17 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                 placeholder="010-0000-0000"
                 readOnly={step === 'verify'}
               />
+              {step === 'verify' && (
+                <Pressable
+                  accessibilityRole="button"
+                  className="mt-2 self-end"
+                  onPress={handleEditPhone}
+                >
+                  <Text className="font-pretendard text-normal-bold text-erum-main underline">
+                    번호 수정
+                  </Text>
+                </Pressable>
+              )}
             </View>
 
             {step === 'request' && codeError !== '' && (
@@ -256,25 +284,34 @@ export default function SmsVerificationScreen({ navigation }: Props) {
             {step === 'verify' && (
               <View className="mb-2">
                 {/* MO 인증: 인증코드 & 수신번호 안내 */}
-                <View className="mb-4 rounded-xl bg-neutral-bg px-5 py-4">
-                  <Text className="mb-2 font-pretendard text-normal-bold text-neutral-black1">
-                    아래 인증코드를 문자로 보내주세요
-                  </Text>
-                  <View className="mb-1 flex-row items-center justify-between">
-                    <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                      수신번호
-                    </Text>
-                    <Text className="font-pretendard text-large-bold text-neutral-black1">
-                      {smsReceiverNumber || '1666-3538'}
+                <View className="mb-5 rounded-lg border border-erum-main bg-neutral-bg px-5 py-4">
+                  <View className="mb-4 flex-row items-center gap-2">
+                    <View className="h-7 w-7 items-center justify-center rounded-full bg-erum-main">
+                      <Feather name="message-circle" size={16} color="#FFFFFF" />
+                    </View>
+                    <Text className="min-w-0 flex-1 font-pretendard text-normal-bold text-neutral-black1">
+                      아래 인증코드를 문자로 보내주세요
                     </Text>
                   </View>
-                  <View className="flex-row items-center justify-between">
-                    <Text className="font-pretendard text-normal-regular text-neutral-black2">
-                      인증코드
-                    </Text>
-                    <Text className="font-pretendard text-large-bold text-erum-main">
-                      {verificationCode}
-                    </Text>
+
+                  <View className="gap-2">
+                    <View className="rounded-lg bg-neutral-white px-4 py-3">
+                      <Text className="mb-1 font-pretendard text-normal-regular text-neutral-black2">
+                        수신번호
+                      </Text>
+                      <Text className="font-pretendard text-heading-3 text-neutral-black1">
+                        {smsReceiverNumber || '1666-3538'}
+                      </Text>
+                    </View>
+
+                    <View className="rounded-lg bg-neutral-white px-4 py-3">
+                      <Text className="mb-1 font-pretendard text-normal-regular text-neutral-black2">
+                        인증코드
+                      </Text>
+                      <Text className="font-pretendard text-heading-3 text-erum-main">
+                        {verificationCode}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -318,7 +355,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
         )}
 
         {/* 하단 버튼 */}
-        <View className="px-8 pb-10">
+        <View className="border-t border-neutral-grey1 px-8 pt-2 pb-10">
           {step === 'request' && (
             <Button
               label={requestButtonLabel}

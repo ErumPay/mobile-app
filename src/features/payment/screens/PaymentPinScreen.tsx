@@ -28,6 +28,8 @@ type PaymentPinScreenText = {
 };
 
 const PIN_LENGTH = 6;
+const WEAK_PIN_ERROR_MESSAGE =
+  '연속 숫자 또는 동일 숫자 3자리 이상은 사용할 수 없습니다.';
 
 const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
   PAYMENT_INPUT: {
@@ -69,6 +71,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [setupErrorMessage, setSetupErrorMessage] = useState('');
   const completeRemoteRequest = useRemotePaymentProgressStore(
     (state) => state.completeRequest,
   );
@@ -119,6 +122,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const handlePressDelete = () => {
     setPin((prev) => prev.slice(0, -1));
     setHasError(false);
+    setSetupErrorMessage('');
   };
 
   const handleCompletePin = async (completedPin: string) => {
@@ -157,6 +161,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
         setPin('');
         setHasError(false);
+        setSetupErrorMessage('');
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
@@ -182,7 +187,15 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     }
 
     if (mode === 'REGISTER') {
+      if (isWeakPinPattern(completedPin)) {
+        setPin('');
+        setHasError(true);
+        setSetupErrorMessage(WEAK_PIN_ERROR_MESSAGE);
+        return;
+      }
+
       setPin('');
+      setSetupErrorMessage('');
       navigation.replace('PaymentPin', { mode: 'CONFIRM', firstPin: completedPin });
       return;
     }
@@ -193,28 +206,29 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       navigation.replace('PaymentPin', { mode: 'REGISTER' });
       return;
     }
+
     if (completedPin !== firstPin) {
       const nextFailCount = failCount + 1;
       setPin('');
       setHasError(true);
       setFailCount(nextFailCount);
-
-      if (nextFailCount >= 10) {
-        setFailModalVisible(true);
-      } else {
-        setMismatchModalVisible(true);
-      }
+      setSetupErrorMessage(
+        `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${nextFailCount}회)`,
+      );
       return;
     }
 
     try {
       setIsSubmitting(true);
       await setupPin(completedPin, firstPin);
+      setSetupErrorMessage('');
       navigation.replace('SignupComplete');
-    } catch {
+    } catch (error) {
       setPin('');
       setHasError(true);
-      setMismatchModalVisible(true);
+      setSetupErrorMessage(
+        error instanceof Error ? error.message : 'PIN 설정에 실패했습니다.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -229,6 +243,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     setPin(nextPin);
     setHasError(false);
+    setSetupErrorMessage('');
 
     if (nextPin.length === PIN_LENGTH) {
       void handleCompletePin(nextPin);
@@ -268,14 +283,26 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {hasError && mode !== 'CONFIRM' ? (
+          {hasError && mode === 'PAYMENT_INPUT' ? (
             <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
               {`${failCount || 1}회 틀렸습니다.`}
             </Text>
           ) : null}
 
+          {setupErrorMessage ? (
+            <Text className="mt-5 text-center font-pretendard text-normal-regular text-state-error">
+              {setupErrorMessage}
+            </Text>
+          ) : null}
+
           {isSubmitting ? (
-            <Loading message="결제를 처리하는 중입니다." />
+            <Loading
+              message={
+                mode === 'PAYMENT_INPUT'
+                  ? '결제를 처리하는 중입니다.'
+                  : 'PIN을 등록하는 중입니다.'
+              }
+            />
           ) : null}
 
           {screenText.showWarning && !isSubmitting ? (
@@ -359,4 +386,26 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       />
     </PageWrap>
   );
+}
+
+function isWeakPinPattern(pin: string) {
+  for (let index = 0; index <= pin.length - 3; index += 1) {
+    const first = Number(pin[index]);
+    const second = Number(pin[index + 1]);
+    const third = Number(pin[index + 2]);
+
+    if (pin[index] === pin[index + 1] && pin[index] === pin[index + 2]) {
+      return true;
+    }
+
+    if (second === first + 1 && third === second + 1) {
+      return true;
+    }
+
+    if (second === first - 1 && third === second - 1) {
+      return true;
+    }
+  }
+
+  return false;
 }
