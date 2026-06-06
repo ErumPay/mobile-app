@@ -1,5 +1,10 @@
-export const AUTH_API_BASE_URL =
-  process.env.EXPO_PUBLIC_AUTH_API_BASE_URL ?? 'http://localhost:8081';
+const authApiBaseUrl = process.env.EXPO_PUBLIC_AUTH_API_BASE_URL;
+
+if (!authApiBaseUrl && !__DEV__) {
+  throw new Error('EXPO_PUBLIC_AUTH_API_BASE_URL 환경변수가 필요합니다.');
+}
+
+export const AUTH_API_BASE_URL = authApiBaseUrl ?? 'http://localhost:8081';
 
 export const AUTH_API_URL = `${AUTH_API_BASE_URL}/api/v1/auth`;
 

@@ -68,7 +68,6 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
@@ -331,7 +330,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
               accessibilityRole="button"
               className="mt-16"
               onPress={handlePressForgotPassword}
-              onLongPress={handleMockError}
+              onLongPress={__DEV__ ? handleMockError : undefined}
             >
               <Text className="font-pretendard text-normal-bold text-erum-main">
                 간편 비밀번호를 잊으셨나요?
@@ -357,25 +356,6 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onCancel={() => setStopModalVisible(false)}
         />
       </View>
-
-      <Modal
-        visible={mismatchModalVisible}
-        type="one"
-        icon={
-          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
-            <Feather name="x" size={32} color="#FFFFFF" />
-          </View>
-        }
-        title="비밀번호가 일치하지 않습니다"
-        description={
-          failCount === 5
-            ? `다시 입력해주세요 (${failCount}회)\n5회 연속 실패하였습니다. 10회 실패 시 재인증이 필요합니다.`
-            : `다시 입력해주세요 (${failCount}회)`
-        }
-        confirmLabel="확인"
-        onConfirm={() => setMismatchModalVisible(false)}
-        onClose={() => setMismatchModalVisible(false)}
-      />
 
       <Modal
         visible={failModalVisible}

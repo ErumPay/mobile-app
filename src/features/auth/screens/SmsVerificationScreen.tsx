@@ -21,7 +21,7 @@ import { Button } from '../../../shared/components/Button';
 import { Input } from '../../../shared/components/Input';
 import { Modal } from '../../../shared/components/Modal';
 import { colors } from '../../../shared/styles/designTokens';
-import { sendSmsCode, verifySmsCode } from '../api/authApi';
+import { AuthApiError, sendSmsCode, verifySmsCode } from '../api/authApi';
 
 type VerificationStep = 'request' | 'verify' | 'complete';
 
@@ -93,7 +93,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'SMS 발송에 실패했습니다.';
       setCodeError(message);
-      if (message.includes('3분')) {
+      if (err instanceof AuthApiError && err.status === 429) {
         startRequestCooldown();
       }
     } finally {
@@ -102,7 +102,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   };
 
   const handleResendSms = async () => {
-    if (isLoading) return;
+    if (isLoading || requestCooldownSeconds > 0) return;
 
     const rawPhone = phone.replace(/-/g, '');
     setIsLoading(true);
@@ -114,9 +114,14 @@ export default function SmsVerificationScreen({ navigation }: Props) {
       setSmsReceiverNumber(res.smsReceiverNumber);
       setCode('');
       setCodeError('');
+      setRequestCooldownSeconds(0);
       startTimer();
     } catch (err) {
-      setCodeError(err instanceof Error ? err.message : '재발송에 실패했습니다.');
+      const message = err instanceof Error ? err.message : '재발송에 실패했습니다.';
+      setCodeError(message);
+      if (err instanceof AuthApiError && err.status === 429) {
+        startRequestCooldown();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -336,9 +341,23 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                   >
                     {remainSeconds > 0 ? formatTime(remainSeconds) : '시간 초과'}
                   </Text>
-                  <Pressable onPress={handleResendSms}>
-                    <Text className="font-pretendard text-large-regular text-neutral-black2 underline">
-                      인증번호 재발송
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      disabled: isLoading || requestCooldownSeconds > 0,
+                    }}
+                    onPress={handleResendSms}
+                  >
+                    <Text
+                      className={`font-pretendard text-large-regular underline ${
+                        requestCooldownSeconds > 0
+                          ? 'text-neutral-grey4'
+                          : 'text-neutral-black2'
+                      }`}
+                    >
+                      {requestCooldownSeconds > 0
+                        ? `재발송 가능 ${formatTime(requestCooldownSeconds)}`
+                        : '인증번호 재발송'}
                     </Text>
                   </Pressable>
                 </View>

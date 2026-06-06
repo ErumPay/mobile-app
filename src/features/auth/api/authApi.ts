@@ -31,6 +31,16 @@ type DevTokenResponse = {
 let authSession: DevTokenResponse | null = null;
 const REQUEST_TIMEOUT_MS = 10000;
 
+export class AuthApiError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'AuthApiError';
+    this.status = status;
+  }
+}
+
 export async function sendSmsCode(phoneNumber: string): Promise<SendSmsResponse> {
   const accessToken = await getAccessTokenForAuthRequest(phoneNumber);
   const response = await fetchAuth(`${AUTH_API_URL}/sms/send`, {
@@ -44,7 +54,10 @@ export async function sendSmsCode(phoneNumber: string): Promise<SendSmsResponse>
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.message ?? 'SMS 인증번호 발송에 실패했습니다.');
+    throw new AuthApiError(
+      error?.message ?? 'SMS 인증번호 발송에 실패했습니다.',
+      response.status,
+    );
   }
 
   return response.json();
@@ -64,7 +77,10 @@ export async function verifySmsCode(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.message ?? '인증번호 확인에 실패했습니다.');
+    throw new AuthApiError(
+      error?.message ?? '인증번호 확인에 실패했습니다.',
+      response.status,
+    );
   }
 
   return response.json();
@@ -86,7 +102,10 @@ export async function setupPin(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.message ?? 'PIN 설정에 실패했습니다.');
+    throw new AuthApiError(
+      error?.message ?? 'PIN 설정에 실패했습니다.',
+      response.status,
+    );
   }
 
   return response.json();
