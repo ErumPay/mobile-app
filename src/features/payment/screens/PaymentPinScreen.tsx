@@ -5,15 +5,15 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';
+import { Loading } from '../../../shared/components/Loading';
+import { Modal } from '../../../shared/components/Modal';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
-import { Loading } from '../../../shared/components/Loading';
-import { Modal } from '../../../shared/components/Modal';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
+import { PaymentRequestError, requestPayment } from '../api/paymentRequestApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
-import { PaymentRequestError, requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 import { setupPin } from '../../auth/api/authApi';
@@ -55,8 +55,8 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 export default function PaymentPinScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'PAYMENT_INPUT';
   const screenText = screenTextByMode[mode];
-  const paymentParams =
-    route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+  const paymentParams = route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+
   const paymentResultFlow: PaymentResultFlow =
     paymentParams?.flow === 'DUTCH_PAY'
       ? 'DUTCH_PAY_PRE_AUTH'
@@ -72,9 +72,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
-  const completeRemoteRequest = useRemotePaymentProgressStore(
-    (state) => state.completeRequest,
-  );
+
+  const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
+
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
 
@@ -82,9 +82,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return undefined;
     }
 
-    return (
-      paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId)
-    );
+    return paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
   }, [paymentParams]);
 
   const handlePressClose = () => {
@@ -140,7 +138,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       try {
         setIsSubmitting(true);
 
-        await requestPayment(
+        const paymentResponse = await requestPayment(
           {
             pin: completedPin,
             paymentId: paymentParams.paymentId,
@@ -165,7 +163,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
-          dutchSessionId: paymentParams.dutchSessionId,
+          dutchSessionId: paymentResponse.dutchSessionId ?? paymentParams.dutchSessionId,
           selectedUserIds: paymentParams.selectedUserIds,
           splitMethod: paymentParams.splitMethod,
           orderName: paymentParams.orderName,
@@ -211,12 +209,15 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
       setPin('');
       setSetupErrorMessage('');
-      navigation.replace('PaymentPin', { mode: 'CONFIRM', firstPin: completedPin });
+      navigation.replace('PaymentPin', {
+        mode: 'CONFIRM',
+        firstPin: completedPin,
+      });
       return;
     }
 
-    // CONFIRM 모드: 첫 번째 입력과 비교
     const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+
     if (!firstPin) {
       navigation.replace('PaymentPin', { mode: 'REGISTER' });
       return;
@@ -225,9 +226,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     if (completedPin !== firstPin) {
       setPin('');
       setHasError(true);
-      setSetupErrorMessage(
-        '비밀번호가 일치하지 않습니다.\n다시 입력해주세요.',
-      );
+      setSetupErrorMessage('비밀번호가 일치하지 않습니다.\n다시 입력해주세요.');
       return;
     }
 
@@ -345,6 +344,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
         />
+
         <PaymentStopConfirmModal
           visible={stopModalVisible}
           description={

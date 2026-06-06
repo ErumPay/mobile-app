@@ -14,6 +14,7 @@ type AddCardInput = {
 
 type ManagedCardsState = {
   cards: ManagedCard[];
+  setCards: (cards: ManagedCard[]) => void;
   addCard: (card: AddCardInput) => void;
   setDefaultCard: (cardId: string) => void;
   deleteCard: (cardId: string) => void;
@@ -21,16 +22,21 @@ type ManagedCardsState = {
 };
 
 export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
-  cards: mockManagedCards,
+  cards: keepSingleDefaultCard(mockManagedCards),
+
+  setCards: (cards) =>
+    set({
+      cards: keepSingleDefaultCard(cards),
+    }),
 
   addCard: (card) =>
     set((state) => {
       const digits = card.cardNumber.replace(/\D/g, '');
       const last4 = digits.slice(-4) || '0000';
-      const issuer = card.issuer ?? '신한카드';
+      const issuer = card.issuer ?? '카드사';
 
       return {
-        cards: [
+        cards: keepSingleDefaultCard([
           ...state.cards,
           {
             id: card.id ?? `card-${Date.now()}`,
@@ -44,7 +50,7 @@ export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
             isDefault: card.isDefault ?? state.cards.length === 0,
             hasPayments: false,
           },
-        ],
+        ]),
       };
     }),
 
@@ -86,10 +92,30 @@ export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
       cards: state.cards.map((card) =>
         card.id === cardId
           ? { ...card, alias: alias.trim().slice(0, 10) || '별칭미설정' }
-          : card
+          : card,
       ),
     })),
 }));
+
+function keepSingleDefaultCard(cards: ManagedCard[]) {
+  let hasDefaultCard = false;
+
+  return cards.map((card) => {
+    if (!card.isDefault) {
+      return card;
+    }
+
+    if (hasDefaultCard) {
+      return {
+        ...card,
+        isDefault: false,
+      };
+    }
+
+    hasDefaultCard = true;
+    return card;
+  });
+}
 
 function formatToday() {
   const today = new Date();

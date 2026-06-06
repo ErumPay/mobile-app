@@ -73,7 +73,6 @@ export function CardOcrScreen({
   const [isTakingPicture, setIsTakingPicture] = useState(false);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
 
-
   const handleTakePicture = async () => {
     if (!cameraRef.current || isTakingPicture || isProcessingOcr) {
       return;
@@ -107,6 +106,7 @@ export function CardOcrScreen({
       );
 
       const ocrResult = await uploadCardImage(manipulatedImage.uri);
+
       onConfirmOcrResult({
         cardNumber: ocrResult.cardNumber,
         expiry: ocrResult.expiry,
@@ -164,7 +164,7 @@ export function CardOcrScreen({
     );
   }
 
-  if (isProcessingOcr) {
+  if (isTakingPicture || isProcessingOcr) {
     return (
       <PageWrap
         scroll={false}
@@ -191,31 +191,31 @@ export function CardOcrScreen({
       }
     >
       <View className="flex-1 bg-black px-5 pb-8 pt-8">
-          <View className="flex-1 justify-center">
-            <View className="aspect-[1.58] w-full overflow-hidden rounded-2xl border-2 border-erum-primary">
-              <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
-            </View>
-          </View>
-
-          <View className="items-center">
-            <Text className="text-center font-pretendard text-heading-3 text-neutral-white">
-              카드를 프레임 안에 맞춰주세요
-            </Text>
-
-            <Text className="mt-2 text-center font-pretendard text-normal-regular text-neutral-disabled">
-              프레임 안의 카드 이미지를 JPEG로 변환해 전송합니다
-            </Text>
-
-            <Pressable
-              accessibilityRole="button"
-              className="mt-6 h-16 w-16 items-center justify-center rounded-full border-4 border-neutral-white bg-erum-main"
-              disabled={isTakingPicture || isProcessingOcr}
-              onPress={handleTakePicture}
-            >
-              <View className="h-11 w-11 rounded-full bg-neutral-white" />
-            </Pressable>
+        <View className="flex-1 justify-center">
+          <View className="aspect-[1.58] w-full overflow-hidden rounded-2xl border-2 border-erum-primary">
+            <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
           </View>
         </View>
+
+        <View className="items-center">
+          <Text className="text-center font-pretendard text-heading-3 text-neutral-white">
+            카드를 프레임 안에 맞춰주세요
+          </Text>
+
+          <Text className="mt-2 text-center font-pretendard text-normal-regular text-neutral-disabled">
+            프레임 안의 카드 이미지를 JPEG로 변환해 전송합니다
+          </Text>
+
+          <Pressable
+            accessibilityRole="button"
+            className="mt-6 h-16 w-16 items-center justify-center rounded-full border-4 border-neutral-white bg-erum-main"
+            disabled={isTakingPicture || isProcessingOcr}
+            onPress={handleTakePicture}
+          >
+            <View className="h-11 w-11 rounded-full bg-neutral-white" />
+          </Pressable>
+        </View>
+      </View>
     </PageWrap>
   );
 }

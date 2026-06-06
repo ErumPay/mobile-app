@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
@@ -11,6 +12,7 @@ import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 
+import { fetchManagedCards } from '../api/mypageApi';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
 import type { ManagedCard } from '../types/mypage';
 
@@ -18,15 +20,35 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CardManagementScreen'>;
 
 export function CardManagementScreen({ navigation }: Props) {
   const cards = useManagedCardsStore((state) => state.cards);
+  const setCards = useManagedCardsStore((state) => state.setCards);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 700);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    return () => clearTimeout(timer);
-  }, []);
+      setIsLoading(true);
+
+      fetchManagedCards()
+        .then((nextCards) => {
+          if (isActive) {
+            setCards(nextCards);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to fetch managed cards.', error);
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsLoading(false);
+          }
+        });
+
+      return () => {
+        isActive = false;
+      };
+    }, [setCards]),
+  );
 
   return (
     <>

@@ -177,11 +177,28 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         }
 
         if (type === 'DUTCH_PAY') {
-            navigation.navigate('PaymentParticipantSelect', {
-                mode: 'DUTCH_PAY',
-                paymentId: summary?.paymentId,
-                amount: summary?.amount,
-                orderName: summary?.merchantName,
+            if (!summary) {
+                return;
+            }
+
+            const existingIdempotencyKey = paymentIdempotencyKeyMap.current.get(
+                summary.paymentId,
+            );
+            const idempotencyKey =
+                existingIdempotencyKey ??
+                createPaymentIdempotencyKey(summary.paymentId);
+
+            paymentIdempotencyKeyMap.current.set(
+                summary.paymentId,
+                idempotencyKey,
+            );
+
+            navigation.navigate('PaymentCardSelect', {
+                paymentId: summary.paymentId,
+                amount: summary.amount,
+                flow: 'DUTCH_PAY',
+                idempotencyKey,
+                orderName: summary.merchantName,
             });
             return;
         }

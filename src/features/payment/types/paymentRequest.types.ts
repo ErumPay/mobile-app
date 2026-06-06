@@ -15,6 +15,7 @@ export type PaymentRequestResponse = {
     userId: number;
     paymentStatus: string;
     paymentType: string;
+    dutchSessionId?: number;
 };
 
 export type PaymentRequestErrorDetails = {
