@@ -247,16 +247,10 @@ export async function fetchPaymentHistoriesByCard(
 ): Promise<PaymentHistoryItem[]> {
   const payments = await fetchPaymentHistories();
   const paymentDetails = await Promise.all(
-    payments.map((payment) =>
-      fetchPaymentDetail(payment.id).catch((error) => {
-        console.warn('Failed to fetch payment detail for card matching.', error);
-        return null;
-      }),
-    ),
+    payments.map((payment) => fetchPaymentDetail(payment.id)),
   );
 
   return paymentDetails
-    .filter((payment): payment is PaymentDetail => Boolean(payment))
     .filter((payment) =>
       (payment.cards ?? []).some((card) => card.id === cardId),
     )
@@ -287,6 +281,10 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
 }
 
 async function getMypageAccessToken() {
+  if (!__DEV__) {
+    throw new Error('Mypage development access token is unavailable.');
+  }
+
   const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;
 
   if (configuredToken) {
@@ -410,10 +408,19 @@ function normalizePaymentHistoryItem(
   const benefitType = normalizePaymentBenefit(response.strategyType);
   const status = normalizePaymentStatus(response.status);
   const paidAt = toStringValue(response.paidAt ?? response.paid_at);
+  const cards = Array.isArray(response.cards)
+    ? (response.cards as Record<string, unknown>[])
+    : [];
+  const firstCard = cards[0];
 
   return {
     id: paymentId,
-    cardId: '',
+    cardId: toStringValue(
+      response.cardId ??
+        response.card_id ??
+        firstCard?.cardId ??
+        firstCard?.card_id,
+    ) || undefined,
     method,
     benefitType,
     status,

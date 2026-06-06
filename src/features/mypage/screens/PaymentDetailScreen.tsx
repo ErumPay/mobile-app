@@ -11,7 +11,12 @@ import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import { fetchPaymentDetail } from '../api/mypageApi';
-import type { PaymentBenefitType, PaymentDetail, PaymentMethodType } from '../types/mypage';
+import type {
+  PaymentBenefitType,
+  PaymentDetail,
+  PaymentMethodType,
+  PaymentStatus,
+} from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentDetailScreen'>;
 
@@ -39,6 +44,18 @@ const paymentBenefitClassName: Record<PaymentBenefitType, string> = {
   singlePerformance: 'bg-sky-50 text-sky-600',
   splitBenefit: 'bg-emerald-50 text-emerald-600',
   splitPerformance: 'bg-lime-50 text-lime-700',
+};
+
+const paymentStatusDisplay: Record<
+  PaymentStatus,
+  { label: string; className: string }
+> = {
+  completed: { label: '결제완료', className: 'text-erum-main' },
+  canceled: { label: '결제취소', className: 'text-state-error' },
+  cancelRequested: {
+    label: '결제취소요청',
+    className: 'text-state-orange',
+  },
 };
 
 export function PaymentDetailScreen({ navigation, route }: Props) {
@@ -119,12 +136,8 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
                 </BadgeInfoRow>
                 <InfoRow
                   label="결제상태"
-                  value={payment.status === 'canceled' ? '결제취소' : '결제완료'}
-                  valueClassName={
-                    payment.status === 'canceled'
-                      ? 'text-state-error'
-                      : 'text-erum-main'
-                  }
+                  value={paymentStatusDisplay[payment.status].label}
+                  valueClassName={paymentStatusDisplay[payment.status].className}
                 />
                 <InfoRow label="결제일시" value={payment.paidAt} />
                 <InfoRow label="영수증 ID" value={payment.receiptId} />
@@ -304,12 +317,8 @@ function ReceiptModal({
             <View className="mt-6">
               <ReceiptRow
                 label="결제상태"
-                value={payment.status === 'canceled' ? '결제취소' : '결제완료'}
-                valueClassName={
-                  payment.status === 'canceled'
-                    ? 'text-state-error'
-                    : 'text-erum-main'
-                }
+                value={paymentStatusDisplay[payment.status].label}
+                valueClassName={paymentStatusDisplay[payment.status].className}
               />
               <ReceiptRow label="결제일시" value={payment.paidAt} />
               <ReceiptRow label="영수증 ID" value={payment.receiptId} />

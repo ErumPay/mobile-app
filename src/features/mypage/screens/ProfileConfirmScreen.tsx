@@ -4,17 +4,18 @@ import { View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
 import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { EmptyState } from '../../../shared/components/EmptyState';
 import { Header } from '../../../shared/components/Header';
 import { Input } from '../../../shared/components/Input';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { fetchUserProfile } from '../api/mypageApi';
-import { mockUserProfile } from '../mocks/mypageMockData';
 import type { UserProfile } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileConfirmScreen'>;
 
 export function ProfileConfirmScreen({ navigation }: Props) {
-  const [profile, setProfile] = useState<UserProfile>(mockUserProfile);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isActive = true;
@@ -27,6 +28,11 @@ export function ProfileConfirmScreen({ navigation }: Props) {
       })
       .catch((error) => {
         console.warn('Failed to fetch user profile.', error);
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -46,11 +52,21 @@ export function ProfileConfirmScreen({ navigation }: Props) {
           />
         }
       >
-        <View className="gap-5 pb-28">
-          <Input label="이름" value={profile.name} readOnly />
-          <Input label="생년월일" value={profile.birthDate} readOnly />
-          <Input label="휴대폰번호" value={profile.phone} readOnly />
-        </View>
+        {profile ? (
+          <View className="gap-5 pb-28">
+            <Input label="이름" value={profile.name} readOnly />
+            <Input label="생년월일" value={profile.birthDate} readOnly />
+            <Input label="휴대폰번호" value={profile.phone} readOnly />
+          </View>
+        ) : (
+          <EmptyState
+            title={
+              isLoading
+                ? '사용자 정보를 불러오는 중입니다.'
+                : '사용자 정보를 불러오지 못했습니다.'
+            }
+          />
+        )}
       </PageWrap>
 
       <FloatingButton

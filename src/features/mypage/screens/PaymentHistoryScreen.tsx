@@ -76,6 +76,8 @@ export function PaymentHistoryScreen({ navigation }: Props) {
   const [appliedBenefit, setAppliedBenefit] = useState<PaymentBenefitType | null>(null);
   const [startDate, setStartDate] = useState(getDefaultStartDate);
   const [endDate, setEndDate] = useState(getDefaultEndDate);
+  const [appliedStartDate, setAppliedStartDate] = useState(getDefaultStartDate);
+  const [appliedEndDate, setAppliedEndDate] = useState(getDefaultEndDate);
   const [datePickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
 
   const loadPayments = useCallback(() => {
@@ -84,7 +86,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     setIsLoading(true);
     fetchPaymentHistories({
       status: toPaymentStatusParam(activeTab),
-      ...toPeriodParams(appliedPeriod, startDate, endDate),
+      ...toPeriodParams(appliedPeriod, appliedStartDate, appliedEndDate),
       paymentType: toPaymentTypeParam(appliedMethod),
       strategyType: toStrategyTypeParam(appliedBenefit),
     })
@@ -108,7 +110,14 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     return () => {
       isActive = false;
     };
-  }, [activeTab, appliedBenefit, appliedMethod, appliedPeriod, endDate, startDate]);
+  }, [
+    activeTab,
+    appliedBenefit,
+    appliedEndDate,
+    appliedMethod,
+    appliedPeriod,
+    appliedStartDate,
+  ]);
 
   useFocusEffect(loadPayments);
 
@@ -357,6 +366,8 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               setAppliedPeriod(selectedPeriod);
               setAppliedMethod(selectedMethod);
               setAppliedBenefit(selectedBenefit);
+              setAppliedStartDate(startDate);
+              setAppliedEndDate(endDate);
               setIsFilterOpen(false);
             }}
           />

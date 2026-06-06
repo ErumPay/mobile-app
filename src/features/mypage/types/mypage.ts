@@ -31,7 +31,7 @@ export type PaymentStatus = 'completed' | 'canceled' | 'cancelRequested';
 
 export type PaymentHistoryItem = {
   id: string;
-  cardId: string;
+  cardId?: string;
   method: PaymentMethodType;
   benefitType: PaymentBenefitType;
   status: PaymentStatus;

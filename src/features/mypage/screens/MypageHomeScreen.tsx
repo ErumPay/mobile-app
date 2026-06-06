@@ -15,13 +15,13 @@ import {
   logoutUser,
   withdrawUser,
 } from '../api/mypageApi';
-import { mockUserProfile } from '../mocks/mypageMockData';
 import type { UserProfile } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MypageHomeScreen'>;
 
 export function MypageHomeScreen({ navigation }: Props) {
-  const [profile, setProfile] = useState<UserProfile>(mockUserProfile);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
   const [isWithdrawPendingVisible, setIsWithdrawPendingVisible] =
@@ -45,6 +45,11 @@ export function MypageHomeScreen({ navigation }: Props) {
       })
       .catch((error) => {
         console.warn('Failed to fetch user profile.', error);
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsProfileLoading(false);
+        }
       });
 
     return () => {
@@ -143,29 +148,41 @@ export function MypageHomeScreen({ navigation }: Props) {
       >
         <View className="gap-5 pb-28">
           <Card>
-            <View className="flex-row items-center">
-              <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-erum-main">
-                <Text className="font-pretendard text-heading-2 text-neutral-white">
-                  {profile.name.slice(0, 1)}
+            {profile ? (
+              <>
+                <View className="flex-row items-center">
+                  <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-erum-main">
+                    <Text className="font-pretendard text-heading-2 text-neutral-white">
+                      {profile.name.slice(0, 1)}
+                    </Text>
+                  </View>
+
+                  <View className="min-w-0 flex-1">
+                    <Text className="font-pretendard text-heading-3 text-neutral-black1">
+                      {profile.name} ({profile.maskedId})
+                    </Text>
+                    <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
+                      {profile.phone}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="mt-4">
+                  <Button
+                    label="내정보 확인"
+                    onPress={() => navigation.navigate('ProfileConfirmScreen')}
+                  />
+                </View>
+              </>
+            ) : (
+              <View className="min-h-[96px] items-center justify-center">
+                <Text className="font-pretendard text-large-regular text-neutral-black2">
+                  {isProfileLoading
+                    ? '사용자 정보를 불러오는 중입니다.'
+                    : '사용자 정보를 불러오지 못했습니다.'}
                 </Text>
               </View>
-
-              <View className="min-w-0 flex-1">
-                <Text className="font-pretendard text-heading-3 text-neutral-black1">
-                  {profile.name} ({profile.maskedId})
-                </Text>
-                <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-                  {profile.phone}
-                </Text>
-              </View>
-            </View>
-
-            <View className="mt-4">
-              <Button
-                label="내정보 확인"
-                onPress={() => navigation.navigate('ProfileConfirmScreen')}
-              />
-            </View>
+            )}
           </Card>
 
           <View className="flex-row gap-3">

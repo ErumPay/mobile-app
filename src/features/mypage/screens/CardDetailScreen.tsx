@@ -20,7 +20,6 @@ import {
   setManagedDefaultCard,
   updateManagedCardAlias,
 } from '../api/mypageApi';
-import { mockCardBenefits } from '../mocks/mypageMockData';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
 import type { CardBenefit, PaymentHistoryItem } from '../types/mypage';
 
@@ -44,14 +43,14 @@ export function CardDetailScreen({ navigation, route }: Props) {
     | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const [activePaymentTab, setActivePaymentTab] =
     useState<PaymentDetailTab>('all');
   const [expandedBenefitIndex, setExpandedBenefitIndex] = useState<
     number | null
   >(null);
   const [aliasValue, setAliasValue] = useState('');
-  const [cardBenefits, setCardBenefits] =
-    useState<CardBenefit[]>(mockCardBenefits);
+  const [cardBenefits, setCardBenefits] = useState<CardBenefit[]>([]);
   const [cardPayments, setCardPayments] = useState<PaymentHistoryItem[]>([]);
 
   const cards = useManagedCardsStore((state) => state.cards);
@@ -59,14 +58,6 @@ export function CardDetailScreen({ navigation, route }: Props) {
   const deleteCard = useManagedCardsStore((state) => state.deleteCard);
   const updateCardAlias = useManagedCardsStore((state) => state.updateCardAlias);
   const card = cards.find((item) => item.id === route.params.cardId);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (card) {
@@ -81,38 +72,29 @@ export function CardDetailScreen({ navigation, route }: Props) {
 
     let isActive = true;
 
-    fetchCardBenefits(card.id)
-      .then((nextBenefits) => {
+    setIsLoading(true);
+    setHasLoadError(false);
+    Promise.all([
+      fetchCardBenefits(card.id),
+      fetchPaymentHistoriesByCard(card.id),
+    ])
+      .then(([nextBenefits, nextPayments]) => {
         if (isActive) {
           setCardBenefits(nextBenefits);
-        }
-      })
-      .catch((error) => {
-        console.warn('Failed to fetch card benefits.', error);
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [card?.id]);
-
-  useEffect(() => {
-    if (!card) {
-      return;
-    }
-
-    let isActive = true;
-
-    fetchPaymentHistoriesByCard(card.id)
-      .then((nextPayments) => {
-        if (isActive) {
           setCardPayments(nextPayments);
         }
       })
       .catch((error) => {
-        console.warn('Failed to fetch card payment histories.', error);
+        console.warn('Failed to fetch card details.', error);
         if (isActive) {
+          setCardBenefits([]);
           setCardPayments([]);
+          setHasLoadError(true);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
         }
       });
 
@@ -163,6 +145,8 @@ export function CardDetailScreen({ navigation, route }: Props) {
               <SkeletonCard />
               <SkeletonCard />
             </>
+          ) : hasLoadError ? (
+            <EmptyState title="카드 상세 정보를 불러오지 못했습니다." />
           ) : (
             <>
               {card.disabled ? (
@@ -185,22 +169,28 @@ export function CardDetailScreen({ navigation, route }: Props) {
 
               <Card title="혜택">
                 <View className="gap-2">
-                  {cardBenefits.map((benefit, index) => (
-                    <Accordion
-                      key={`${benefit.title}-${index}`}
-                      title={benefit.title}
-                      expanded={expandedBenefitIndex === index}
-                      onToggle={() =>
-                        setExpandedBenefitIndex((currentIndex) =>
-                          currentIndex === index ? null : index,
-                        )
-                      }
-                    >
-                      <Text className="font-pretendard text-large-regular text-neutral-black2">
-                        {benefit.description}
-                      </Text>
-                    </Accordion>
-                  ))}
+                  {cardBenefits.length > 0 ? (
+                    cardBenefits.map((benefit, index) => (
+                      <Accordion
+                        key={`${benefit.title}-${index}`}
+                        title={benefit.title}
+                        expanded={expandedBenefitIndex === index}
+                        onToggle={() =>
+                          setExpandedBenefitIndex((currentIndex) =>
+                            currentIndex === index ? null : index,
+                          )
+                        }
+                      >
+                        <Text className="font-pretendard text-large-regular text-neutral-black2">
+                          {benefit.description}
+                        </Text>
+                      </Accordion>
+                    ))
+                  ) : (
+                    <Text className="py-4 text-center font-pretendard text-large-regular text-neutral-black2">
+                      등록된 혜택이 없습니다.
+                    </Text>
+                  )}
                 </View>
               </Card>
 
