@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
@@ -21,6 +21,11 @@ import { RejectConfirmModal } from "../../../shared/components/Modal";
 import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
 import { mockPaymentRequestSummary } from "../../payment/constants/paymentMethod.mock";
+import {
+  getActiveRemotePaymentRequests,
+  rejectRemotePaymentRequest,
+} from "../../payment/api/remotePaymentApi";
+import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
@@ -108,6 +113,12 @@ export default function MainScreen({ navigation }: Props) {
   const recipientSummary = useRemotePaymentProgressStore((state) =>
     state.getRecipientSummary(),
   );
+  const setRequesterProgress = useRemotePaymentProgressStore(
+    (state) => state.setRequesterProgress,
+  );
+  const setRecipientProgress = useRemotePaymentProgressStore(
+    (state) => state.setRecipientProgress,
+  );
   const paymentProgressVariant =
     remoteProgressVariant ?? activePaymentProgressVariant;
   const hasVisiblePaymentProgress =
@@ -115,6 +126,44 @@ export default function MainScreen({ navigation }: Props) {
   const hasRemoteNotification =
     remoteProgress?.role === "RECIPIENT" && remoteProgress.status === "REQUESTED";
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadActiveRemoteRequests = async () => {
+      try {
+        const requests = await getActiveRemotePaymentRequests();
+        const currentUserId = getPaymentUserId();
+        const incomingRequest = requests.find(
+          (request) => request.recipientUserId === currentUserId,
+        );
+        const outgoingRequest = requests.find(
+          (request) => request.requesterUserId === currentUserId,
+        );
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (incomingRequest) {
+          setRecipientProgress(incomingRequest);
+          return;
+        }
+
+        if (outgoingRequest) {
+          setRequesterProgress(outgoingRequest);
+        }
+      } catch {
+        // 메인 진입은 원격결제 상태 조회 실패로 막지 않는다.
+      }
+    };
+
+    void loadActiveRemoteRequests();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setRecipientProgress, setRequesterProgress]);
 
   const quickMenus: QuickMenu[] = [
     {
@@ -147,9 +196,17 @@ export default function MainScreen({ navigation }: Props) {
     setIsRejectConfirmVisible(true);
   };
 
-  const confirmRejectPaymentProgress = () => {
-    rejectRemoteRequest();
-    setIsRejectConfirmVisible(false);
+  const confirmRejectPaymentProgress = async () => {
+    try {
+      if (remoteProgress?.requestId) {
+        await rejectRemotePaymentRequest(remoteProgress.requestId);
+      }
+
+      rejectRemoteRequest();
+      setIsRejectConfirmVisible(false);
+    } catch {
+      setIsRejectConfirmVisible(false);
+    }
   };
 
   const handlePressPaymentProgressPrimary = () => {

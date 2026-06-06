@@ -10,6 +10,7 @@ const PAYMENT_SUBSCRIBE_URL = (paymentId: number) =>
 
 type PreparePaymentParams = {
     paymentId?: number;
+    remoteRequestId?: number;
     amount: number;
     idempotencyKey: string;
     paymentType?: 'SINGLE' | 'DUTCH' | 'REMOTE';
@@ -32,6 +33,7 @@ export type PreparePaymentResponse = {
     paymentIntent?: string;
     dutchRole?: string;
     dutchSessionId?: number;
+    remoteRequestId?: number;
     amount: number;
 };
 
@@ -47,6 +49,7 @@ const parsePaymentApiError = async (
 
 export async function preparePayment({
     paymentId,
+    remoteRequestId,
     amount,
     idempotencyKey,
     paymentType = 'SINGLE',
@@ -57,10 +60,13 @@ export async function preparePayment({
 }: PreparePaymentParams): Promise<PreparePaymentResponse> {
     const isDutchMember = paymentType === 'DUTCH' && dutchRole === 'MEMBER';
     const isDutchHost = paymentType === 'DUTCH' && dutchRole === 'HOST';
+    const isRemoteProxy = paymentType === 'REMOTE' && remoteRequestId != null;
     const prepareUrl = isDutchMember
         ? `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare-member`
         : isDutchHost
             ? `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare-host`
+            : isRemoteProxy
+                ? `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare-proxy`
             : PAYMENT_PREPARE_URL;
     const requestBody = isDutchMember || isDutchHost
         ? {
@@ -69,6 +75,13 @@ export async function preparePayment({
             orderName: orderName ?? '더치페이 결제',
             merchantId: merchantId ?? 1,
         }
+        : isRemoteProxy
+            ? {
+                amount,
+                remoteRequestId,
+                orderName: orderName ?? '원격결제',
+                merchantId: merchantId ?? 101,
+            }
         : {
             paymentId,
             amount,

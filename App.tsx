@@ -56,6 +56,7 @@ export type RootStackParamList = {
   PaymentCardSelect:
     | {
         paymentId?: number | string;
+        remoteRequestId?: number | string;
         amount?: number | string;
         flow?: PaymentCardFlowType;
         idempotencyKey?: string;

@@ -1,28 +1,202 @@
 import type {
   RemotePaymentRequestPayload,
   RemotePaymentRequestResponse,
+  RemotePaymentRequestStatus,
 } from '../types/remotePayment.types';
+import {
+  getPaymentUserId,
+  PAYMENT_API_BASE_URL,
+} from './paymentApiConfig';
 
-const MOCK_REQUESTER_NAME = '나이룸';
+type RemotePayBackendResponse = {
+  request_id: number;
+  requester_user_id: number;
+  target_user_id?: number | null;
+  payment_id?: number | null;
+  source_payment_id?: number | null;
+  payer_payment_id?: number | null;
+  amount: number;
+  description?: string | null;
+  status: 'DRAFT' | 'PENDING' | 'COMPLETED' | 'REJECTED_BY_PAYER' | 'CANCELLED_BY_REQUESTER' | 'EXPIRED';
+};
 
-function createMockRemotePaymentRequestId({
-  paymentId,
-  recipientUserId,
-}: RemotePaymentRequestPayload) {
-  return `remote-${paymentId}-${recipientUserId}-${Date.now()}`;
+type PrepareRemoteResponse = {
+  paymentId: number;
+  remoteRequestId?: number;
+  amount: number;
+};
+
+type PaymentApiErrorResponse = {
+  reason?: string;
+  message?: string;
+};
+
+const REMOTE_PAY_REQUESTS_URL = `${PAYMENT_API_BASE_URL}/api/v1/remote-pay/requests`;
+const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
+
+function toRemoteStatus(status: RemotePayBackendResponse['status']): RemotePaymentRequestStatus {
+  if (status === 'COMPLETED') {
+    return 'COMPLETED';
+  }
+
+  if (status === 'REJECTED_BY_PAYER' || status === 'CANCELLED_BY_REQUESTER' || status === 'EXPIRED') {
+    return 'REJECTED';
+  }
+
+  return 'REQUESTED';
+}
+
+async function parsePaymentApiError(response: Response): Promise<PaymentApiErrorResponse> {
+  try {
+    return response.json();
+  } catch {
+    return {};
+  }
+}
+
+function toRemotePaymentResponse(
+  response: RemotePayBackendResponse,
+  fallback?: Partial<RemotePaymentRequestResponse>,
+): RemotePaymentRequestResponse {
+  return {
+    remotePaymentRequestId: String(response.request_id),
+    paymentId: response.source_payment_id ?? response.payment_id ?? fallback?.paymentId ?? response.request_id,
+    payerPaymentId: response.payer_payment_id ?? response.payment_id ?? undefined,
+    merchantName: response.description ?? fallback?.merchantName ?? '원격결제',
+    amount: response.amount,
+    requesterUserId: String(response.requester_user_id),
+    requesterName: fallback?.requesterName ?? `사용자 ${response.requester_user_id}`,
+    recipientUserId: String(response.target_user_id ?? fallback?.recipientUserId ?? ''),
+    recipientName: fallback?.recipientName ?? (response.target_user_id ? `사용자 ${response.target_user_id}` : '대리자'),
+    recipientPhoneSuffix: fallback?.recipientPhoneSuffix ?? '',
+    status: toRemoteStatus(response.status),
+  };
+}
+
+async function prepareRemoteDraft(
+  payload: RemotePaymentRequestPayload,
+): Promise<PrepareRemoteResponse> {
+  const response = await fetch(PAYMENT_PREPARE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Id': getPaymentUserId(),
+      'Idempotency-Key': payload.idempotencyKey ?? `remote-source-${payload.paymentId}`,
+    },
+    body: JSON.stringify({
+      paymentId: payload.paymentId,
+      amount: payload.amount,
+      paymentType: 'REMOTE',
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '원격결제 요청 준비에 실패했습니다.');
+  }
+
+  return response.json();
 }
 
 export async function requestRemotePayment(
   payload: RemotePaymentRequestPayload,
 ): Promise<RemotePaymentRequestResponse> {
-  await new Promise<void>((resolve) => {
-    setTimeout(() => resolve(), 350);
+  const prepareResponse = payload.remoteRequestId
+    ? {
+        paymentId: payload.paymentId,
+        remoteRequestId: payload.remoteRequestId,
+        amount: payload.amount,
+      }
+    : await prepareRemoteDraft(payload);
+
+  if (!prepareResponse.remoteRequestId) {
+    throw new Error('원격결제 요청 ID가 없습니다.');
+  }
+
+  const response = await fetch(
+    `${REMOTE_PAY_REQUESTS_URL}/${prepareResponse.remoteRequestId}/target`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': getPaymentUserId(),
+      },
+      body: JSON.stringify({
+        target_user_id: Number(payload.recipientUserId),
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '원격결제 요청 전송에 실패했습니다.');
+  }
+
+  const remoteResponse: RemotePayBackendResponse = await response.json();
+
+  return toRemotePaymentResponse(remoteResponse, {
+    paymentId: prepareResponse.paymentId,
+    merchantName: payload.orderName ?? payload.merchantName,
+    requesterName: '나',
+    recipientUserId: payload.recipientUserId,
+    recipientName: payload.recipientName,
+    recipientPhoneSuffix: payload.recipientPhoneSuffix,
+  });
+}
+
+export async function getRemotePaymentRequest(
+  remoteRequestId: number | string,
+): Promise<RemotePaymentRequestResponse> {
+  const response = await fetch(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}`, {
+    headers: {
+      'X-User-Id': getPaymentUserId(),
+    },
   });
 
-  return {
-    ...payload,
-    requesterName: MOCK_REQUESTER_NAME,
-    remotePaymentRequestId: createMockRemotePaymentRequestId(payload),
-    status: 'REQUESTED',
-  };
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '원격결제 요청 정보를 불러오지 못했습니다.');
+  }
+
+  return toRemotePaymentResponse(await response.json());
+}
+
+export async function getActiveRemotePaymentRequests(): Promise<RemotePaymentRequestResponse[]> {
+  const response = await fetch(`${REMOTE_PAY_REQUESTS_URL}/active`, {
+    headers: {
+      'X-User-Id': getPaymentUserId(),
+    },
+  });
+
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '진행 중인 원격결제 요청을 불러오지 못했습니다.');
+  }
+
+  const requests: RemotePayBackendResponse[] = await response.json();
+
+  return requests.map((request) => toRemotePaymentResponse(request));
+}
+
+export async function rejectRemotePaymentRequest(
+  remoteRequestId: number | string,
+  rejectReason?: string,
+): Promise<RemotePaymentRequestResponse> {
+  const response = await fetch(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}/reject`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Id': getPaymentUserId(),
+    },
+    body: JSON.stringify({
+      reject_reason: rejectReason ?? '사용자가 거절했습니다.',
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '원격결제 요청 거절에 실패했습니다.');
+  }
+
+  return toRemotePaymentResponse(await response.json());
 }

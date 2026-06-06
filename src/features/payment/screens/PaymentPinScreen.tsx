@@ -46,7 +46,7 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
   },
   CONFIRM: {
     title: '간편비밀번호 확인',
-    description: '한번 더 입력해주세요.',
+    description: '한 번 더 입력해주세요.',
     showForgotLink: false,
     showWarning: false,
   },
@@ -272,9 +272,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       scroll={false}
       padded={false}
       backgroundClassName="bg-neutral-white"
-      header={
-        <Header title="" type="close" onPressRight={handlePressClose} />
-      }
+      header={<Header title="" type="close" onPressRight={handlePressClose} />}
     >
       <View className="flex-1">
         <View className="flex-[0.42] items-center justify-center px-5">
@@ -320,7 +318,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             <View className="mt-12 w-full">
               <NoticeBox
                 tone="warning"
-                description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
+                description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피해주세요."
               />
             </View>
           ) : null}
@@ -365,7 +363,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             <Feather name="x" size={32} color="#FFFFFF" />
           </View>
         }
-        title="10회 이상 실패하였습니다"
+        title="10회 이상 실패했습니다."
         description="SMS 재인증 후 PIN을 다시 설정해주세요."
         confirmLabel="확인"
         onConfirm={() => {
@@ -417,7 +415,7 @@ function getPaymentPinErrorMessage(
   failCount: number,
 ) {
   if (error.details?.requireSmsVerification) {
-    return '10회 이상 실패하였습니다.\nSMS 재인증 후 PIN을 다시 설정해주세요.';
+    return '10회 이상 실패했습니다.\nSMS 재인증 후 PIN을 다시 설정해주세요.';
   }
 
   if (error.details?.lockedUntil) {

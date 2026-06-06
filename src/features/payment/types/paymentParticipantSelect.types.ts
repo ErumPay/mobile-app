@@ -11,6 +11,7 @@ export type ParticipantSelectRouteParams = {
   mode?: ParticipantSelectMode;
   scenario?: ParticipantSelectScenario;
   paymentId?: number;
+  remoteRequestId?: number;
   amount?: number;
   dutchSessionId?: number;
   orderName?: string;
