@@ -17,6 +17,7 @@ import { validatePaymentQr } from '../../payment/api/paymentQrApi';
 import PaymentStopConfirmModal from '../../payment/components/PaymentStopConfirmModal';
 import QrRescanModal from '../../payment/components/QrRescanModal';
 import { toPaymentRequestSummary } from '../../payment/utils/paymentQrAdapter';
+import { normalizePaymentQrToken } from '../../payment/utils/paymentQrToken';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QrScan'>;
 type ToastType = 'success' | 'error' | 'info';
@@ -68,10 +69,12 @@ export default function QrScanScreen({ navigation }: Props) {
         setRescanModalVisible(false);
     };
 
-    const validateScannedQr = async (token: string) => {
+    const validateScannedQr = async (scannedValue: string) => {
         if (scanLockRef.current || isValidating) {
             return;
         }
+
+        const token = normalizePaymentQrToken(scannedValue);
 
         if (!token) {
             scanLockRef.current = false;
