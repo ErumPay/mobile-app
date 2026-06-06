@@ -13,7 +13,7 @@ import { Modal } from '../../../shared/components/Modal';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
-import { requestPayment } from '../api/paymentRequestApi';
+import { PaymentRequestError, requestPayment } from '../api/paymentRequestApi';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 import { setupPin } from '../../auth/api/authApi';
@@ -29,7 +29,7 @@ type PaymentPinScreenText = {
 
 const PIN_LENGTH = 6;
 const WEAK_PIN_ERROR_MESSAGE =
-  '연속 숫자 또는 동일 숫자 3자리 이상은 사용할 수 없습니다.';
+  '연속 숫자 또는 동일 숫자 4자리 이상은 사용할 수 없습니다.';
 
 const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
   PAYMENT_INPUT: {
@@ -171,7 +171,22 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           orderName: paymentParams.orderName,
           merchantId: paymentParams.merchantId,
         });
-      } catch {
+      } catch (error) {
+        if (error instanceof PaymentRequestError && isPaymentPinError(error)) {
+          const nextFailCount = error.details?.failCount ?? failCount + 1;
+
+          setPin('');
+          setHasError(true);
+          setFailCount(nextFailCount);
+          setSetupErrorMessage(getPaymentPinErrorMessage(error, nextFailCount));
+
+          if (error.details?.requireSmsVerification) {
+            setFailModalVisible(true);
+          }
+
+          return;
+        }
+
         setPin('');
         setHasError(true);
         setFailCount((prev) => prev + 1);
@@ -208,12 +223,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     }
 
     if (completedPin !== firstPin) {
-      const nextFailCount = failCount + 1;
       setPin('');
       setHasError(true);
-      setFailCount(nextFailCount);
       setSetupErrorMessage(
-        `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${nextFailCount}회)`,
+        '비밀번호가 일치하지 않습니다.\n다시 입력해주세요.',
       );
       return;
     }
@@ -283,7 +296,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {hasError && mode === 'PAYMENT_INPUT' ? (
+          {hasError && mode === 'PAYMENT_INPUT' && !setupErrorMessage ? (
             <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
               {`${failCount || 1}회 틀렸습니다.`}
             </Text>
@@ -389,23 +402,57 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 }
 
 function isWeakPinPattern(pin: string) {
-  for (let index = 0; index <= pin.length - 3; index += 1) {
+  for (let index = 0; index <= pin.length - 4; index += 1) {
     const first = Number(pin[index]);
     const second = Number(pin[index + 1]);
     const third = Number(pin[index + 2]);
+    const fourth = Number(pin[index + 3]);
 
-    if (pin[index] === pin[index + 1] && pin[index] === pin[index + 2]) {
+    if (
+      pin[index] === pin[index + 1]
+      && pin[index] === pin[index + 2]
+      && pin[index] === pin[index + 3]
+    ) {
       return true;
     }
 
-    if (second === first + 1 && third === second + 1) {
+    if (second === first + 1 && third === second + 1 && fourth === third + 1) {
       return true;
     }
 
-    if (second === first - 1 && third === second - 1) {
+    if (second === first - 1 && third === second - 1 && fourth === third - 1) {
       return true;
     }
   }
 
   return false;
+}
+
+function isPaymentPinError(error: PaymentRequestError) {
+  return error.code === 'PIN_INVALID' || error.code === 'PIN_LOCKED';
+}
+
+function getPaymentPinErrorMessage(
+  error: PaymentRequestError,
+  failCount: number,
+) {
+  if (error.details?.requireSmsVerification) {
+    return '10회 이상 실패하였습니다.\nSMS 재인증 후 PIN을 다시 설정해주세요.';
+  }
+
+  if (error.details?.lockedUntil) {
+    return '비밀번호 입력이 잠겼습니다.\n잠시 후 다시 시도해주세요.';
+  }
+
+  if (error.code === 'PIN_INVALID') {
+    const remainCount = error.details?.remainCount;
+
+    if (typeof remainCount === 'number') {
+      return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회, 남은 ${remainCount}회)`;
+    }
+
+    return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회)`;
+  }
+
+  return error.message || '결제 비밀번호 확인에 실패했습니다.';
 }
