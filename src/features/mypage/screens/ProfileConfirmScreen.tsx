@@ -73,7 +73,7 @@ export function ProfileConfirmScreen({ navigation }: Props) {
         value="my"
         onChange={(value) => {
           if (value === 'home') navigation.navigate('Main');
-          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'payment') navigation.navigate('QrScan');
           if (value === 'my') navigation.navigate('MypageHomeScreen');
         }}
       />

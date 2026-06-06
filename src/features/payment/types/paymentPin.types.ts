@@ -1,6 +1,7 @@
 import type { PaymentCardFlowType } from './paymentCard.types';
 
 export type PaymentPinMode = 'PAYMENT_INPUT' | 'REGISTER' | 'CONFIRM';
+export type PaymentPinSetupFlow = 'SIGNUP' | 'PIN_RESET';
 
 type PaymentInputPinRouteParams = {
   mode: 'PAYMENT_INPUT';
@@ -19,11 +20,15 @@ type PaymentInputPinRouteParams = {
 
 type PaymentRegisterPinRouteParams = {
   mode: 'REGISTER';
+  flow?: PaymentPinSetupFlow;
+  verificationId?: number;
 };
 
 type PaymentConfirmPinRouteParams = {
   mode: 'CONFIRM';
   firstPin: string;
+  flow?: PaymentPinSetupFlow;
+  verificationId?: number;
 };
 
 export type PaymentPinRouteParams =
@@ -34,6 +39,8 @@ export type PaymentPinRouteParams =
 export type LegacyPaymentPinRouteParams = {
   mode?: PaymentPinMode;
   firstPin?: string;
+  setupFlow?: PaymentPinSetupFlow;
+  verificationId?: number;
   paymentId?: number;
   cardId?: number;
   amount?: number;

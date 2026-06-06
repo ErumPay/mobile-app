@@ -34,7 +34,9 @@ export function Header({
     const isCloseType = type === 'close';
 
     const iconColor = isDark ? '#FFFFFF' : '#1D1F1F';
-    const containerClassName = isDark ? 'bg-black' : 'bg-neutral-white';
+    const containerClassName = isDark
+        ? 'border-b border-transparent bg-black'
+        : 'border-b border-neutral-grey1 bg-neutral-white';
     const textClassName = isDark ? 'text-neutral-white' : 'text-neutral-black1';
 
     const defaultLeftIcon = (

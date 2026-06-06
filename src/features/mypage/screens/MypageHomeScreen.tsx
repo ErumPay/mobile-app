@@ -1,4 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Feather } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 
@@ -9,8 +11,8 @@ import { FloatingButton } from '../../../shared/components/FloatingButton';
 import { Header } from '../../../shared/components/Header';
 import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
+import { colors } from '../../../shared/styles';
 import {
-  checkWithdrawPendingTransactions,
   fetchUserProfile,
   logoutUser,
   withdrawUser,
@@ -18,12 +20,42 @@ import {
 import type { UserProfile } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MypageHomeScreen'>;
+type FeatherIconName = ComponentProps<typeof Feather>['name'];
+type MypageIconTone = 'blue' | 'orange' | 'purple' | 'red' | 'green';
+
+const MYPAGE_ICON_COLORS: Record<
+  MypageIconTone,
+  { backgroundColor: string; color: string }
+> = {
+  blue: {
+    backgroundColor: '#DCE9FF',
+    color: '#246BFE',
+  },
+  orange: {
+    backgroundColor: '#FFEBD0',
+    color: '#F05A1A',
+  },
+  purple: {
+    backgroundColor: '#F0DFFF',
+    color: '#8A2BE2',
+  },
+  red: {
+    backgroundColor: '#FBD0D3',
+    color: '#EF5350',
+  },
+  green: {
+    backgroundColor: '#E1F6EE',
+    color: '#2FAB84',
+  },
+};
 
 export function MypageHomeScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isLogoutVisible, setIsLogoutVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
+  const [isPinResetConfirmVisible, setIsPinResetConfirmVisible] =
+    useState(false);
   const [isWithdrawPendingVisible, setIsWithdrawPendingVisible] =
     useState(false);
   const [isWithdrawCompleteVisible, setIsWithdrawCompleteVisible] =
@@ -68,7 +100,7 @@ export function MypageHomeScreen({ navigation }: Props) {
 
   const handleChangeBottomNav = (value: string) => {
     if (value === 'home') navigation.navigate('Main');
-    if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+    if (value === 'payment') navigation.navigate('QrScan');
     if (value === 'my') navigation.navigate('MypageHomeScreen');
   };
 
@@ -93,31 +125,12 @@ export function MypageHomeScreen({ navigation }: Props) {
     }
   };
 
-  const handleRequestWithdraw = async () => {
+  const handleRequestWithdraw = () => {
     if (isSubmittingAccountAction) return;
 
-    setIsSubmittingAccountAction(true);
-
-    try {
-      const pending = await checkWithdrawPendingTransactions();
-
-      if (pending.hasPending) {
-        setIsWithdrawVisible(false);
-        setIsWithdrawPendingVisible(true);
-        return;
-      }
-
-      setIsWithdrawVisible(false);
-      // TODO: PIN 번호 화면 작업 완료 후 이 위치에서 PIN 화면으로 이동시키기.
-      // navigation.navigate('PaymentPin', { ... });
-      // PIN 확인 성공 후 handleWithdraw()를 호출하면 회원 탈퇴 완료 후 튜토리얼로 이동한다.
-    } catch (error) {
-      console.warn('Failed to check withdraw pending transactions.', error);
-      setIsWithdrawVisible(false);
-      setActionMessage('회원탈퇴 가능 여부를 확인하지 못했습니다.');
-    } finally {
-      setIsSubmittingAccountAction(false);
-    }
+    setIsWithdrawVisible(false);
+    setWithdrawPin('');
+    setIsWithdrawPinVisible(true);
   };
 
   const handleWithdraw = async () => {
@@ -187,34 +200,41 @@ export function MypageHomeScreen({ navigation }: Props) {
 
           <View className="flex-row gap-3">
             <View className="flex-1">
-              <ShortcutCard title="친구관리" icon="👥" />
+              <ShortcutCard title="친구관리" iconName="users" iconTone="blue" />
             </View>
             <View className="flex-1">
-              <ShortcutCard title="알림" icon="🔔" />
+              <ShortcutCard title="알림" iconName="bell" iconTone="orange" />
             </View>
           </View>
 
           <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-3">
-            <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
+            <Text className="mb-3 font-pretendard text-heading-3 text-neutral-black1">
               나의 관리
             </Text>
             <MenuActionRow
               title="결제내역"
-              icon="🧾"
+              iconName="file-text"
+              iconTone="purple"
               onPress={() => navigation.navigate('PaymentHistoryScreen')}
             />
             <Divider />
             <MenuActionRow
               title="카드관리"
-              icon="💳"
+              iconName="credit-card"
+              iconTone="orange"
               onPress={() => navigation.navigate('CardManagementScreen')}
             />
             <Divider />
-            <MenuActionRow title="간편 비밀번호 수정" icon="🔐" />
+            <MenuActionRow
+              title="간편비밀번호 재설정"
+              iconName="lock"
+              iconTone="red"
+              onPress={() => setIsPinResetConfirmVisible(true)}
+            />
           </View>
 
           <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-4 py-3">
-            <Text className="mb-2 font-pretendard text-large-bold text-neutral-black1">
+            <Text className="mb-3 font-pretendard text-heading-3 text-neutral-black1">
               설정
             </Text>
             <MenuActionRow title="알림 설정" />
@@ -251,9 +271,25 @@ export function MypageHomeScreen({ navigation }: Props) {
       <FloatingButton value="my" onChange={handleChangeBottomNav} />
 
       <Modal
+        visible={isPinResetConfirmVisible}
+        type="two"
+        icon={<ModalIcon name="lock" tone="main" />}
+        title="간편비밀번호를 재설정하시겠습니까?"
+        description="SMS 인증 후 새 간편비밀번호를 등록합니다."
+        confirmLabel="예"
+        cancelLabel="아니오"
+        onConfirm={() => {
+          setIsPinResetConfirmVisible(false);
+          navigation.navigate('SmsVerification', { flow: 'PIN_RESET' });
+        }}
+        onCancel={() => setIsPinResetConfirmVisible(false)}
+        onClose={() => setIsPinResetConfirmVisible(false)}
+      />
+
+      <Modal
         visible={isLogoutVisible}
         type="two"
-        icon={<Text className="text-[52px]">👋</Text>}
+        icon={<ModalIcon name="log-out" tone="main" />}
         title="로그아웃 하시겠습니까?"
         confirmLabel={
           isSubmittingAccountAction ? '처리 중...' : '로그아웃하기'
@@ -267,12 +303,10 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isWithdrawVisible}
         type="two"
-        icon={<Text className="text-[52px]">⚠️</Text>}
+        icon={<ModalIcon name="alert-triangle" tone="error" />}
         title="정말 회원 탈퇴를 하시겠습니까?"
         description={'탈퇴 후 모든 데이터가 삭제되며\n복구할 수 없습니다'}
-        confirmLabel={
-          isSubmittingAccountAction ? '확인 중...' : '회원탈퇴하기'
-        }
+        confirmLabel="회원탈퇴하기"
         cancelLabel="닫기"
         onConfirm={handleRequestWithdraw}
         onCancel={() => setIsWithdrawVisible(false)}
@@ -282,7 +316,7 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isWithdrawPendingVisible}
         type="one"
-        icon={<Text className="text-[52px]">💰</Text>}
+        icon={<ModalIcon name="credit-card" tone="main" />}
         title="진행 중인 결제가 있어요!"
         description={
           '아직 정산이 완료되지 않은\n더치페이 또는 원격결제가 있습니다.\n결제를 완료 한 후 다시 시도해 주세요.'
@@ -295,7 +329,7 @@ export function MypageHomeScreen({ navigation }: Props) {
       <Modal
         visible={isWithdrawCompleteVisible}
         type="one"
-        icon={<Text className="text-[52px]">✅</Text>}
+        icon={<ModalIcon name="check" tone="success" />}
         title="회원 탈퇴가 완료되었습니다."
         confirmLabel="확인"
         onConfirm={() => {
@@ -332,11 +366,19 @@ export function MypageHomeScreen({ navigation }: Props) {
   );
 }
 
-function ShortcutCard({ title, icon }: { title: string; icon: string }) {
+function ShortcutCard({
+  title,
+  iconName,
+  iconTone,
+}: {
+  title: string;
+  iconName: FeatherIconName;
+  iconTone: MypageIconTone;
+}) {
   return (
     <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-3 py-3">
       <View className="min-h-[40px] flex-row items-center">
-        <MenuIcon value={icon} />
+        <MenuIcon name={iconName} tone={iconTone} size="large" />
         <Text className="ml-2 font-pretendard text-large-bold text-neutral-black1">
           {title}
         </Text>
@@ -347,12 +389,14 @@ function ShortcutCard({ title, icon }: { title: string; icon: string }) {
 
 function MenuActionRow({
   title,
-  icon,
+  iconName,
+  iconTone = 'green',
   right = <Chevron />,
   onPress,
 }: {
   title: string;
-  icon?: string;
+  iconName?: FeatherIconName;
+  iconTone?: MypageIconTone;
   right?: React.ReactNode;
   onPress?: () => void;
 }) {
@@ -363,10 +407,10 @@ function MenuActionRow({
       onPress={onPress}
     >
       <View className="min-w-0 flex-1 flex-row items-center">
-        {icon ? <MenuIcon value={icon} /> : null}
+        {iconName ? <MenuIcon name={iconName} tone={iconTone} /> : null}
         <Text
           numberOfLines={1}
-          className={`${icon ? 'ml-3' : ''} font-pretendard text-large-bold text-neutral-black1`}
+          className={`${iconName ? 'ml-3' : ''} font-pretendard text-large-bold text-neutral-black1`}
         >
           {title}
         </Text>
@@ -407,12 +451,14 @@ function WithdrawPinModal({
             keyboardType="number-pad"
             secureTextEntry
             placeholder="PIN 입력"
+            placeholderTextColor={colors.neutral.black2}
           />
           <View className="mt-7 gap-3">
             <Button
               label={isSubmitting ? '처리 중...' : '회원탈퇴하기'}
               size="medium"
               variant="danger"
+              disabled={pin.length !== 6 || isSubmitting}
               onPress={onConfirm}
             />
             <Button label="닫기" variant="secondary" size="medium" onPress={onCancel} />
@@ -423,16 +469,54 @@ function WithdrawPinModal({
   );
 }
 
-function MenuIcon({ value }: { value: string }) {
+function MenuIcon({
+  name,
+  tone,
+  size = 'normal',
+}: {
+  name: FeatherIconName;
+  tone: MypageIconTone;
+  size?: 'normal' | 'large';
+}) {
+  const iconColors = MYPAGE_ICON_COLORS[tone];
+  const iconSize = size === 'large' ? 22 : 20;
+  const containerClassName =
+    size === 'large'
+      ? 'h-12 w-12 items-center justify-center rounded-full'
+      : 'h-11 w-11 items-center justify-center rounded-full';
+
   return (
-    <View className="h-9 w-9 items-center justify-center rounded-full bg-neutral-grey2">
-      <Text className="text-heading-3">{value}</Text>
+    <View
+      className={containerClassName}
+      style={{ backgroundColor: iconColors.backgroundColor }}
+    >
+      <Feather name={name} size={iconSize} color={iconColors.color} />
     </View>
   );
 }
 
 function Chevron() {
-  return <Text className="text-heading-3 text-neutral-black2">›</Text>;
+  return <Feather name="chevron-right" size={22} color={colors.neutral.black2} />;
+}
+
+function ModalIcon({
+  name,
+  tone,
+}: {
+  name: FeatherIconName;
+  tone: 'main' | 'error' | 'success';
+}) {
+  const iconColor = {
+    main: colors.erum.main,
+    error: colors.state.error,
+    success: colors.state.success,
+  }[tone];
+
+  return (
+    <View className="h-16 w-16 items-center justify-center rounded-full bg-neutral-grey2">
+      <Feather name={name} size={34} color={iconColor} />
+    </View>
+  );
 }
 
 function Divider() {

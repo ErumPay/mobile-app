@@ -31,7 +31,9 @@ const REQUEST_COOLDOWN_SECONDS = 180;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SmsVerification'>;
 
-export default function SmsVerificationScreen({ navigation }: Props) {
+export default function SmsVerificationScreen({ navigation, route }: Props) {
+  const flow = route.params?.flow ?? 'SIGNUP';
+  const isPinResetFlow = flow === 'PIN_RESET';
   const [step, setStep] = useState<VerificationStep>('request');
   const [phone, setPhone] = useState('010-1234-5678'); // TODO: 카카오에서 가져온 번호
   const [code, setCode] = useState('');
@@ -46,6 +48,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   const [isCodeCopied, setIsCodeCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const requestCooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const requestCooldownEndsAtRef = useRef<number | null>(null);
 
   const startTimer = () => {
     setRemainSeconds(TIMER_SECONDS);
@@ -83,7 +86,9 @@ export default function SmsVerificationScreen({ navigation }: Props) {
     setIsLoading(true);
     setCodeError('');
     try {
-      const res = await sendSmsCode(rawPhone);
+      const res = await sendSmsCode(rawPhone, {
+        useExistingDevUser: isPinResetFlow,
+      });
       setVerificationId(res.verificationId);
       setVerificationCode(res.verificationCode);
       setSmsReceiverNumber(res.smsReceiverNumber);
@@ -110,7 +115,9 @@ export default function SmsVerificationScreen({ navigation }: Props) {
     setIsLoading(true);
     setCodeError('');
     try {
-      const res = await sendSmsCode(rawPhone);
+      const res = await sendSmsCode(rawPhone, {
+        useExistingDevUser: isPinResetFlow,
+      });
       setVerificationId(res.verificationId);
       setVerificationCode(res.verificationCode);
       setSmsReceiverNumber(res.smsReceiverNumber);
@@ -156,31 +163,45 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   };
 
   const startRequestCooldown = () => {
-    setRequestCooldownSeconds(REQUEST_COOLDOWN_SECONDS);
+    requestCooldownEndsAtRef.current = Date.now() + REQUEST_COOLDOWN_SECONDS * 1000;
     if (requestCooldownTimerRef.current) {
       clearInterval(requestCooldownTimerRef.current);
     }
 
-    requestCooldownTimerRef.current = setInterval(() => {
-      setRequestCooldownSeconds((prev) => {
-        if (prev <= 1) {
-          if (requestCooldownTimerRef.current) {
-            clearInterval(requestCooldownTimerRef.current);
-            requestCooldownTimerRef.current = null;
-          }
-          return 0;
-        }
+    const updateRequestCooldown = () => {
+      if (!requestCooldownEndsAtRef.current) {
+        setRequestCooldownSeconds(0);
+        return;
+      }
 
-        return prev - 1;
-      });
+      const nextSeconds = Math.max(
+        0,
+        Math.ceil((requestCooldownEndsAtRef.current - Date.now()) / 1000),
+      );
+
+      setRequestCooldownSeconds(nextSeconds);
+
+      if (nextSeconds <= 0 && requestCooldownTimerRef.current) {
+        clearInterval(requestCooldownTimerRef.current);
+        requestCooldownTimerRef.current = null;
+        requestCooldownEndsAtRef.current = null;
+      }
+    };
+
+    updateRequestCooldown();
+    requestCooldownTimerRef.current = setInterval(() => {
+      updateRequestCooldown();
     }, 1000);
   };
 
   const requestButtonLabel = requestCooldownSeconds > 0
-    ? `재시도 가능 ${formatTime(requestCooldownSeconds)}`
+    ? `${formatTime(requestCooldownSeconds)} 후 재시도 가능`
     : isLoading
       ? '발송 중...'
       : '문자 인증 요청하기';
+  const cooldownErrorMessage = requestCooldownSeconds > 0
+    ? `이미 발송된 인증번호가 유효합니다.\n${formatTime(requestCooldownSeconds)} 후 재시도 가능합니다.`
+    : codeError;
 
   const handleVerifyCode = async () => {
     if (isLoading) return;
@@ -206,7 +227,11 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   };
 
   const handleNext = () => {
-    navigation.navigate('PaymentPin', { mode: 'REGISTER' });
+    navigation.navigate('PaymentPin', {
+      mode: 'REGISTER',
+      flow,
+      verificationId: verificationId ?? undefined,
+    });
   };
 
   const handleClose = () => {
@@ -219,7 +244,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
       timerRef.current = null;
     }
     setCancelModalVisible(false);
-    navigation.navigate('Tutorial');
+    navigation.navigate(isPinResetFlow ? 'MypageHomeScreen' : 'Tutorial');
   };
 
   return (
@@ -290,9 +315,9 @@ export default function SmsVerificationScreen({ navigation }: Props) {
               )}
             </View>
 
-            {step === 'request' && codeError !== '' && (
+            {step === 'request' && cooldownErrorMessage !== '' && (
               <Text className="mb-4 font-pretendard text-normal-regular text-state-error">
-                {codeError}
+                {cooldownErrorMessage}
               </Text>
             )}
 
@@ -378,16 +403,16 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                       }`}
                     >
                       {requestCooldownSeconds > 0
-                        ? `재발송 가능 ${formatTime(requestCooldownSeconds)}`
+                        ? `${formatTime(requestCooldownSeconds)} 후 재발송 가능`
                         : '인증번호 재발송'}
                     </Text>
                   </Pressable>
                 </View>
 
                 {/* 에러 메시지 */}
-                {codeError !== '' && (
+                {cooldownErrorMessage !== '' && (
                   <Text className="mt-2 font-pretendard text-normal-regular text-state-error">
-                    {codeError}
+                    {cooldownErrorMessage}
                   </Text>
                 )}
               </View>
@@ -417,7 +442,11 @@ export default function SmsVerificationScreen({ navigation }: Props) {
           )}
           {step === 'complete' && (
             <Button
-              label="간편 결제 비밀번호 설정하기"
+              label={
+                isPinResetFlow
+                  ? '간편비밀번호 재설정하기'
+                  : '간편 결제 비밀번호 설정하기'
+              }
               variant="primary"
               size="large"
               onPress={handleNext}
@@ -430,8 +459,16 @@ export default function SmsVerificationScreen({ navigation }: Props) {
       <Modal
         visible={cancelModalVisible}
         type="two"
-        title="본인 인증을 중지하시겠습니까?"
-        description="종료 시 카카오톡 인증부터 다시 시작합니다."
+        title={
+          isPinResetFlow
+            ? '간편비밀번호 재설정을 중지하시겠습니까?'
+            : '본인 인증을 중지하시겠습니까?'
+        }
+        description={
+          isPinResetFlow
+            ? '중지하면 마이페이지로 돌아갑니다.'
+            : '종료 시 카카오톡 인증부터 다시 시작합니다.'
+        }
         confirmLabel="예"
         cancelLabel="아니오"
         onConfirm={handleConfirmCancel}

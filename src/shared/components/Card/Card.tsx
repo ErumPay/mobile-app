@@ -36,7 +36,9 @@ export function Card({
           {description}
         </Text>
       ) : null}
-      {children ? <View className="mt-3">{children}</View> : null}
+      {children ? (
+        <View className={title || description ? 'mt-3' : ''}>{children}</View>
+      ) : null}
     </>
   );
 

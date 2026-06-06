@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -16,7 +16,7 @@ import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgres
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
-import { setupPin } from '../../auth/api/authApi';
+import { resetPin, setupPin } from '../../auth/api/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -54,8 +54,19 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 
 export default function PaymentPinScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'PAYMENT_INPUT';
-  const screenText = screenTextByMode[mode];
   const paymentParams = route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+  const setupFlow =
+    route.params?.mode === 'REGISTER' || route.params?.mode === 'CONFIRM'
+      ? route.params.flow ?? 'SIGNUP'
+      : 'SIGNUP';
+  const isPinResetFlow = setupFlow === 'PIN_RESET';
+  const screenText = isPinResetFlow && mode === 'REGISTER'
+    ? {
+        ...screenTextByMode.REGISTER,
+        title: '간편비밀번호 재설정',
+        description: '새 비밀번호 6자리를 입력해주세요.',
+      }
+    : screenTextByMode[mode];
 
   const paymentResultFlow: PaymentResultFlow =
     paymentParams?.flow === 'DUTCH_PAY'
@@ -70,6 +81,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [resetCompleteModalVisible, setResetCompleteModalVisible] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
 
   const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
@@ -94,15 +106,25 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (isPinResetFlow) {
+      setStopModalVisible(true);
+      return;
+    }
+
     navigation.goBack();
   };
 
-  const handleConfirmStopPayment = () => {
+  const handleConfirmStopFlow = () => {
     if (isSubmitting) {
       return;
     }
 
     setStopModalVisible(false);
+
+    if (isPinResetFlow) {
+      navigation.navigate('MypageHomeScreen');
+      return;
+    }
 
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -113,7 +135,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   };
 
   const handlePressForgotPassword = () => {
-    Alert.alert('간편비밀번호', '간편비밀번호 재설정 화면으로 이동합니다.');
+    navigation.replace('SmsVerification', { flow: 'PIN_RESET' });
   };
 
   const handlePressDelete = () => {
@@ -211,6 +233,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       navigation.replace('PaymentPin', {
         mode: 'CONFIRM',
         firstPin: completedPin,
+        flow: setupFlow,
+        verificationId: route.params?.mode === 'REGISTER'
+          ? route.params.verificationId
+          : undefined,
       });
       return;
     }
@@ -231,6 +257,20 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     try {
       setIsSubmitting(true);
+      if (isPinResetFlow) {
+        const verificationId =
+          route.params?.mode === 'CONFIRM' ? route.params.verificationId : undefined;
+
+        if (verificationId == null) {
+          throw new Error('SMS 인증 정보가 없습니다. 다시 인증해주세요.');
+        }
+
+        await resetPin(verificationId, completedPin, firstPin);
+        setSetupErrorMessage('');
+        setResetCompleteModalVisible(true);
+        return;
+      }
+
       await setupPin(completedPin, firstPin);
       setSetupErrorMessage('');
       navigation.replace('SignupComplete');
@@ -332,17 +372,36 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
         />
 
-        <PaymentStopConfirmModal
-          visible={stopModalVisible}
-          description={
-            paymentParams?.flow === 'DUTCH_PAY'
-            || paymentParams?.flow === 'REMOTE_PAYMENT'
-              ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
-              : undefined
-          }
-          onConfirm={handleConfirmStopPayment}
-          onCancel={() => setStopModalVisible(false)}
-        />
+        {isPinResetFlow ? (
+          <Modal
+            visible={stopModalVisible}
+            type="two"
+            icon={
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+                <Feather name="alert-triangle" size={30} color="#FFFFFF" />
+              </View>
+            }
+            title="간편비밀번호 재설정을 중지하시겠습니까?"
+            description="중지하면 기존 간편비밀번호가 유지됩니다."
+            confirmLabel="예"
+            cancelLabel="아니오"
+            onConfirm={handleConfirmStopFlow}
+            onCancel={() => setStopModalVisible(false)}
+            onClose={() => setStopModalVisible(false)}
+          />
+        ) : (
+          <PaymentStopConfirmModal
+            visible={stopModalVisible}
+            description={
+              paymentParams?.flow === 'DUTCH_PAY'
+              || paymentParams?.flow === 'REMOTE_PAYMENT'
+                ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+                : undefined
+            }
+            onConfirm={handleConfirmStopFlow}
+            onCancel={() => setStopModalVisible(false)}
+          />
+        )}
 
         {isSubmitting ? (
           <Loading
@@ -350,11 +409,33 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             message={
               mode === 'PAYMENT_INPUT'
                 ? '결제를 처리하는 중입니다.'
-                : 'PIN을 등록하는 중입니다.'
+                : isPinResetFlow
+                  ? 'PIN을 재설정하는 중입니다.'
+                  : 'PIN을 등록하는 중입니다.'
             }
           />
         ) : null}
       </View>
+
+      <Modal
+        visible={resetCompleteModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-erum-main">
+            <Feather name="check" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="간편비밀번호 재설정이 완료되었습니다."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setResetCompleteModalVisible(false);
+          navigation.navigate('MypageHomeScreen');
+        }}
+        onClose={() => {
+          setResetCompleteModalVisible(false);
+          navigation.navigate('MypageHomeScreen');
+        }}
+      />
 
       <Modal
         visible={failModalVisible}
@@ -369,11 +450,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         confirmLabel="확인"
         onConfirm={() => {
           setFailModalVisible(false);
-          navigation.replace('SmsVerification');
+          navigation.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
         onClose={() => {
           setFailModalVisible(false);
-          navigation.replace('SmsVerification');
+          navigation.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
       />
     </PageWrap>

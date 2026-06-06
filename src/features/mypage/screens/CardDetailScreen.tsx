@@ -13,6 +13,7 @@ import { Modal } from '../../../shared/components/Modal';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
+import { Tab } from '../../../shared/components/Tab';
 import {
   deleteManagedCard,
   fetchCardBenefits,
@@ -21,7 +22,7 @@ import {
   updateManagedCardAlias,
 } from '../api/mypageApi';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
-import type { CardBenefit, PaymentHistoryItem } from '../types/mypage';
+import type { CardBenefit, PaymentHistoryItem, PaymentStatus } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
 type PaymentDetailTab = 'all' | 'completed' | 'canceled';
@@ -31,6 +32,24 @@ const statusLabel = {
   canceled: '결제취소',
   cancelRequested: '결제취소요청',
 };
+
+const paymentStatusBadgeClassName: Record<PaymentStatus, string> = {
+  completed: 'border-erum-main',
+  canceled: 'border-state-error',
+  cancelRequested: 'border-state-orange',
+};
+
+const paymentStatusTextClassName: Record<PaymentStatus, string> = {
+  completed: 'text-erum-main',
+  canceled: 'text-state-error',
+  cancelRequested: 'text-state-orange',
+};
+
+const paymentHistoryTabs = [
+  { label: '전체', value: 'all' },
+  { label: '결제완료', value: 'completed' },
+  { label: '결제취소', value: 'canceled' },
+] satisfies { label: string; value: PaymentDetailTab }[];
 
 export function CardDetailScreen({ navigation, route }: Props) {
   const [dialog, setDialog] = useState<
@@ -154,14 +173,11 @@ export function CardDetailScreen({ navigation, route }: Props) {
               ) : null}
 
               <Card title="카드 정보">
-                {card.isDefault ? (
-                  <View className="mb-3 self-start rounded bg-erum-main px-2 py-1">
-                    <Text className="font-pretendard text-normal-bold text-neutral-white">
-                      대표
-                    </Text>
-                  </View>
-                ) : null}
-                <InfoRow label="카드사" value={card.issuer} />
+                <InfoRow
+                  label="카드사"
+                  value={card.issuer}
+                  badge={card.isDefault ? '대표' : undefined}
+                />
                 <InfoRow label="카드명" value={card.name} />
                 <InfoRow label="카드번호" value={card.cardNumber} />
                 <InfoRow label="등록일" value={card.registeredAt || '-'} />
@@ -195,21 +211,11 @@ export function CardDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <Card>
-                <View className="mb-3 flex-row border-b border-neutral-grey1">
-                  <PaymentHistoryTab
-                    label="전체"
-                    active={activePaymentTab === 'all'}
-                    onPress={() => setActivePaymentTab('all')}
-                  />
-                  <PaymentHistoryTab
-                    label="결제완료"
-                    active={activePaymentTab === 'completed'}
-                    onPress={() => setActivePaymentTab('completed')}
-                  />
-                  <PaymentHistoryTab
-                    label="결제취소"
-                    active={activePaymentTab === 'canceled'}
-                    onPress={() => setActivePaymentTab('canceled')}
+                <View className="mb-3">
+                  <Tab
+                    items={paymentHistoryTabs}
+                    value={activePaymentTab}
+                    onChange={(value) => setActivePaymentTab(value as PaymentDetailTab)}
                   />
                 </View>
 
@@ -220,6 +226,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
                       <PaymentMiniRow
                         title={payment.title}
                         status={statusLabel[payment.status]}
+                        statusType={payment.status}
                         date={payment.date}
                         amount={payment.amount}
                       />
@@ -265,7 +272,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
         value="my"
         onChange={(value) => {
           if (value === 'home') navigation.navigate('Main');
-          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'payment') navigation.navigate('QrScan');
           if (value === 'my') navigation.navigate('MypageHomeScreen');
         }}
       />
@@ -377,54 +384,35 @@ export function CardDetailScreen({ navigation, route }: Props) {
   );
 }
 
-function PaymentHistoryTab({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className={`flex-1 pb-3 ${
-        active ? 'border-b-2 border-erum-secondary' : ''
-      }`}
-      onPress={onPress}
-    >
-      <Text
-        className={`text-center font-pretendard text-large-bold ${
-          active ? 'text-erum-secondary' : 'text-neutral-black2'
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function PaymentMiniRow({
   title,
   status,
+  statusType,
   date,
   amount,
 }: {
   title: string;
   status: string;
+  statusType: PaymentStatus;
   date: string;
   amount: string;
 }) {
   return (
     <View className="py-3">
-      <View className="flex-row items-center">
-        <Text className="font-pretendard text-large-bold text-neutral-black1">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text
+          numberOfLines={1}
+          className="min-w-0 flex-1 font-pretendard text-large-bold text-neutral-black1"
+        >
           {title}
         </Text>
-        <Text className="ml-2 font-pretendard text-normal-regular text-neutral-black2">
-          {status}
-        </Text>
+        <View
+          className={`rounded-full border bg-neutral-white px-2.5 py-1 ${paymentStatusBadgeClassName[statusType]}`}
+        >
+          <Text className={`font-pretendard text-normal-bold ${paymentStatusTextClassName[statusType]}`}>
+            {status}
+          </Text>
+        </View>
       </View>
       <View className="mt-2 flex-row items-center justify-between">
         <Text className="font-pretendard text-normal-regular text-neutral-black2">
@@ -442,22 +430,33 @@ function InfoRow({
   label,
   value,
   valueClassName = 'text-neutral-black1',
+  badge,
 }: {
   label: string;
   value: string;
   valueClassName?: string;
+  badge?: string;
 }) {
   return (
     <View className="flex-row items-center justify-between py-2">
       <Text className="font-pretendard text-large-regular text-neutral-black2">
         {label}
       </Text>
-      <Text
-        numberOfLines={2}
-        className={`min-w-0 flex-1 text-right font-pretendard text-large-bold ${valueClassName}`}
-      >
-        {value}
-      </Text>
+      <View className="min-w-0 flex-1 flex-row items-center justify-end gap-2">
+        {badge ? (
+          <View className="rounded bg-erum-main px-2 py-0.5">
+            <Text className="font-pretendard text-normal-bold text-neutral-white">
+              {badge}
+            </Text>
+          </View>
+        ) : null}
+        <Text
+          numberOfLines={2}
+          className={`min-w-0 text-right font-pretendard text-large-bold ${valueClassName}`}
+        >
+          {value}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -488,7 +487,15 @@ function AliasEditModal({
             카드 별칭 수정
           </Text>
           <TextInput
-            className="mt-6 h-12 rounded-xl border border-neutral-grey1 px-4 font-pretendard text-large-regular text-neutral-black1"
+            className="mt-6 h-12 rounded-xl border border-neutral-grey1 px-4 py-0 font-pretendard text-neutral-black1"
+            style={{
+              fontSize: 16,
+              includeFontPadding: false,
+              lineHeight: 20,
+              paddingBottom: 0,
+              paddingTop: 0,
+              textAlignVertical: 'center',
+            }}
             value={value}
             onChangeText={(text) => onChangeText(text.slice(0, 10))}
             maxLength={10}

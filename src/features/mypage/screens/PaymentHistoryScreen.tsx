@@ -30,6 +30,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PaymentHistoryScreen'>;
 type PaymentTab = 'all' | 'completed' | 'canceled';
 type PeriodFilter = 'week' | 'month' | 'year' | 'custom' | null;
 type DatePickerTarget = 'start' | 'end' | null;
+const MAX_CUSTOM_RANGE_YEARS = 3;
 
 const statusLabel: Record<PaymentStatus, string> = {
   completed: '결제완료',
@@ -79,6 +80,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
   const [appliedStartDate, setAppliedStartDate] = useState(getDefaultStartDate);
   const [appliedEndDate, setAppliedEndDate] = useState(getDefaultEndDate);
   const [datePickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
+  const [filterErrorMessage, setFilterErrorMessage] = useState('');
 
   const loadPayments = useCallback(() => {
     let isActive = true;
@@ -143,9 +145,75 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     target: Exclude<DatePickerTarget, null>,
     selectedDate: Date,
   ) => {
-    if (target === 'start') setStartDate(selectedDate);
-    if (target === 'end') setEndDate(selectedDate);
+    setFilterErrorMessage('');
+    const today = getTodayDate();
+    const normalizedDate = normalizeDate(selectedDate);
+
+    if (target === 'start') {
+      if (normalizedDate > today) {
+        setFilterErrorMessage('오늘 이후 날짜는 선택할 수 없습니다.');
+        return;
+      }
+
+      const maxEndDate = getEarlierDate(
+        getYearDiffDate(normalizedDate, MAX_CUSTOM_RANGE_YEARS),
+        today,
+      );
+
+      setStartDate(normalizedDate);
+
+      if (normalizedDate > endDate) {
+        setEndDate(normalizedDate);
+      } else if (endDate > maxEndDate) {
+        setEndDate(maxEndDate);
+      }
+    }
+
+    if (target === 'end') {
+      if (getYearDiffDate(startDate, MAX_CUSTOM_RANGE_YEARS) < normalizedDate) {
+        setFilterErrorMessage(
+          `최대 ${MAX_CUSTOM_RANGE_YEARS}년 범위까지만 조회할 수 있습니다.`,
+        );
+        return;
+      }
+
+      if (normalizedDate > today) {
+        setFilterErrorMessage('오늘 이후 날짜는 선택할 수 없습니다.');
+        return;
+      }
+
+      const minStartDate = getYearDiffDate(
+        normalizedDate,
+        -MAX_CUSTOM_RANGE_YEARS,
+      );
+
+      setEndDate(normalizedDate);
+
+      if (normalizedDate < startDate) {
+        setStartDate(normalizedDate);
+      } else if (startDate < minStartDate) {
+        setStartDate(minStartDate);
+      }
+    }
+
     setSelectedPeriod('custom');
+  };
+
+  const handleApplyFilter = () => {
+    const validationMessage = validateCustomDateRange(startDate, endDate);
+
+    if (selectedPeriod === 'custom' && validationMessage) {
+      setFilterErrorMessage(validationMessage);
+      return;
+    }
+
+    setAppliedPeriod(selectedPeriod);
+    setAppliedMethod(selectedMethod);
+    setAppliedBenefit(selectedBenefit);
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+    setFilterErrorMessage('');
+    setIsFilterOpen(false);
   };
 
   const handleChangeDate = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -156,7 +224,9 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
     if (!selectedDate || !datePickerTarget) return;
     applySelectedDate(datePickerTarget, selectedDate);
-    setDatePickerTarget(null);
+    if (Platform.OS !== 'ios') {
+      setDatePickerTarget(null);
+    }
   };
 
   const handleOpenDatePicker = (target: Exclude<DatePickerTarget, null>) => {
@@ -176,6 +246,16 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     }
 
     setDatePickerTarget(target);
+  };
+
+  const handleSelectPeriod = (period: Exclude<PeriodFilter, 'custom' | null>) => {
+    const range = getPeriodDateRange(period);
+
+    setSelectedPeriod(period);
+    setStartDate(range.start);
+    setEndDate(range.end);
+    setFilterErrorMessage('');
+    setDatePickerTarget(null);
   };
 
   return (
@@ -243,7 +323,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
         value="my"
         onChange={(value) => {
           if (value === 'home') navigation.navigate('Main');
-          if (value === 'payment') navigation.navigate('PaymentMethodSelect');
+          if (value === 'payment') navigation.navigate('QrScan');
           if (value === 'my') navigation.navigate('MypageHomeScreen');
         }}
       />
@@ -259,17 +339,17 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               <FilterChip
                 label="이번 주"
                 active={selectedPeriod === 'week'}
-                onPress={() => setSelectedPeriod('week')}
+                onPress={() => handleSelectPeriod('week')}
               />
               <FilterChip
                 label="이번 달"
                 active={selectedPeriod === 'month'}
-                onPress={() => setSelectedPeriod('month')}
+                onPress={() => handleSelectPeriod('month')}
               />
               <FilterChip
                 label="올해"
                 active={selectedPeriod === 'year'}
-                onPress={() => setSelectedPeriod('year')}
+                onPress={() => handleSelectPeriod('year')}
               />
             </View>
           </FilterSection>
@@ -291,13 +371,10 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 onChangeDate={(date) => applySelectedDate('end', date)}
               />
             </View>
-            {datePickerTarget ? (
-              <DateTimePicker
-                value={datePickerTarget === 'start' ? startDate : endDate}
-                mode="date"
-                display="default"
-                onChange={handleChangeDate}
-              />
+            {filterErrorMessage ? (
+              <Text className="mt-2 font-pretendard text-normal-regular text-state-error">
+                {filterErrorMessage}
+              </Text>
             ) : null}
           </FilterSection>
 
@@ -362,15 +439,42 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
           <Button
             label="결과보기"
-            onPress={() => {
-              setAppliedPeriod(selectedPeriod);
-              setAppliedMethod(selectedMethod);
-              setAppliedBenefit(selectedBenefit);
-              setAppliedStartDate(startDate);
-              setAppliedEndDate(endDate);
-              setIsFilterOpen(false);
-            }}
+            size="large"
+            onPress={handleApplyFilter}
           />
+
+          {datePickerTarget && Platform.OS === 'ios' ? (
+            <View className="absolute inset-x-0 bottom-0 z-10 rounded-2xl border border-neutral-grey1 bg-neutral-white p-4 shadow-sm">
+              <View className="mb-3 flex-row items-center justify-between">
+                <Text className="font-pretendard text-heading-3 text-neutral-black1">
+                  {datePickerTarget === 'start' ? '시작일 선택' : '종료일 선택'}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  className="h-8 w-8 items-center justify-center rounded-full bg-neutral-grey3"
+                  onPress={() => setDatePickerTarget(null)}
+                >
+                  <Feather name="x" size={18} color="#1D1F1F" />
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={datePickerTarget === 'start' ? startDate : endDate}
+                mode="date"
+                display="inline"
+                themeVariant="light"
+                textColor="#1D1F1F"
+                accentColor="#2FAB84"
+                onChange={handleChangeDate}
+              />
+              <View className="mt-3">
+                <Button
+                  label="선택 완료"
+                  size="medium"
+                  onPress={() => setDatePickerTarget(null)}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
       </BottomSheet>
     </>
@@ -560,6 +664,49 @@ function toPeriodParams(period: PeriodFilter, startDate: Date, endDate: Date) {
   return {};
 }
 
+function validateCustomDateRange(startDate: Date, endDate: Date) {
+  const today = getTodayDate();
+
+  if (startDate > endDate) {
+    return '시작일은 종료일보다 늦을 수 없습니다.';
+  }
+
+  if (getYearDiffDate(startDate, MAX_CUSTOM_RANGE_YEARS) < endDate) {
+    return `최대 ${MAX_CUSTOM_RANGE_YEARS}년 범위까지만 조회할 수 있습니다.`;
+  }
+
+  if (startDate > today || endDate > today) {
+    return '오늘 이후 날짜는 선택할 수 없습니다.';
+  }
+
+  return '';
+}
+
+function getPeriodDateRange(period: Exclude<PeriodFilter, 'custom' | null>) {
+  const today = getTodayDate();
+
+  if (period === 'week') {
+    const day = today.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const start = new Date(today);
+    start.setDate(today.getDate() + mondayOffset);
+
+    return { start, end: today };
+  }
+
+  if (period === 'month') {
+    return {
+      start: new Date(today.getFullYear(), today.getMonth(), 1),
+      end: today,
+    };
+  }
+
+  return {
+    start: new Date(today.getFullYear(), 0, 1),
+    end: today,
+  };
+}
+
 function formatDate(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -578,6 +725,22 @@ function parseDateInputValue(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return null;
   return new Date(year, month - 1, day);
+}
+
+function normalizeDate(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getTodayDate() {
+  return normalizeDate(new Date());
+}
+
+function getYearDiffDate(date: Date, years: number) {
+  return new Date(date.getFullYear() + years, date.getMonth(), date.getDate());
+}
+
+function getEarlierDate(firstDate: Date, secondDate: Date) {
+  return firstDate < secondDate ? firstDate : secondDate;
 }
 
 function getDefaultStartDate() {

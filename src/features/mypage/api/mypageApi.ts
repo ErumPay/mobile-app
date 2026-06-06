@@ -337,6 +337,9 @@ function normalizeManagedCard(
     response.cardAlias ?? response.card_alias ?? '별칭미설정',
   );
   const status = toStringValue(response.status).toUpperCase();
+  const registeredAt = toStringValue(
+    response.createdAt ?? response.created_at ?? response.registeredAt,
+  );
   const last4 = maskedNumber.replace(/\D/g, '').slice(-4);
 
   return {
@@ -346,7 +349,7 @@ function normalizeManagedCard(
     name: name || '등록 카드',
     alias: alias || '별칭미설정',
     cardNumber: maskedNumber || '**** **** **** ****',
-    registeredAt: '',
+    registeredAt: formatDateTimeToDate(registeredAt),
     colorClassName: CARD_COLORS[index % CARD_COLORS.length],
     isDefault: Boolean(response.isDefault ?? response.is_default),
     disabled: status !== '' && status !== 'ACTIVE',
