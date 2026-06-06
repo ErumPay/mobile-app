@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
+import { fetchPaymentDetail } from '../../mypage/api/mypageApi';
+import { PaymentReceiptModal } from '../../mypage/components/PaymentReceiptModal';
+import type { PaymentDetail } from '../../mypage/types/mypage';
 import Button from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
 import NoticeBox from '../../../shared/components/NoticeBox';
@@ -101,6 +105,9 @@ function ResultIcon({ type }: { type: PaymentResultStatus }) {
 export default function PaymentResultScreen({ navigation, route }: Props) {
     const status = route.params?.status ?? 'SUCCESS';
     const flow = route.params?.flow ?? 'NORMAL';
+    const [receiptPayment, setReceiptPayment] = useState<PaymentDetail | null>(null);
+    const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+    const [isReceiptLoading, setIsReceiptLoading] = useState(false);
 
     const content = getPaymentResultContent({ status, flow });
 
@@ -133,9 +140,31 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
         navigation.navigate('Main');
     };
 
-    const handlePressLink = () => {
+    const handlePressLink = async () => {
         if (content.linkAction === 'RECEIPT') {
-            Alert.alert('전자영수증', '전자영수증 화면으로 이동합니다.');
+            const paymentId = route.params?.paymentId;
+
+            if (paymentId == null) {
+                Alert.alert('전자영수증', '결제 내역 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            if (receiptPayment) {
+                setIsReceiptOpen(true);
+                return;
+            }
+
+            try {
+                setIsReceiptLoading(true);
+                const nextPayment = await fetchPaymentDetail(String(paymentId));
+                setReceiptPayment(nextPayment);
+                setIsReceiptOpen(true);
+            } catch (error) {
+                console.warn('Failed to fetch receipt payment detail.', error);
+                Alert.alert('전자영수증', '전자영수증 정보를 불러오지 못했습니다.');
+            } finally {
+                setIsReceiptLoading(false);
+            }
             return;
         }
 
@@ -182,11 +211,12 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                                     accessibilityRole="button"
                                     accessibilityLabel={content.linkLabel}
                                     className="mt-8 rounded-md px-3 py-2"
+                                    disabled={isReceiptLoading}
                                     hitSlop={8}
                                     onPress={handlePressLink}
                                 >
                                     <Text className="font-pretendard text-normal-bold text-neutral-black2 underline">
-                                        {content.linkLabel}
+                                        {isReceiptLoading ? '전자영수증 불러오는 중' : content.linkLabel}
                                     </Text>
                                 </Pressable>
                             ) : null}
@@ -202,6 +232,14 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                     </View>
                 </View>
             </ScrollView>
+
+            {receiptPayment ? (
+                <PaymentReceiptModal
+                    visible={isReceiptOpen}
+                    payment={receiptPayment}
+                    onClose={() => setIsReceiptOpen(false)}
+                />
+            ) : null}
         </PageWrap>
     );
 }

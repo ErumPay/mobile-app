@@ -9,6 +9,10 @@ export type PaymentCardRecommendationCard = {
     cardProductId: number;
     cardCompany: string;
     cardName: string;
+    imageUrl?: string | null;
+    image_url?: string | null;
+    cardImageUrl?: string | null;
+    card_image_url?: string | null;
     maskedNumber: string;
     amount: number;
     discountAmount: number;

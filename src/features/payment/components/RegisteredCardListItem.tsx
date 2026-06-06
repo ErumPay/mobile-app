@@ -22,9 +22,13 @@ export default function RegisteredCardListItem({
                 selected ? 'border-erum-main' : 'border-neutral-grey1'
             }`}
         >
-            <PaymentCardPreview card={card} size="small" />
+            <PaymentCardPreview card={card} size="small" showInfoOverlay={false} />
 
             <View className="ml-4 flex-1">
+                <Text className="mb-1 text-small-bold text-neutral-grey4">
+                    {card.cardCompany}
+                </Text>
+
                 <View className="flex-row items-center">
                     <Text className="text-large-bold text-neutral-black1">
                         {card.cardName}

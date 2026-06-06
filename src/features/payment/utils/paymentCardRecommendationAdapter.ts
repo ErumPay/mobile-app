@@ -55,6 +55,17 @@ const getCardTheme = (cardCompany: string): PaymentCardTheme => {
     return 'PURPLE';
 };
 
+const resolveCardImageUrl = (card: PaymentCardRecommendationCard): string => {
+    const imageUrl =
+        card.imageUrl ??
+        card.image_url ??
+        card.cardImageUrl ??
+        card.card_image_url ??
+        '';
+
+    return imageUrl.trim();
+};
+
 const toPaymentCard = (card: PaymentCardRecommendationCard): PaymentCard => ({
     id: String(card.cardId),
     amount: card.amount,
@@ -63,7 +74,7 @@ const toPaymentCard = (card: PaymentCardRecommendationCard): PaymentCard => ({
     maskedNumber: card.maskedNumber,
     expiryDate: '',
     theme: getCardTheme(card.cardCompany),
-    imageUrl: '',
+    imageUrl: resolveCardImageUrl(card),
     benefitDescription: `${card.totalBenefitAmount.toLocaleString()}원 혜택`,
 });
 
