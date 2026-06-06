@@ -81,8 +81,14 @@ export async function checkWithdrawPendingTransactions(): Promise<{
   hasPending: boolean;
   reason?: string;
 }> {
+  const accessToken = await getMypageAccessToken();
   const response = await fetchWithTimeout(
-    `${MYPAGE_PAYMENT_API_BASE_URL}/internal/v1/payments/users/${getMypageUserId()}/pending`,
+    `${MYPAGE_AUTH_API_BASE_URL}/api/v1/auth/withdraw/eligibility`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
   );
 
   if (!response.ok) {
