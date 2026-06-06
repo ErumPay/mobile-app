@@ -1,3 +1,5 @@
+import type { PaymentCardRecommendationStrategyType } from './paymentCardRecommendation.types';
+
 export type PaymentCardFlowType =
     | 'NORMAL'
     | 'DUTCH_PAY'
@@ -37,6 +39,7 @@ export type RecommendedPaymentCard = {
 
 export type CardCombination = {
     type: CardCombinationType;
+    strategyType: PaymentCardRecommendationStrategyType;
     label: string;
     description: string;
     cards: PaymentCard[];

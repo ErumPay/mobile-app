@@ -885,6 +885,13 @@ export default function GuideScreen({ navigation }: Props) {
                                   paymentId: 1,
                                   cardId: 1,
                                   amount: 45000,
+                                  strategyType: "BENEFIT_SINGLE",
+                                  cards: [
+                                    {
+                                      cardId: 1,
+                                      amount: 45000,
+                                    },
+                                  ],
                                   flow: "NORMAL",
                                 });
                                 return;

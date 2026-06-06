@@ -91,6 +91,7 @@ export function toPaymentCardSelectData(
 
         return {
             type,
+            strategyType: result.strategyType,
             label: meta.label,
             description: meta.description,
             cards,

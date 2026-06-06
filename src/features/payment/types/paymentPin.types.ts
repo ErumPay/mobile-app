@@ -8,6 +8,11 @@ type PaymentInputPinRouteParams = {
   paymentId: number;
   cardId: number;
   amount: number;
+  strategyType: string;
+  cards: {
+    cardId: number;
+    amount: number;
+  }[];
   flow: PaymentCardFlowType;
   idempotencyKey?: string;
   remoteRequestId?: number;
@@ -44,6 +49,11 @@ export type LegacyPaymentPinRouteParams = {
   paymentId?: number;
   cardId?: number;
   amount?: number;
+  strategyType?: string;
+  cards?: {
+    cardId: number;
+    amount: number;
+  }[];
   flow?: PaymentCardFlowType;
   idempotencyKey?: string;
   remoteRequestId?: number;

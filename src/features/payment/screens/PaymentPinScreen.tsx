@@ -201,18 +201,22 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
       try {
         setIsSubmitting(true);
+        const requestCards = paymentParams.cards.length
+          ? paymentParams.cards
+          : [
+              {
+                cardId: paymentParams.cardId,
+                amount: paymentParams.amount,
+              },
+            ];
 
         const paymentResponse = await requestPayment(
           {
             pin: completedPin,
             paymentId: paymentParams.paymentId,
-            totalAmount: paymentParams.amount,
-            cards: [
-              {
-                cardId: paymentParams.cardId,
-                amount: paymentParams.amount,
-              },
-            ],
+            totalAmount: requestCards.reduce((sum, card) => sum + card.amount, 0),
+            strategyType: paymentParams.strategyType,
+            cards: requestCards,
           },
           idempotencyKey,
         );

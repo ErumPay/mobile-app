@@ -145,9 +145,6 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         !!displayedRecommendedCard?.card &&
         selectedCardId === displayedRecommendedCard.card.id;
 
-    const isSubmitDisabled =
-        !data || (!selectedCardId && !isCombinationSelected);
-
     const selectedPaymentCard = useMemo<PaymentCard | null>(() => {
         if (!data) {
             return null;
@@ -173,6 +170,55 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         selectedCardId,
         selectedCombination?.cards,
     ]);
+    const selectedPaymentCombination = useMemo(() => {
+        if (!data) {
+            return null;
+        }
+
+        if (isCombinationSelected && selectedCombination) {
+            return selectedCombination;
+        }
+
+        if (!selectedPaymentCard) {
+            return null;
+        }
+
+        const recommendedCombination = data.cardCombinations[0];
+
+        if (
+            recommendedCombination &&
+            displayedRecommendedCard?.card &&
+            selectedPaymentCard.id === displayedRecommendedCard.card.id
+        ) {
+            return recommendedCombination;
+        }
+
+        return data.cardCombinations.find((combination) =>
+            combination.cards.length === 1 &&
+            combination.cards[0]?.id === selectedPaymentCard.id &&
+            combination.cards[0]?.amount === selectedPaymentCard.amount
+        ) ?? null;
+    }, [
+        data,
+        displayedRecommendedCard?.card,
+        isCombinationSelected,
+        selectedCombination,
+        selectedPaymentCard,
+    ]);
+    const selectedPaymentCards = useMemo(
+        () =>
+            selectedPaymentCombination?.cards.map((card) => ({
+                cardId: Number(card.id),
+                amount: card.amount,
+            })) ?? [],
+        [selectedPaymentCombination?.cards],
+    );
+    const selectedStrategyType = selectedPaymentCombination?.strategyType;
+    const isSubmitDisabled =
+        !data ||
+        (!selectedCardId && !isCombinationSelected) ||
+        !selectedStrategyType ||
+        !selectedPaymentCards.length;
 
     useEffect(() => {
         if (!canPreparePayment || !idempotencyKey) {
@@ -325,8 +371,18 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         const selectedCard = data?.registeredCards.find(
             (card) => card.id === pendingCardId,
         );
+        const selectedCombinationForCard = data?.cardCombinations.find((combination) =>
+            combination.cards.length === 1 &&
+            combination.cards[0]?.id === selectedCard?.id &&
+            combination.cards[0]?.amount === selectedCard?.amount
+        );
 
-        if (!hasPreparedPaymentId || !selectedCard || !idempotencyKey) {
+        if (
+            !hasPreparedPaymentId ||
+            !selectedCard ||
+            !selectedCombinationForCard ||
+            !idempotencyKey
+        ) {
             return;
         }
 
@@ -343,6 +399,11 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId: preparedPaymentId,
             cardId: Number(selectedCard.id),
             amount: selectedCard.amount,
+            strategyType: selectedCombinationForCard.strategyType,
+            cards: selectedCombinationForCard.cards.map((card) => ({
+                cardId: Number(card.id),
+                amount: card.amount,
+            })),
             flow: paymentFlow,
             idempotencyKey,
             remoteRequestId,
@@ -355,7 +416,13 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     };
 
     const handlePressSubmit = () => {
-        if (!hasPreparedPaymentId || !selectedPaymentCard || !idempotencyKey) {
+        if (
+            !hasPreparedPaymentId ||
+            !selectedPaymentCard ||
+            !selectedStrategyType ||
+            !selectedPaymentCards.length ||
+            !idempotencyKey
+        ) {
             return;
         }
 
@@ -363,7 +430,9 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             mode: 'PAYMENT_INPUT',
             paymentId: preparedPaymentId,
             cardId: Number(selectedPaymentCard.id),
-            amount: selectedPaymentCard.amount,
+            amount: selectedPaymentCards.reduce((sum, card) => sum + card.amount, 0),
+            strategyType: selectedStrategyType,
+            cards: selectedPaymentCards,
             flow: paymentFlow,
             idempotencyKey,
             remoteRequestId,
