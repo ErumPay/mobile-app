@@ -72,6 +72,7 @@ function PaymentCardSelectSkeleton() {
 
 export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const paymentId = toFiniteNumber(route.params?.paymentId);
+    const remoteRequestId = toFiniteNumber(route.params?.remoteRequestId);
     const amount = toFiniteNumber(route.params?.amount);
     const routeDutchSessionId = toFiniteNumber(route.params?.dutchSessionId);
     const merchantId = toFiniteNumber(route.params?.merchantId);
@@ -82,12 +83,15 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const isDutchPayRoute = routeFlow === 'DUTCH_PAY';
     const isDutchFinalRoute = routeFlow === 'DUTCH_PAY_FINAL';
     const isRemotePaymentRoute = routeFlow === 'REMOTE_PAYMENT';
+    const hasValidRemoteRequestId =
+        typeof remoteRequestId === 'number' && Number.isFinite(remoteRequestId);
     const hasValidDutchSessionId =
         typeof routeDutchSessionId === 'number' &&
         Number.isFinite(routeDutchSessionId);
     const canPreparePayment =
         hasValidAmount &&
         (hasValidPaymentId ||
+            (hasValidRemoteRequestId && isRemotePaymentRoute) ||
             (hasValidDutchSessionId && (isDutchPayRoute || isDutchFinalRoute)));
     const idempotencyKey = useMemo(() => {
         if (!canPreparePayment) {
@@ -96,11 +100,12 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
         return (
             route.params?.idempotencyKey ??
-            createPaymentIdempotencyKey(paymentId ?? routeDutchSessionId ?? 0)
+            createPaymentIdempotencyKey(paymentId ?? remoteRequestId ?? routeDutchSessionId ?? 0)
         );
     }, [
         canPreparePayment,
         paymentId,
+        remoteRequestId,
         routeDutchSessionId,
         route.params?.idempotencyKey,
     ]);
@@ -185,6 +190,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
                 const prepareResponse = await preparePayment({
                     paymentId,
+                    remoteRequestId: isRemotePaymentRoute ? remoteRequestId : undefined,
                     amount,
                     idempotencyKey,
                     paymentType: isDutchPayRoute || isDutchFinalRoute
@@ -252,6 +258,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         isRemotePaymentRoute,
         merchantId,
         paymentId,
+        remoteRequestId,
         routeDutchSessionId,
         route.params?.orderName,
     ]);
@@ -338,6 +345,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             amount: selectedCard.amount,
             flow: paymentFlow,
             idempotencyKey,
+            remoteRequestId,
             dutchSessionId,
             selectedUserIds: route.params?.selectedUserIds,
             splitMethod: route.params?.splitMethod,
@@ -358,6 +366,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             amount: selectedPaymentCard.amount,
             flow: paymentFlow,
             idempotencyKey,
+            remoteRequestId,
             dutchSessionId,
             selectedUserIds: route.params?.selectedUserIds,
             splitMethod: route.params?.splitMethod,

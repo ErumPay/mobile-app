@@ -221,5 +221,103 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     const nextPin = `${pin}${value}`;
 
     setPin(nextPin);
+
+    if (nextPin.length === PIN_LENGTH) {
+      void handleCompletePin(nextPin);
+    }
   };
+
+  return (
+    <PageWrap
+      scroll={false}
+      padded={false}
+      backgroundClassName="bg-neutral-white"
+      header={
+        <>
+          <Header
+            title={screenText.title}
+            type="close"
+            onPressRight={handlePressClose}
+          />
+          <View className="h-px bg-neutral-grey1" />
+        </>
+      }
+    >
+      <View className="flex-1">
+        <View className="flex-[0.42] items-center justify-center px-4">
+          <Text className="text-center font-pretendard text-large-regular text-neutral-black2">
+            {screenText.description}
+          </Text>
+
+          <View className="mt-8">
+            <PinCodeDots
+              valueLength={pin.length}
+              maxLength={PIN_LENGTH}
+              hasError={hasError}
+            />
+          </View>
+
+          {hasError ? (
+            <Text className="mt-4 font-pretendard text-normal-regular text-state-error">
+              비밀번호를 다시 확인해주세요.
+            </Text>
+          ) : null}
+
+          {screenText.showForgotLink ? (
+            <Pressable
+              accessibilityRole="button"
+              className="mt-6 flex-row items-center gap-1"
+              onPress={handlePressForgotPassword}
+            >
+              <Text className="font-pretendard text-normal-bold text-erum-secondary">
+                비밀번호를 잊으셨나요?
+              </Text>
+              <Feather name="chevron-right" size={16} color="#006CFF" />
+            </Pressable>
+          ) : null}
+
+          {screenText.showWarning ? (
+            <View className="mt-6 w-full">
+              <NoticeBox
+                tone="warning"
+                description="간편비밀번호는 결제에 사용되니 다른 사람에게 알려주지 마세요."
+              />
+            </View>
+          ) : null}
+        </View>
+
+        <PinCodeKeypad
+          onPressNumber={handlePressNumber}
+          onPressDelete={handlePressDelete}
+        />
+      </View>
+
+      {isSubmitting ? <Loading fullScreen message="결제 요청 중입니다." /> : null}
+
+      <PaymentStopConfirmModal
+        visible={stopModalVisible}
+        onConfirm={handleConfirmStopPayment}
+        onCancel={() => setStopModalVisible(false)}
+      />
+
+      <Modal
+        visible={mismatchModalVisible}
+        type="one"
+        title="비밀번호가 일치하지 않습니다."
+        confirmLabel="확인"
+        onConfirm={() => setMismatchModalVisible(false)}
+        onClose={() => setMismatchModalVisible(false)}
+      />
+
+      <Modal
+        visible={failModalVisible}
+        type="one"
+        title="비밀번호 입력 횟수를 초과했습니다."
+        description="잠시 후 다시 시도해주세요."
+        confirmLabel="확인"
+        onConfirm={() => setFailModalVisible(false)}
+        onClose={() => setFailModalVisible(false)}
+      />
+    </PageWrap>
+  );
 }

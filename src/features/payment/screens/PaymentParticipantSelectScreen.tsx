@@ -54,6 +54,12 @@ function toDutchPayUserIds(friendIds: string[]) {
     .filter((userId) => Number.isFinite(userId) && userId > 1);
 }
 
+function toUserIdFromFriendId(friendId: string) {
+  const userId = Number(friendId.replace(/[^0-9]/g, '')) + 1;
+
+  return Number.isFinite(userId) && userId > 1 ? userId : undefined;
+}
+
 function getModeContent(mode: ParticipantSelectMode) {
   if (mode === 'DUTCH_PAY') {
     return {
@@ -582,11 +588,23 @@ export default function PaymentParticipantSelectScreen({
     try {
       setIsRemoteRequesting(true);
 
+      const recipientUserId = toUserIdFromFriendId(selectedRemoteFriend.id);
+
+      if (!recipientUserId) {
+        throw new Error('recipient user id is invalid');
+      }
+
       const response = await requestRemotePayment({
         ...MOCK_REMOTE_PAYMENT,
+        paymentId: route.params?.paymentId ?? MOCK_REMOTE_PAYMENT.paymentId,
+        remoteRequestId: route.params?.remoteRequestId,
+        amount: route.params?.amount ?? MOCK_REMOTE_PAYMENT.amount,
+        merchantName: route.params?.orderName ?? MOCK_REMOTE_PAYMENT.merchantName,
+        orderName: route.params?.orderName,
+        merchantId: route.params?.merchantId,
         recipientName: selectedRemoteFriend.name,
         recipientPhoneSuffix: selectedRemoteFriend.phoneSuffix,
-        recipientUserId: selectedRemoteFriend.id,
+        recipientUserId: String(recipientUserId),
       });
 
       setRequesterProgress(response);

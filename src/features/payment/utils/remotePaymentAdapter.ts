@@ -12,6 +12,7 @@ export function toRemotePaymentRecipientSummary(
 ): PaymentRequestSummary {
   return {
     paymentId: response.paymentId,
+    remoteRequestId: Number(response.remotePaymentRequestId),
     merchantName: response.merchantName,
     amount: response.amount,
     type: 'REMOTE_RECIPIENT',

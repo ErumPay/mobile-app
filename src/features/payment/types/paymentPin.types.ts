@@ -9,6 +9,7 @@ type PaymentInputPinRouteParams = {
   amount: number;
   flow: PaymentCardFlowType;
   idempotencyKey?: string;
+  remoteRequestId?: number;
   dutchSessionId?: number;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
@@ -38,6 +39,7 @@ export type LegacyPaymentPinRouteParams = {
   amount?: number;
   flow?: PaymentCardFlowType;
   idempotencyKey?: string;
+  remoteRequestId?: number;
   dutchSessionId?: number;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
