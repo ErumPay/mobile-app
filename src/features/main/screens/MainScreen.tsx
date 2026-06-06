@@ -7,11 +7,9 @@ import type { RootStackParamList } from "../../../../App";
 import {
   PaymentProgressCard,
   PaymentProgressCardSkeleton,
-  type PaymentProgressVariant,
 } from "../components/PaymentProgressCard";
 import {
   MainBannerCarousel,
-  type MainBannerId,
 } from "../components/MainBannerCarousel";
 import { MainHeader } from "../components/MainHeader";
 import type { PaymentHistory } from "../components/RecentPaymentHistory";
@@ -27,6 +25,14 @@ import {
 } from "../../payment/api/remotePaymentApi";
 import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
+import {
+  fetchPaymentHistories,
+  fetchUserProfile,
+} from "../../mypage/api/mypageApi";
+import type {
+  PaymentHistoryItem,
+  UserProfile,
+} from "../../mypage/types/mypage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
 
@@ -38,68 +44,23 @@ type QuickMenu = {
   onPress?: () => void;
 };
 
-type RecentPaymentHistoryScenario = "EMPTY" | "ONE_ITEM" | "TWO_ITEMS";
-
-const monthlyPayment = {
-  month: new Date().getMonth() + 1,
-  amount: "0원",
-  remaining: "이번 달 받은 혜택 0원",
-};
-
-const recentPaymentHistoryScenario: RecentPaymentHistoryScenario = "TWO_ITEMS";
-
-const recentPaymentHistoryFixtures: Record<
-  RecentPaymentHistoryScenario,
-  PaymentHistory[]
-> = {
-  EMPTY: [],
-  ONE_ITEM: [
-    {
-      id: 1,
-      merchantName: "이룸카페",
-      cardName: "현대카드",
-      cardNumber: "1123 **** **** 2232",
-      amount: "12,000원",
-      paidAt: "오늘",
-    },
-  ],
-  TWO_ITEMS: [
-    {
-      id: 1,
-      merchantName: "이룸카페",
-      cardName: "현대카드",
-      cardNumber: "1123 **** **** 2232",
-      amount: "12,000원",
-      paidAt: "오늘",
-    },
-    {
-      id: 2,
-      merchantName: "이룸마트",
-      cardName: "신한카드",
-      cardNumber: "4455 **** **** 9012",
-      amount: "31,500원",
-      paidAt: "어제",
-    },
-  ],
-};
-
-const paymentHistories =
-  recentPaymentHistoryFixtures[recentPaymentHistoryScenario];
-
-const hasActivePaymentProgress = false;
 const hasNotification = false;
-const activePaymentProgressVariant: PaymentProgressVariant =
-  "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
-const isPaymentProgressLoading = false;
-const isMonthlyPaymentLoading = false;
 const isNotificationLoading = false;
-const isPaymentHistoryLoading = false;
 
 const paymentMethodSelectParams = {
   summary: mockPaymentRequestSummary,
 };
 
 export default function MainScreen({ navigation }: Props) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [monthlyPayment, setMonthlyPayment] = useState(() =>
+    createMonthlyPayment([]),
+  );
+  const [paymentHistories, setPaymentHistories] = useState<PaymentHistory[]>([]);
+  const [isMonthlyPaymentLoading, setIsMonthlyPaymentLoading] = useState(true);
+  const [isPaymentHistoryLoading, setIsPaymentHistoryLoading] = useState(true);
+  const [isPaymentProgressLoading, setIsPaymentProgressLoading] =
+    useState(true);
   const remoteProgress = useRemotePaymentProgressStore((state) => state.progress);
   const remoteProgressVariant = useRemotePaymentProgressStore((state) =>
     state.getProgressVariant(),
@@ -119,10 +80,8 @@ export default function MainScreen({ navigation }: Props) {
   const setRecipientProgress = useRemotePaymentProgressStore(
     (state) => state.setRecipientProgress,
   );
-  const paymentProgressVariant =
-    remoteProgressVariant ?? activePaymentProgressVariant;
-  const hasVisiblePaymentProgress =
-    hasActivePaymentProgress || !!remoteProgress;
+  const paymentProgressVariant = remoteProgressVariant ?? undefined;
+  const hasVisiblePaymentProgress = !!remoteProgress && !!paymentProgressVariant;
   const hasRemoteNotification =
     remoteProgress?.role === "RECIPIENT" && remoteProgress.status === "REQUESTED";
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
@@ -130,7 +89,81 @@ export default function MainScreen({ navigation }: Props) {
   useEffect(() => {
     let isMounted = true;
 
+    fetchUserProfile()
+      .then((nextProfile) => {
+        if (isMounted) {
+          setProfile(nextProfile);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setProfile(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsPaymentHistoryLoading(true);
+    fetchPaymentHistories()
+      .then((payments) => {
+        if (isMounted) {
+          setPaymentHistories(payments.map(toMainPaymentHistory));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setPaymentHistories([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsPaymentHistoryLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsMonthlyPaymentLoading(true);
+    fetchPaymentHistories({ period: "MONTH", status: "PAID" })
+      .then((payments) => {
+        if (isMounted) {
+          setMonthlyPayment(createMonthlyPayment(payments));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setMonthlyPayment(createMonthlyPayment([]));
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsMonthlyPaymentLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadActiveRemoteRequests = async () => {
+      setIsPaymentProgressLoading(true);
+
       try {
         const requests = await getActiveRemotePaymentRequests();
         const currentUserId = getPaymentUserId();
@@ -155,6 +188,10 @@ export default function MainScreen({ navigation }: Props) {
         }
       } catch {
         // 메인 진입은 원격결제 상태 조회 실패로 막지 않는다.
+      } finally {
+        if (isMounted) {
+          setIsPaymentProgressLoading(false);
+        }
       }
     };
 
@@ -210,7 +247,7 @@ export default function MainScreen({ navigation }: Props) {
   };
 
   const handlePressPaymentProgressPrimary = () => {
-    if (paymentProgressVariant.startsWith("DUTCHPAY_")) {
+    if (paymentProgressVariant?.startsWith("DUTCHPAY_")) {
       navigation.navigate("DutchPayGroup");
       return;
     }
@@ -238,22 +275,6 @@ export default function MainScreen({ navigation }: Props) {
     }
 
     navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
-  };
-
-  const handlePressBanner = (id: MainBannerId) => {
-    if (id === "card-recommendation") {
-      navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
-      return;
-    }
-
-    if (id === "dutchpay") {
-      navigation.navigate("DutchPayGroup");
-      return;
-    }
-
-    navigation.navigate("PaymentParticipantSelect", {
-      mode: "REMOTE_PAYMENT",
-    });
   };
 
   return (
@@ -288,7 +309,7 @@ export default function MainScreen({ navigation }: Props) {
                 안녕하세요,
               </Text>
               <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-                나이룸(1234)님! 오늘도 좋은 하루 되세요 ✨
+                {formatGreeting(profile)}
               </Text>
             </View>
 
@@ -345,7 +366,7 @@ export default function MainScreen({ navigation }: Props) {
               {isMonthlyPaymentLoading ? (
                 <MonthlyPaymentCardSkeleton />
               ) : (
-                <MonthlyPaymentCard />
+                <MonthlyPaymentCard monthlyPayment={monthlyPayment} />
               )}
             </View>
             <View className="mt-10">
@@ -361,7 +382,7 @@ export default function MainScreen({ navigation }: Props) {
               />
             </View>
             <View className="mt-10">
-              <MainBannerCarousel onPressItem={handlePressBanner} />
+              <MainBannerCarousel />
             </View>
           </View>
         </PageWrap>
@@ -374,10 +395,7 @@ export default function MainScreen({ navigation }: Props) {
             }
 
             if (value === "payment") {
-              navigation.navigate(
-                "PaymentMethodSelect",
-                paymentMethodSelectParams,
-              );
+              navigation.navigate("QrScan");
               return;
             }
 
@@ -416,7 +434,11 @@ function QuickMenuButton({ menu }: { menu: QuickMenu }) {
   );
 }
 
-function MonthlyPaymentCard() {
+function MonthlyPaymentCard({
+  monthlyPayment,
+}: {
+  monthlyPayment: ReturnType<typeof createMonthlyPayment>;
+}) {
   return (
     <View className="items-center rounded-xl bg-[#2F62A3] px-5 py-4 shadow-sm">
       <View className="flex-row items-center rounded-full bg-[#5F88BF] px-4 py-2">
@@ -447,6 +469,55 @@ function MonthlyPaymentCardSkeleton() {
       </View>
     </View>
   );
+}
+
+function formatGreeting(profile: UserProfile | null) {
+  if (!profile) {
+    return "오늘도 좋은 하루 되세요 ✨";
+  }
+
+  const maskedId = profile.maskedId ? `(${profile.maskedId})` : "";
+
+  return `${profile.name}${maskedId}님! 오늘도 좋은 하루 되세요 ✨`;
+}
+
+function createMonthlyPayment(payments: PaymentHistoryItem[]) {
+  const totalAmount = payments
+    .filter((payment) => payment.status === "completed")
+    .reduce((sum, payment) => sum + parseCurrency(payment.amount), 0);
+
+  return {
+    month: new Date().getMonth() + 1,
+    amount: formatCurrency(totalAmount),
+    remaining: "이번 달 받은 혜택 0원",
+  };
+}
+
+function toMainPaymentHistory(payment: PaymentHistoryItem): PaymentHistory {
+  return {
+    id: payment.id,
+    merchantName: payment.title,
+    cardName: getPaymentMethodLabel(payment.method),
+    cardNumber: "",
+    amount: payment.amount,
+    paidAt: payment.date,
+  };
+}
+
+function getPaymentMethodLabel(method: PaymentHistoryItem["method"]) {
+  if (method === "remote") return "원격결제";
+  if (method === "dutchpay") return "더치페이";
+  return "일반결제";
+}
+
+function parseCurrency(value: string) {
+  const numberValue = Number(value.replace(/[^\d.-]/g, ""));
+
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function formatCurrency(value: number) {
+  return `${Math.trunc(value).toLocaleString("ko-KR")}원`;
 }
 
 function QuickMenuIcon({

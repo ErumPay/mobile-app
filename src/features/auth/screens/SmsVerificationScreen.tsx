@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 import { PageWrap } from '../../../shared/components/PageWrap';
@@ -42,6 +43,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   const [smsReceiverNumber, setSmsReceiverNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requestCooldownSeconds, setRequestCooldownSeconds] = useState(0);
+  const [isCodeCopied, setIsCodeCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const requestCooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -142,6 +144,15 @@ export default function SmsVerificationScreen({ navigation }: Props) {
     setSmsReceiverNumber('');
     setCode('');
     setCodeError('');
+    setIsCodeCopied(false);
+  };
+
+  const handleCopyVerificationCode = async () => {
+    if (!verificationCode) return;
+
+    await Clipboard.setStringAsync(verificationCode);
+    setIsCodeCopied(true);
+    setTimeout(() => setIsCodeCopied(false), 1500);
   };
 
   const startRequestCooldown = () => {
@@ -309,14 +320,25 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                       </Text>
                     </View>
 
-                    <View className="rounded-lg bg-neutral-white px-4 py-3">
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="인증코드 복사"
+                      className="rounded-lg bg-neutral-white px-4 py-3"
+                      onPress={handleCopyVerificationCode}
+                    >
                       <Text className="mb-1 font-pretendard text-normal-regular text-neutral-black2">
                         인증코드
                       </Text>
-                      <Text className="font-pretendard text-heading-3 text-erum-main">
-                        {verificationCode}
+                      <View className="flex-row items-center justify-between gap-3">
+                        <Text className="font-pretendard text-heading-3 text-erum-main">
+                          {verificationCode}
+                        </Text>
+                        <Feather name="copy" size={18} color={colors.erum.main} />
+                      </View>
+                      <Text className="mt-1 font-pretendard text-small-regular text-neutral-black2">
+                        {isCodeCopied ? '복사되었습니다.' : '눌러서 복사'}
                       </Text>
-                    </View>
+                    </Pressable>
                   </View>
                 </View>
 
@@ -333,7 +355,7 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                 />
 
                 {/* 타이머 + 재발송 */}
-                <View className="mt-2 flex-row items-center justify-between">
+                <View className="mt-2 mb-6 flex-row items-center justify-between">
                   <Text
                     className={`font-pretendard text-large-bold ${
                       remainSeconds <= 30 ? 'text-state-error' : 'text-erum-main'

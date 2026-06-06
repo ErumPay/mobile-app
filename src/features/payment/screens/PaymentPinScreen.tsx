@@ -304,16 +304,6 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             </Text>
           ) : null}
 
-          {isSubmitting ? (
-            <Loading
-              message={
-                mode === 'PAYMENT_INPUT'
-                  ? '결제를 처리하는 중입니다.'
-                  : 'PIN을 등록하는 중입니다.'
-              }
-            />
-          ) : null}
-
           {screenText.showWarning && !isSubmitting ? (
             <View className="mt-12 w-full">
               <NoticeBox
@@ -353,6 +343,17 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           onConfirm={handleConfirmStopPayment}
           onCancel={() => setStopModalVisible(false)}
         />
+
+        {isSubmitting ? (
+          <Loading
+            overlay
+            message={
+              mode === 'PAYMENT_INPUT'
+                ? '결제를 처리하는 중입니다.'
+                : 'PIN을 등록하는 중입니다.'
+            }
+          />
+        ) : null}
       </View>
 
       <Modal
