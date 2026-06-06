@@ -7,7 +7,7 @@
  ******************************************************************************/
 
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type PageWrapProps = {
@@ -32,17 +32,22 @@ export function PageWrap({
           <View className={`flex-1 ${backgroundClassName}`}>
               {header}
 
-              {scroll ? (
-                  <ScrollView
-                      className="flex-1"
-                      contentContainerClassName={`flex-grow ${padded ? 'px-5 py-6' : ''}`}
-                      keyboardShouldPersistTaps="handled"
-                  >
-                      {children}
-                  </ScrollView>
-              ) : (
-                  <View className={contentClassName}>{children}</View>
-              )}
+              <KeyboardAvoidingView
+                  className="flex-1"
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              >
+                  {scroll ? (
+                      <ScrollView
+                          className="flex-1"
+                          contentContainerClassName={`flex-grow ${padded ? 'px-5 py-6' : ''}`}
+                          keyboardShouldPersistTaps="handled"
+                      >
+                          {children}
+                      </ScrollView>
+                  ) : (
+                      <View className={contentClassName}>{children}</View>
+                  )}
+              </KeyboardAvoidingView>
           </View>
       </SafeAreaView>
   );

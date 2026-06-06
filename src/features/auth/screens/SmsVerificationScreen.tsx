@@ -7,7 +7,12 @@
  ******************************************************************************/
 
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
@@ -16,10 +21,12 @@ import { Button } from '../../../shared/components/Button';
 import { Input } from '../../../shared/components/Input';
 import { Modal } from '../../../shared/components/Modal';
 import { colors } from '../../../shared/styles/designTokens';
+import { AuthApiError, sendSmsCode, verifySmsCode } from '../api/authApi';
 
 type VerificationStep = 'request' | 'verify' | 'complete';
 
 const TIMER_SECONDS = 180; // 3분
+const REQUEST_COOLDOWN_SECONDS = 180;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SmsVerification'>;
 
@@ -30,7 +37,13 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   const [remainSeconds, setRemainSeconds] = useState(TIMER_SECONDS);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [codeError, setCodeError] = useState('');
+  const [verificationId, setVerificationId] = useState<number | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [smsReceiverNumber, setSmsReceiverNumber] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [requestCooldownSeconds, setRequestCooldownSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const requestCooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startTimer = () => {
     setRemainSeconds(TIMER_SECONDS);
@@ -49,6 +62,9 @@ export default function SmsVerificationScreen({ navigation }: Props) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (requestCooldownTimerRef.current) {
+        clearInterval(requestCooldownTimerRef.current);
+      }
     };
   }, []);
 
@@ -58,30 +74,124 @@ export default function SmsVerificationScreen({ navigation }: Props) {
     return `${min}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const handleRequestSms = () => {
-    // TODO: 실제 SMS 인증번호 발송 API 호출
-    setStep('verify');
-    setCode('');
+  const handleRequestSms = async () => {
+    if (isLoading || requestCooldownSeconds > 0) return;
+
+    const rawPhone = phone.replace(/-/g, '');
+    setIsLoading(true);
     setCodeError('');
-    startTimer();
+    try {
+      const res = await sendSmsCode(rawPhone);
+      setVerificationId(res.verificationId);
+      setVerificationCode(res.verificationCode);
+      setSmsReceiverNumber(res.smsReceiverNumber);
+      setStep('verify');
+      setCode('');
+      setCodeError('');
+      setRequestCooldownSeconds(0);
+      startTimer();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'SMS 발송에 실패했습니다.';
+      setCodeError(message);
+      if (err instanceof AuthApiError && err.status === 429) {
+        startRequestCooldown();
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResendSms = () => {
-    // TODO: 인증번호 재발송 API 호출
-    setCode('');
+  const handleResendSms = async () => {
+    if (isLoading || requestCooldownSeconds > 0) return;
+
+    const rawPhone = phone.replace(/-/g, '');
+    setIsLoading(true);
     setCodeError('');
-    startTimer();
+    try {
+      const res = await sendSmsCode(rawPhone);
+      setVerificationId(res.verificationId);
+      setVerificationCode(res.verificationCode);
+      setSmsReceiverNumber(res.smsReceiverNumber);
+      setCode('');
+      setCodeError('');
+      setRequestCooldownSeconds(0);
+      startTimer();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '재발송에 실패했습니다.';
+      setCodeError(message);
+      if (err instanceof AuthApiError && err.status === 429) {
+        startRequestCooldown();
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyCode = () => {
-    // TODO: 실제 인증번호 확인 API 호출
-    // 더미: 아무 6자리 입력하면 성공
+  const handleEditPhone = () => {
+    if (isLoading) return;
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setStep('request');
+    setRemainSeconds(TIMER_SECONDS);
+    setVerificationId(null);
+    setVerificationCode('');
+    setSmsReceiverNumber('');
+    setCode('');
+    setCodeError('');
+  };
+
+  const startRequestCooldown = () => {
+    setRequestCooldownSeconds(REQUEST_COOLDOWN_SECONDS);
+    if (requestCooldownTimerRef.current) {
+      clearInterval(requestCooldownTimerRef.current);
+    }
+
+    requestCooldownTimerRef.current = setInterval(() => {
+      setRequestCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          if (requestCooldownTimerRef.current) {
+            clearInterval(requestCooldownTimerRef.current);
+            requestCooldownTimerRef.current = null;
+          }
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const requestButtonLabel = requestCooldownSeconds > 0
+    ? `재시도 가능 ${formatTime(requestCooldownSeconds)}`
+    : isLoading
+      ? '발송 중...'
+      : '문자 인증 요청하기';
+
+  const handleVerifyCode = async () => {
+    if (isLoading) return;
+
     if (code.length !== 6) {
       setCodeError('인증번호 6자리를 입력해주세요.');
       return;
     }
-    if (timerRef.current) clearInterval(timerRef.current);
-    setStep('complete');
+    if (verificationId == null) {
+      setCodeError('인증 요청을 먼저 진행해주세요.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await verifySmsCode(verificationId, code);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setStep('complete');
+    } catch (err) {
+      setCodeError(err instanceof Error ? err.message : '인증번호 확인에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleNext = () => {
@@ -127,7 +237,12 @@ export default function SmsVerificationScreen({ navigation }: Props) {
           </View>
         ) : (
           /* ─── 인증 요청 / 인증번호 입력 (JOIN_003) ─── */
-          <View className="flex-1 px-8">
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="flex-grow px-8"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {/* 상단 안내 */}
             <View className="mt-4 mb-8 items-center">
               <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-state-success">
@@ -151,11 +266,60 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                 placeholder="010-0000-0000"
                 readOnly={step === 'verify'}
               />
+              {step === 'verify' && (
+                <Pressable
+                  accessibilityRole="button"
+                  className="mt-2 self-end"
+                  onPress={handleEditPhone}
+                >
+                  <Text className="font-pretendard text-normal-bold text-erum-main underline">
+                    번호 수정
+                  </Text>
+                </Pressable>
+              )}
             </View>
 
-            {/* 인증번호 입력 (발송 후 노출) */}
+            {step === 'request' && codeError !== '' && (
+              <Text className="mb-4 font-pretendard text-normal-regular text-state-error">
+                {codeError}
+              </Text>
+            )}
+
+            {/* 인증코드 안내 + 인증번호 입력 (발송 후 노출) */}
             {step === 'verify' && (
               <View className="mb-2">
+                {/* MO 인증: 인증코드 & 수신번호 안내 */}
+                <View className="mb-5 rounded-lg border border-erum-main bg-neutral-bg px-5 py-4">
+                  <View className="mb-4 flex-row items-center gap-2">
+                    <View className="h-7 w-7 items-center justify-center rounded-full bg-erum-main">
+                      <Feather name="message-circle" size={16} color="#FFFFFF" />
+                    </View>
+                    <Text className="min-w-0 flex-1 font-pretendard text-normal-bold text-neutral-black1">
+                      아래 인증코드를 문자로 보내주세요
+                    </Text>
+                  </View>
+
+                  <View className="gap-2">
+                    <View className="rounded-lg bg-neutral-white px-4 py-3">
+                      <Text className="mb-1 font-pretendard text-normal-regular text-neutral-black2">
+                        수신번호
+                      </Text>
+                      <Text className="font-pretendard text-heading-3 text-neutral-black1">
+                        {smsReceiverNumber || '1666-3538'}
+                      </Text>
+                    </View>
+
+                    <View className="rounded-lg bg-neutral-white px-4 py-3">
+                      <Text className="mb-1 font-pretendard text-normal-regular text-neutral-black2">
+                        인증코드
+                      </Text>
+                      <Text className="font-pretendard text-heading-3 text-erum-main">
+                        {verificationCode}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
                 <Input
                   label="인증번호"
                   type="number"
@@ -177,9 +341,23 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                   >
                     {remainSeconds > 0 ? formatTime(remainSeconds) : '시간 초과'}
                   </Text>
-                  <Pressable onPress={handleResendSms}>
-                    <Text className="font-pretendard text-large-regular text-neutral-black2 underline">
-                      인증번호 재발송
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      disabled: isLoading || requestCooldownSeconds > 0,
+                    }}
+                    onPress={handleResendSms}
+                  >
+                    <Text
+                      className={`font-pretendard text-large-regular underline ${
+                        requestCooldownSeconds > 0
+                          ? 'text-neutral-grey4'
+                          : 'text-neutral-black2'
+                      }`}
+                    >
+                      {requestCooldownSeconds > 0
+                        ? `재발송 가능 ${formatTime(requestCooldownSeconds)}`
+                        : '인증번호 재발송'}
                     </Text>
                   </Pressable>
                 </View>
@@ -192,25 +370,26 @@ export default function SmsVerificationScreen({ navigation }: Props) {
                 )}
               </View>
             )}
-          </View>
+          </ScrollView>
         )}
 
         {/* 하단 버튼 */}
-        <View className="px-8 pb-10">
+        <View className="border-t border-neutral-grey1 px-8 pt-2 pb-10">
           {step === 'request' && (
             <Button
-              label="문자 인증 요청하기"
+              label={requestButtonLabel}
               variant="primary"
               size="large"
+              disabled={isLoading || requestCooldownSeconds > 0}
               onPress={handleRequestSms}
             />
           )}
           {step === 'verify' && (
             <Button
-              label="인증 확인"
+              label={isLoading ? '확인 중...' : '인증 확인'}
               variant="primary"
               size="large"
-              disabled={code.length !== 6 || remainSeconds === 0}
+              disabled={code.length !== 6 || remainSeconds === 0 || isLoading}
               onPress={handleVerifyCode}
             />
           )}

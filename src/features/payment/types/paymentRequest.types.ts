@@ -17,3 +17,19 @@ export type PaymentRequestResponse = {
     paymentType: string;
     dutchSessionId?: number;
 };
+
+export type PaymentRequestErrorDetails = {
+    failCount?: number;
+    remainCount?: number;
+    lockedUntil?: string;
+    requireSmsVerification?: boolean;
+};
+
+export type PaymentRequestErrorBody = {
+    status?: number;
+    error?: string;
+    code?: string;
+    reason?: string;
+    message?: string;
+    details?: PaymentRequestErrorDetails;
+};

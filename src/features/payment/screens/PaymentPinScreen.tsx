@@ -11,11 +11,12 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
-import { requestPayment } from '../api/paymentRequestApi';
+import { PaymentRequestError, requestPayment } from '../api/paymentRequestApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import { setupPin } from '../../auth/api/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
 
@@ -27,6 +28,8 @@ type PaymentPinScreenText = {
 };
 
 const PIN_LENGTH = 6;
+const WEAK_PIN_ERROR_MESSAGE =
+  '연속 숫자 또는 동일 숫자 4자리 이상은 사용할 수 없습니다.';
 
 const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
   PAYMENT_INPUT: {
@@ -65,9 +68,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [hasError, setHasError] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [setupErrorMessage, setSetupErrorMessage] = useState('');
 
   const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
 
@@ -116,6 +119,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const handlePressDelete = () => {
     setPin((prev) => prev.slice(0, -1));
     setHasError(false);
+    setSetupErrorMessage('');
   };
 
   const handleCompletePin = async (completedPin: string) => {
@@ -154,6 +158,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
         setPin('');
         setHasError(false);
+        setSetupErrorMessage('');
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
@@ -163,7 +168,22 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           orderName: paymentParams.orderName,
           merchantId: paymentParams.merchantId,
         });
-      } catch {
+      } catch (error) {
+        if (error instanceof PaymentRequestError && isPaymentPinError(error)) {
+          const nextFailCount = error.details?.failCount ?? failCount + 1;
+
+          setPin('');
+          setHasError(true);
+          setFailCount(nextFailCount);
+          setSetupErrorMessage(getPaymentPinErrorMessage(error, nextFailCount));
+
+          if (error.details?.requireSmsVerification) {
+            setFailModalVisible(true);
+          }
+
+          return;
+        }
+
         setPin('');
         setHasError(true);
         setFailCount((prev) => prev + 1);
@@ -179,7 +199,15 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     }
 
     if (mode === 'REGISTER') {
+      if (isWeakPinPattern(completedPin)) {
+        setPin('');
+        setHasError(true);
+        setSetupErrorMessage(WEAK_PIN_ERROR_MESSAGE);
+        return;
+      }
+
       setPin('');
+      setSetupErrorMessage('');
       navigation.replace('PaymentPin', {
         mode: 'CONFIRM',
         firstPin: completedPin,
@@ -195,22 +223,26 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     }
 
     if (completedPin !== firstPin) {
-      const nextFailCount = failCount + 1;
-
       setPin('');
       setHasError(true);
-      setFailCount(nextFailCount);
-
-      if (nextFailCount >= 10) {
-        setFailModalVisible(true);
-      } else {
-        setMismatchModalVisible(true);
-      }
-
+      setSetupErrorMessage('비밀번호가 일치하지 않습니다.\n다시 입력해주세요.');
       return;
     }
 
-    navigation.replace('SignupComplete');
+    try {
+      setIsSubmitting(true);
+      await setupPin(completedPin, firstPin);
+      setSetupErrorMessage('');
+      navigation.replace('SignupComplete');
+    } catch (error) {
+      setPin('');
+      setHasError(true);
+      setSetupErrorMessage(
+        error instanceof Error ? error.message : 'PIN 설정에 실패했습니다.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePressNumber = (value: string) => {
@@ -221,5 +253,186 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     const nextPin = `${pin}${value}`;
 
     setPin(nextPin);
+    setHasError(false);
+    setSetupErrorMessage('');
+
+    if (nextPin.length === PIN_LENGTH) {
+      void handleCompletePin(nextPin);
+    }
   };
+
+  const handleMockError = () => {
+    setPin('');
+    setHasError(true);
+    setFailCount((prev) => prev + 1);
+  };
+
+  return (
+    <PageWrap
+      scroll={false}
+      padded={false}
+      backgroundClassName="bg-neutral-white"
+      header={
+        <Header title="" type="close" onPressRight={handlePressClose} />
+      }
+    >
+      <View className="flex-1">
+        <View className="flex-[0.42] items-center justify-center px-5">
+          <Text className="font-pretendard text-heading-3 text-neutral-black1">
+            {screenText.title}
+          </Text>
+
+          <Text className="mt-3 font-pretendard text-large-regular text-neutral-black2">
+            {screenText.description}
+          </Text>
+
+          <View className="mt-8">
+            <PinCodeDots
+              valueLength={pin.length}
+              maxLength={PIN_LENGTH}
+              hasError={hasError}
+            />
+          </View>
+
+          {hasError && mode === 'PAYMENT_INPUT' && !setupErrorMessage ? (
+            <Text className="mt-5 font-pretendard text-normal-regular text-state-error">
+              {`${failCount || 1}회 틀렸습니다.`}
+            </Text>
+          ) : null}
+
+          {setupErrorMessage ? (
+            <Text className="mt-5 text-center font-pretendard text-normal-regular text-state-error">
+              {setupErrorMessage}
+            </Text>
+          ) : null}
+
+          {isSubmitting ? (
+            <Loading
+              message={
+                mode === 'PAYMENT_INPUT'
+                  ? '결제를 처리하는 중입니다.'
+                  : 'PIN을 등록하는 중입니다.'
+              }
+            />
+          ) : null}
+
+          {screenText.showWarning && !isSubmitting ? (
+            <View className="mt-12 w-full">
+              <NoticeBox
+                tone="warning"
+                description="추측하기 쉬운 연속숫자, 동일숫자 설정은 피하세요."
+              />
+            </View>
+          ) : null}
+
+          {screenText.showForgotLink && !isSubmitting ? (
+            <Pressable
+              accessibilityRole="button"
+              className="mt-16"
+              onPress={handlePressForgotPassword}
+              onLongPress={__DEV__ ? handleMockError : undefined}
+            >
+              <Text className="font-pretendard text-normal-bold text-erum-main">
+                간편 비밀번호를 잊으셨나요?
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <PinCodeKeypad
+          onPressNumber={isSubmitting ? () => {} : handlePressNumber}
+          onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+        />
+
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description={
+            paymentParams?.flow === 'DUTCH_PAY'
+            || paymentParams?.flow === 'REMOTE_PAYMENT'
+              ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+              : undefined
+          }
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
+        />
+      </View>
+
+      <Modal
+        visible={failModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="10회 이상 실패하였습니다"
+        description="SMS 재인증 후 PIN을 다시 설정해주세요."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+        onClose={() => {
+          setFailModalVisible(false);
+          navigation.replace('SmsVerification');
+        }}
+      />
+    </PageWrap>
+  );
+}
+
+function isWeakPinPattern(pin: string) {
+  for (let index = 0; index <= pin.length - 4; index += 1) {
+    const first = Number(pin[index]);
+    const second = Number(pin[index + 1]);
+    const third = Number(pin[index + 2]);
+    const fourth = Number(pin[index + 3]);
+
+    if (
+      pin[index] === pin[index + 1]
+      && pin[index] === pin[index + 2]
+      && pin[index] === pin[index + 3]
+    ) {
+      return true;
+    }
+
+    if (second === first + 1 && third === second + 1 && fourth === third + 1) {
+      return true;
+    }
+
+    if (second === first - 1 && third === second - 1 && fourth === third - 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isPaymentPinError(error: PaymentRequestError) {
+  return error.code === 'PIN_INVALID' || error.code === 'PIN_LOCKED';
+}
+
+function getPaymentPinErrorMessage(
+  error: PaymentRequestError,
+  failCount: number,
+) {
+  if (error.details?.requireSmsVerification) {
+    return '10회 이상 실패하였습니다.\nSMS 재인증 후 PIN을 다시 설정해주세요.';
+  }
+
+  if (error.details?.lockedUntil) {
+    return '비밀번호 입력이 잠겼습니다.\n잠시 후 다시 시도해주세요.';
+  }
+
+  if (error.code === 'PIN_INVALID') {
+    const remainCount = error.details?.remainCount;
+
+    if (typeof remainCount === 'number') {
+      return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회, 남은 ${remainCount}회)`;
+    }
+
+    return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회)`;
+  }
+
+  return error.message || '결제 비밀번호 확인에 실패했습니다.';
 }
