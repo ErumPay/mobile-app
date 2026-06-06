@@ -2,33 +2,29 @@ import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-
-import { createElement, useEffect, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { SkeletonCard } from '../../../shared/components/Skeleton';
+import { Feather } from '@expo/vector-icons';
+import { createElement, useCallback, useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+
 import type { RootStackParamList } from '../../../../App';
+import { BottomSheet } from '../../../shared/components/BottomSheet';
 import { Button } from '../../../shared/components/Button';
 import { Card } from '../../../shared/components/Card';
 import { EmptyState } from '../../../shared/components/EmptyState';
+import { FloatingButton } from '../../../shared/components/FloatingButton';
+import { Header } from '../../../shared/components/Header';
+import { PageWrap } from '../../../shared/components/PageWrap';
+import { SkeletonCard } from '../../../shared/components/Skeleton';
 import { Tab } from '../../../shared/components/Tab';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
-
-import { mockPaymentHistories } from '../mocks/mypageMockData';
+import { fetchPaymentHistories } from '../api/mypageApi';
 import type {
   PaymentBenefitType,
   PaymentHistoryItem,
   PaymentMethodType,
   PaymentStatus,
 } from '../types/mypage';
-
-import { FloatingButton } from '../../../shared/components/FloatingButton';
-import { Header } from '../../../shared/components/Header';
-import { PageWrap } from '../../../shared/components/PageWrap';
-
-import { Feather } from '@expo/vector-icons';
-
-
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentHistoryScreen'>;
 type PaymentTab = 'all' | 'completed' | 'canceled';
@@ -44,7 +40,7 @@ const statusLabel: Record<PaymentStatus, string> = {
 const methodLabel: Record<PaymentMethodType, string> = {
   remote: '원격결제',
   dutchpay: '더치페이',
-  solo: '혼자결제',
+  solo: '일반결제',
 };
 
 const benefitLabel: Record<PaymentBenefitType, string> = {
@@ -67,32 +63,67 @@ const benefitClassName: Record<PaymentBenefitType, string> = {
   splitPerformance: 'bg-lime-50 text-lime-700',
 };
 
-
 export function PaymentHistoryScreen({ navigation }: Props) {
+  const [payments, setPayments] = useState<PaymentHistoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<PaymentTab>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
   const [selectedBenefit, setSelectedBenefit] = useState<PaymentBenefitType | null>(null);
   const [appliedPeriod, setAppliedPeriod] = useState<PeriodFilter>(null);
   const [appliedMethod, setAppliedMethod] = useState<PaymentMethodType | null>(null);
   const [appliedBenefit, setAppliedBenefit] = useState<PaymentBenefitType | null>(null);
-
   const [startDate, setStartDate] = useState(getDefaultStartDate);
   const [endDate, setEndDate] = useState(getDefaultEndDate);
+  const [appliedStartDate, setAppliedStartDate] = useState(getDefaultStartDate);
+  const [appliedEndDate, setAppliedEndDate] = useState(getDefaultEndDate);
   const [datePickerTarget, setDatePickerTarget] = useState<DatePickerTarget>(null);
+
+  const loadPayments = useCallback(() => {
+    let isActive = true;
+
+    setIsLoading(true);
+    fetchPaymentHistories({
+      status: toPaymentStatusParam(activeTab),
+      ...toPeriodParams(appliedPeriod, appliedStartDate, appliedEndDate),
+      paymentType: toPaymentTypeParam(appliedMethod),
+      strategyType: toStrategyTypeParam(appliedBenefit),
+    })
+      .then((nextPayments) => {
+        if (isActive) {
+          setPayments(nextPayments);
+        }
+      })
+      .catch((error) => {
+        console.warn('Failed to fetch payment histories.', error);
+        if (isActive) {
+          setPayments([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    activeTab,
+    appliedBenefit,
+    appliedEndDate,
+    appliedMethod,
+    appliedPeriod,
+    appliedStartDate,
+  ]);
+
+  useFocusEffect(loadPayments);
+
   const isFilterApplied =
     appliedPeriod !== null || appliedMethod !== null || appliedBenefit !== null;
+
   const handlePressFilter = () => {
     if (isFilterApplied) {
       setSelectedPeriod(null);
@@ -108,15 +139,12 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     setIsFilterOpen(true);
   };
 
-  const applySelectedDate = (target: Exclude<DatePickerTarget, null>, selectedDate: Date) => {
-    if (target === 'start') {
-      setStartDate(selectedDate);
-    }
-
-    if (target === 'end') {
-      setEndDate(selectedDate);
-    }
-
+  const applySelectedDate = (
+    target: Exclude<DatePickerTarget, null>,
+    selectedDate: Date,
+  ) => {
+    if (target === 'start') setStartDate(selectedDate);
+    if (target === 'end') setEndDate(selectedDate);
     setSelectedPeriod('custom');
   };
 
@@ -126,10 +154,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
       return;
     }
 
-    if (!selectedDate || !datePickerTarget) {
-      return;
-    }
-
+    if (!selectedDate || !datePickerTarget) return;
     applySelectedDate(datePickerTarget, selectedDate);
     setDatePickerTarget(null);
   };
@@ -152,29 +177,6 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
     setDatePickerTarget(target);
   };
-
-  const filteredPayments = mockPaymentHistories.filter((payment) => {
-    const isTabMatched =
-      activeTab === 'all'
-        ? true
-        : activeTab === 'completed'
-          ? payment.status === 'completed'
-          : payment.status === 'canceled' || payment.status === 'cancelRequested';
-
-    const isPeriodMatched = appliedPeriod
-      ? isPaymentInPeriod(payment.date, appliedPeriod, startDate, endDate)
-      : true;
-
-    const isMethodMatched = appliedMethod
-      ? payment.method === appliedMethod
-      : true;
-
-    const isBenefitMatched = appliedBenefit
-      ? payment.benefitType === appliedBenefit
-      : true;
-
-    return isTabMatched && isPeriodMatched && isMethodMatched && isBenefitMatched;
-  });
 
   return (
     <>
@@ -201,7 +203,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
 
           <View className="flex-row items-center justify-between">
             <Text className="font-pretendard text-large-bold text-neutral-black1">
-              총 {filteredPayments.length}건
+              총 {payments.length}건
             </Text>
 
             <Pressable
@@ -209,7 +211,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               className="h-8 w-8 items-center justify-center rounded-full bg-[#2F62A3]"
               onPress={handlePressFilter}
             >
-              <Feather name="filter" size={18} color="#FFFFFF" />
+              <Feather name={isFilterApplied ? 'x' : 'filter'} size={18} color="#FFFFFF" />
             </Pressable>
           </View>
 
@@ -219,8 +221,8 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               <SkeletonCard />
               <SkeletonCard />
             </>
-          ) : filteredPayments.length > 0 ? (
-            filteredPayments.map((payment) => (
+          ) : payments.length > 0 ? (
+            payments.map((payment) => (
               <PaymentItem
                 key={payment.id}
                 payment={payment}
@@ -252,19 +254,15 @@ export function PaymentHistoryScreen({ navigation }: Props) {
         onClose={() => setIsFilterOpen(false)}
       >
         <View className="gap-7">
-          <View>
-            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
-              기간
-            </Text>
-
+          <FilterSection title="기간">
             <View className="flex-row gap-3">
               <FilterChip
-                label="이번주"
+                label="이번 주"
                 active={selectedPeriod === 'week'}
                 onPress={() => setSelectedPeriod('week')}
               />
               <FilterChip
-                label="이번달"
+                label="이번 달"
                 active={selectedPeriod === 'month'}
                 onPress={() => setSelectedPeriod('month')}
               />
@@ -274,13 +272,9 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 onPress={() => setSelectedPeriod('year')}
               />
             </View>
-          </View>
+          </FilterSection>
 
-          <View>
-            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
-              기간 선택
-            </Text>
-
+          <FilterSection title="기간 선택">
             <View className="flex-row gap-3">
               <DateBox
                 label={formatDate(startDate)}
@@ -289,7 +283,6 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 value={startDate}
                 onChangeDate={(date) => applySelectedDate('start', date)}
               />
-
               <DateBox
                 label={formatDate(endDate)}
                 active={selectedPeriod === 'custom'}
@@ -306,79 +299,66 @@ export function PaymentHistoryScreen({ navigation }: Props) {
                 onChange={handleChangeDate}
               />
             ) : null}
-          </View>
+          </FilterSection>
 
-          <View>
-            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
-              결제수단
-            </Text>
-
+          <FilterSection title="결제수단">
             <View className="flex-row flex-wrap gap-y-3">
-              <View className="w-1/3 pr-2">
+              <FilterCell>
                 <FilterChip
                   label="더치페이"
                   active={selectedMethod === 'dutchpay'}
                   onPress={() => setSelectedMethod('dutchpay')}
                 />
-              </View>
-
-              <View className="w-1/3 px-1">
+              </FilterCell>
+              <FilterCell>
                 <FilterChip
                   label="원격결제"
                   active={selectedMethod === 'remote'}
                   onPress={() => setSelectedMethod('remote')}
                 />
-              </View>
-
-              <View className="w-1/3 pl-2">
+              </FilterCell>
+              <FilterCell>
                 <FilterChip
-                  label="혼자결제"
+                  label="일반결제"
                   active={selectedMethod === 'solo'}
                   onPress={() => setSelectedMethod('solo')}
                 />
-              </View>
+              </FilterCell>
             </View>
-          </View>
+          </FilterSection>
 
-          <View>
-            <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
-              적용 유형
-            </Text>
-
+          <FilterSection title="적용 유형">
             <View className="flex-row flex-wrap gap-y-3">
-              <View className="w-1/2 pr-2">
+              <FilterHalfCell>
                 <FilterChip
                   label="단일혜택"
                   active={selectedBenefit === 'singleBenefit'}
                   onPress={() => setSelectedBenefit('singleBenefit')}
                 />
-              </View>
-
-              <View className="w-1/2 pl-2">
+              </FilterHalfCell>
+              <FilterHalfCell>
                 <FilterChip
                   label="단일실적"
                   active={selectedBenefit === 'singlePerformance'}
                   onPress={() => setSelectedBenefit('singlePerformance')}
                 />
-              </View>
-
-              <View className="w-1/2 pr-2">
+              </FilterHalfCell>
+              <FilterHalfCell>
                 <FilterChip
                   label="분할혜택"
                   active={selectedBenefit === 'splitBenefit'}
                   onPress={() => setSelectedBenefit('splitBenefit')}
                 />
-              </View>
-
-              <View className="w-1/2 pl-2">
+              </FilterHalfCell>
+              <FilterHalfCell>
                 <FilterChip
                   label="분할실적"
                   active={selectedBenefit === 'splitPerformance'}
                   onPress={() => setSelectedBenefit('splitPerformance')}
                 />
-              </View>
+              </FilterHalfCell>
             </View>
-          </View>
+          </FilterSection>
 
           <Button
             label="결과보기"
@@ -386,6 +366,8 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               setAppliedPeriod(selectedPeriod);
               setAppliedMethod(selectedMethod);
               setAppliedBenefit(selectedBenefit);
+              setAppliedStartDate(startDate);
+              setAppliedEndDate(endDate);
               setIsFilterOpen(false);
             }}
           />
@@ -406,18 +388,10 @@ function PaymentItem({
     <Card onPress={onPress}>
       <View className="flex-row items-center">
         <View className="flex-row gap-2">
-          <Text
-            className={`rounded px-2 py-1 font-pretendard text-normal-bold ${
-              methodClassName[payment.method]
-            }`}
-          >
+          <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${methodClassName[payment.method]}`}>
             {methodLabel[payment.method]}
           </Text>
-          <Text
-            className={`rounded px-2 py-1 font-pretendard text-normal-bold ${
-              benefitClassName[payment.benefitType]
-            }`}
-          >
+          <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${benefitClassName[payment.benefitType]}`}>
             {benefitLabel[payment.benefitType]}
           </Text>
         </View>
@@ -440,6 +414,31 @@ function PaymentItem({
   );
 }
 
+function FilterSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View>
+      <Text className="mb-4 font-pretendard text-heading-3 text-neutral-black1">
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function FilterCell({ children }: { children: React.ReactNode }) {
+  return <View className="w-1/3 px-1">{children}</View>;
+}
+
+function FilterHalfCell({ children }: { children: React.ReactNode }) {
+  return <View className="w-1/2 px-1">{children}</View>;
+}
+
 function FilterChip({
   label,
   active = false,
@@ -457,11 +456,7 @@ function FilterChip({
       }`}
       onPress={onPress}
     >
-      <Text
-        className={`font-pretendard text-large-bold ${
-          active ? 'text-neutral-white' : 'text-neutral-black2'
-        }`}
-      >
+      <Text className={`font-pretendard text-large-bold ${active ? 'text-neutral-white' : 'text-neutral-black2'}`}>
         {label}
       </Text>
     </Pressable>
@@ -490,9 +485,7 @@ function DateBox({
           value: formatDateInputValue(value),
           onChange: (event: { currentTarget: { value: string } }) => {
             const nextDate = parseDateInputValue(event.currentTarget.value);
-            if (nextDate) {
-              onChangeDate(nextDate);
-            }
+            if (nextDate) onChangeDate(nextDate);
           },
           style: {
             width: '100%',
@@ -532,50 +525,45 @@ function DateBox({
   );
 }
 
-function isPaymentInPeriod(
-  dateText: string,
-  period: PeriodFilter,
-  startDate: Date,
-  endDate: Date,
-) {
-  if (!period) return true;
+function toPaymentStatusParam(tab: PaymentTab) {
+  if (tab === 'completed') return 'PAID' as const;
+  if (tab === 'canceled') return 'CANCELED' as const;
+  return 'ALL' as const;
+}
 
-  const paymentDate = parseDateText(dateText);
-  const today = new Date();
+function toPaymentTypeParam(method: PaymentMethodType | null) {
+  if (method === 'remote') return 'REMOTE' as const;
+  if (method === 'dutchpay') return 'DUTCH' as const;
+  if (method === 'solo') return 'SINGLE' as const;
+  return undefined;
+}
 
-  if (period === 'week') {
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
+function toStrategyTypeParam(benefit: PaymentBenefitType | null) {
+  if (benefit === 'singleBenefit') return 'BENEFIT_SINGLE' as const;
+  if (benefit === 'splitBenefit') return 'BENEFIT_SPLIT' as const;
+  if (benefit === 'singlePerformance') return 'PERF_SINGLE' as const;
+  if (benefit === 'splitPerformance') return 'PERF_SPLIT' as const;
+  return undefined;
+}
 
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-    return paymentDate >= startOfDay(startOfWeek) && paymentDate <= endOfDay(endOfWeek);
-  }
-
-  if (period === 'month') {
-    return (
-      paymentDate.getFullYear() === today.getFullYear() &&
-      paymentDate.getMonth() === today.getMonth()
-    );
-  }
-
-  if (period === 'year') {
-    return paymentDate.getFullYear() === today.getFullYear();
-  }
-
+function toPeriodParams(period: PeriodFilter, startDate: Date, endDate: Date) {
+  if (period === 'week') return { period: 'WEEK' as const };
+  if (period === 'month') return { period: 'MONTH' as const };
+  if (period === 'year') return { period: 'YEAR' as const };
   if (period === 'custom') {
-    return paymentDate >= startOfDay(startDate) && paymentDate <= endOfDay(endDate);
+    return {
+      start: formatDateInputValue(startDate),
+      end: formatDateInputValue(endDate),
+    };
   }
 
-  return true;
+  return {};
 }
 
 function formatDate(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
-
   return `${year}.${month}.${day}`;
 }
 
@@ -583,31 +571,13 @@ function formatDateInputValue(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
-
   return `${year}-${month}-${day}`;
 }
 
 function parseDateInputValue(value: string) {
   const [year, month, day] = value.split('-').map(Number);
-
-  if (!year || !month || !day) {
-    return null;
-  }
-
+  if (!year || !month || !day) return null;
   return new Date(year, month - 1, day);
-}
-
-function parseDateText(dateText: string) {
-  const [year, month, day] = dateText.split('.').map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
-}
-
-function endOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
 }
 
 function getDefaultStartDate() {
