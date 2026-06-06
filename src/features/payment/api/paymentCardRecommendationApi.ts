@@ -7,6 +7,7 @@ import {
 const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
 const PAYMENT_SUBSCRIBE_URL = (paymentId: number) =>
     `${PAYMENT_API_BASE_URL}/api/v1/payment/${paymentId}/subscribe`;
+const PAYMENT_RECOMMENDATION_TIMEOUT_MS = 15000;
 
 type PreparePaymentParams = {
     paymentId?: number;
@@ -132,8 +133,18 @@ type SseEvent = {
     data: string;
 };
 
+type PaymentRecommendationSsePayload = {
+    eventType?: string;
+    payload?: PaymentCardRecommendationResponse | {
+        paymentId?: number;
+        status?: number;
+        reason?: string;
+        message?: string;
+    };
+};
+
 const parseSseEvent = (rawEvent: string): SseEvent | null => {
-    const lines = rawEvent.split('\n');
+    const lines = rawEvent.split(/\r?\n/);
     const eventName =
         lines
             .find((line) => line.startsWith('event:'))
@@ -157,58 +168,115 @@ const parseSseEvent = (rawEvent: string): SseEvent | null => {
 export async function subscribePaymentCardRecommendations(
     paymentId: number,
 ): Promise<PaymentCardRecommendationResponse> {
-    const response = await fetch(PAYMENT_SUBSCRIBE_URL(paymentId), {
-        headers: {
-            Accept: 'text/event-stream',
-            'X-User-Id': getPaymentUserId(),
-        },
-    });
-    const responseBody = (response as unknown as { body?: any }).body;
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        let lastReadIndex = 0;
+        let buffer = '';
+        let settled = false;
 
-    if (!response.ok || !responseBody) {
-        throw new Error('결제 카드 추천 정보를 구독하지 못했습니다.');
-    }
+        const cleanup = () => {
+            clearTimeout(timeoutId);
+            xhr.onreadystatechange = null;
+            xhr.onprogress = null;
+            xhr.onerror = null;
+            xhr.ontimeout = null;
+            xhr.onloadend = null;
+        };
+        const settleResolve = (value: PaymentCardRecommendationResponse) => {
+            if (settled) {
+                return;
+            }
 
-    const reader = responseBody.getReader();
-    const TextDecoderConstructor = (globalThis as unknown as {
-        TextDecoder?: new () => { decode: (input: unknown, options?: unknown) => string };
-    }).TextDecoder;
+            settled = true;
+            cleanup();
+            xhr.abort();
+            resolve(value);
+        };
+        const settleReject = (error: Error) => {
+            if (settled) {
+                return;
+            }
 
-    if (!TextDecoderConstructor) {
-        throw new Error('SSE 응답을 읽을 수 없는 실행 환경입니다.');
-    }
-
-    const decoder = new TextDecoderConstructor();
-    let buffer = '';
-
-    while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-            break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const rawEvents = buffer.split('\n\n');
-        buffer = rawEvents.pop() ?? '';
-
-        for (const rawEvent of rawEvents) {
+            settled = true;
+            cleanup();
+            xhr.abort();
+            reject(error);
+        };
+        const processRawEvent = (rawEvent: string) => {
             const event = parseSseEvent(rawEvent);
 
             if (!event) {
-                continue;
+                return;
+            }
+
+            if (event.eventName === 'payment-updated') {
+                const ssePayload = JSON.parse(event.data) as PaymentRecommendationSsePayload;
+
+                if (ssePayload.eventType === 'RECOMMENDATION_FAILED') {
+                    const failurePayload = ssePayload.payload as
+                        | { reason?: string; message?: string }
+                        | undefined;
+
+                    settleReject(
+                        new Error(
+                            failurePayload?.message ??
+                            failurePayload?.reason ??
+                            '카드추천 실패',
+                        ),
+                    );
+                    return;
+                }
+
+                if (ssePayload.eventType === 'RECOMMENDATION_SUCCEEDED') {
+                    settleResolve(ssePayload.payload as PaymentCardRecommendationResponse);
+                }
+
+                return;
             }
 
             if (event.eventName === '카드추천 실패') {
-                throw new Error('카드추천 실패');
+                settleReject(new Error('카드추천 실패'));
+                return;
             }
 
             if (event.eventName === '카드추천 조합') {
-                reader.cancel().catch(() => {});
-                return JSON.parse(event.data);
+                settleResolve(JSON.parse(event.data));
             }
-        }
-    }
+        };
+        const readAvailableEvents = () => {
+            const nextChunk = xhr.responseText.slice(lastReadIndex);
+            lastReadIndex = xhr.responseText.length;
+            buffer += nextChunk;
 
-    throw new Error('결제 카드 추천 정보를 받지 못했습니다.');
+            const rawEvents = buffer.split(/\r?\n\r?\n/);
+            buffer = rawEvents.pop() ?? '';
+            rawEvents.forEach(processRawEvent);
+        };
+        const timeoutId = setTimeout(() => {
+            settleReject(new Error('카드추천 응답 시간이 초과되었습니다.'));
+        }, PAYMENT_RECOMMENDATION_TIMEOUT_MS);
+
+        xhr.open('GET', PAYMENT_SUBSCRIBE_URL(paymentId));
+        xhr.setRequestHeader('Accept', 'text/event-stream');
+        xhr.setRequestHeader('X-User-Id', getPaymentUserId());
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState >= XMLHttpRequest.HEADERS_RECEIVED && xhr.status >= 400) {
+                settleReject(new Error('결제 카드 추천 정보를 구독하지 못했습니다.'));
+            }
+        };
+        xhr.onprogress = readAvailableEvents;
+        xhr.onerror = () => {
+            settleReject(new Error('결제 카드 추천 정보를 구독하지 못했습니다.'));
+        };
+        xhr.ontimeout = () => {
+            settleReject(new Error('카드추천 응답 시간이 초과되었습니다.'));
+        };
+        xhr.onloadend = () => {
+            if (!settled) {
+                readAvailableEvents();
+                settleReject(new Error('결제 카드 추천 정보를 받지 못했습니다.'));
+            }
+        };
+        xhr.send();
+    });
 }

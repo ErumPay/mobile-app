@@ -257,6 +257,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 });
 
                 const response = await subscribePaymentCardRecommendations(prepareResponse.paymentId);
+
                 const nextData = {
                     ...toPaymentCardSelectData(response),
                     flowType: isDutchFinalRoute
