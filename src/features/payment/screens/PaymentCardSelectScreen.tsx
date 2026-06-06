@@ -15,6 +15,7 @@ import type {
     CardCombinationType,
     PaymentCard,
     PaymentCardSelectData,
+    PaymentCardFlowType,
 } from '../types/paymentCard.types';
 import {
     preparePayment,
@@ -68,6 +69,67 @@ function PaymentCardSelectSkeleton() {
             </View>
         </ScrollView>
     );
+}
+
+function applyPaymentCardFlowUi(
+    data: PaymentCardSelectData,
+    flowType: PaymentCardFlowType,
+): PaymentCardSelectData {
+    if (flowType === 'DUTCH_PAY') {
+        return {
+            ...data,
+            flowType,
+            recommendedCard: {
+                ...data.recommendedCard,
+                title: '대표카드로 결제합니다',
+                description: undefined,
+                badgeText: undefined,
+                card: {
+                    ...data.recommendedCard.card,
+                    isPrimary: true,
+                },
+            },
+            cardCombinations: data.cardCombinations.map((combination, index) =>
+                index === 0
+                    ? {
+                        ...combination,
+                        label: '대표카드',
+                        description: '가결제 진행',
+                        benefitDescription: '이 결제는 가결제로 먼저 진행돼요!',
+                    }
+                    : combination,
+            ),
+        };
+    }
+
+    if (flowType === 'DUTCH_PAY_FINAL') {
+        return {
+            ...data,
+            flowType,
+            recommendedCard: {
+                ...data.recommendedCard,
+                title: '더치페이 결제를 진행합니다',
+                badgeText: undefined,
+            },
+        };
+    }
+
+    if (flowType === 'REMOTE_PAYMENT') {
+        return {
+            ...data,
+            flowType,
+            recommendedCard: {
+                ...data.recommendedCard,
+                title: '원격결제 카드를 선택해주세요',
+                badgeText: undefined,
+            },
+        };
+    }
+
+    return {
+        ...data,
+        flowType,
+    };
 }
 
 export default function PaymentCardSelectScreen({ navigation, route }: Props) {
@@ -258,16 +320,17 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
                 const response = await subscribePaymentCardRecommendations(prepareResponse.paymentId);
 
-                const nextData = {
-                    ...toPaymentCardSelectData(response),
-                    flowType: isDutchFinalRoute
-                        ? 'DUTCH_PAY_FINAL'
-                        : isDutchPayRoute
-                            ? 'DUTCH_PAY'
-                            : isRemotePaymentRoute
-                                ? 'REMOTE_PAYMENT'
-                                : 'NORMAL',
-                } as PaymentCardSelectData;
+                const nextFlowType = isDutchFinalRoute
+                    ? 'DUTCH_PAY_FINAL'
+                    : isDutchPayRoute
+                        ? 'DUTCH_PAY'
+                        : isRemotePaymentRoute
+                            ? 'REMOTE_PAYMENT'
+                            : 'NORMAL';
+                const nextData = applyPaymentCardFlowUi(
+                    toPaymentCardSelectData(response),
+                    nextFlowType,
+                );
 
                 if (isMounted) {
                     setDutchSessionId(prepareResponse.dutchSessionId ?? routeDutchSessionId);

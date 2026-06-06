@@ -35,6 +35,7 @@ type PaymentPinScreenText = {
 };
 
 const PIN_LENGTH = 6;
+const PIN_LOCK_DURATION_SECONDS = 5 * 60;
 const WEAK_PIN_ERROR_MESSAGE =
   '연속 숫자 또는 동일 숫자 4자리 이상은 사용할 수 없습니다.';
 
@@ -97,6 +98,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [hasTriedBiometric, setHasTriedBiometric] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
+  const [pinLockedUntil, setPinLockedUntil] = useState<number | null>(null);
+  const [pinLockRemainingSeconds, setPinLockRemainingSeconds] = useState(0);
 
   const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
 
@@ -138,6 +141,31 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!pinLockedUntil) {
+      setPinLockRemainingSeconds(0);
+      return undefined;
+    }
+
+    const updateRemainingSeconds = () => {
+      const nextRemainingSeconds = Math.max(
+        0,
+        Math.ceil((pinLockedUntil - Date.now()) / 1000),
+      );
+
+      setPinLockRemainingSeconds(nextRemainingSeconds);
+
+      if (nextRemainingSeconds <= 0) {
+        setPinLockedUntil(null);
+      }
+    };
+
+    updateRemainingSeconds();
+    const intervalId = setInterval(updateRemainingSeconds, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [pinLockedUntil]);
 
   const handlePressClose = () => {
     if (isSubmitting) {
@@ -182,6 +210,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   };
 
   const handlePressDelete = () => {
+    if (isSubmitting || pinLockRemainingSeconds > 0) {
+      return;
+    }
+
     setPin((prev) => prev.slice(0, -1));
     setHasError(false);
     setSetupErrorMessage('');
@@ -228,6 +260,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setPin('');
         setHasError(false);
         setSetupErrorMessage('');
+        setPinLockedUntil(null);
         navigation.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
@@ -241,13 +274,24 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       } catch (error) {
         if (error instanceof PaymentRequestError && isPaymentPinError(error)) {
           const nextFailCount = error.details?.failCount ?? failCount + 1;
+          const requiresSmsVerification =
+            Boolean(error.details?.requireSmsVerification) || nextFailCount >= 10;
+          const nextLockedUntil = getPaymentPinLockedUntil(error, nextFailCount);
 
           setPin('');
           setHasError(true);
           setFailCount(nextFailCount);
-          setSetupErrorMessage(getPaymentPinErrorMessage(error, nextFailCount));
+          setPinLockedUntil(nextLockedUntil);
+          setSetupErrorMessage(
+            getPaymentPinErrorMessage(
+              error,
+              nextFailCount,
+              requiresSmsVerification,
+              nextLockedUntil,
+            ),
+          );
 
-          if (error.details?.requireSmsVerification) {
+          if (requiresSmsVerification) {
             setFailModalVisible(true);
           }
 
@@ -388,7 +432,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   };
 
   const handlePressBiometricPayment = async () => {
-    if (mode !== 'PAYMENT_INPUT' || isSubmitting) {
+    if (mode !== 'PAYMENT_INPUT' || isSubmitting || pinLockRemainingSeconds > 0) {
       return;
     }
 
@@ -418,6 +462,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       || !biometricEnabled
       || hasTriedBiometric
       || isSubmitting
+      || pinLockRemainingSeconds > 0
     ) {
       return;
     }
@@ -430,10 +475,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     hasTriedBiometric,
     isSubmitting,
     mode,
+    pinLockRemainingSeconds,
   ]);
 
   const handlePressNumber = (value: string) => {
-    if (pin.length >= PIN_LENGTH || isSubmitting) {
+    if (pin.length >= PIN_LENGTH || isSubmitting || pinLockRemainingSeconds > 0) {
       return;
     }
 
@@ -487,7 +533,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
           {setupErrorMessage ? (
             <Text className="mt-5 text-center font-pretendard text-normal-regular text-state-error">
-              {setupErrorMessage}
+              {pinLockRemainingSeconds > 0
+                ? `비밀번호 입력이 잠겼습니다.\n${formatLockRemainingTime(pinLockRemainingSeconds)} 후 다시 시도해주세요.`
+                : setupErrorMessage}
             </Text>
           ) : null}
 
@@ -517,16 +565,30 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <PinCodeKeypad
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+          disabled={isSubmitting || pinLockRemainingSeconds > 0}
           leftAction={
             mode === 'PAYMENT_INPUT' && canUseBiometric && biometricEnabled ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="생체 인증"
-                className="flex-1 items-center justify-center rounded-xl bg-neutral-white shadow-sm"
+                disabled={pinLockRemainingSeconds > 0}
+                className={`flex-1 items-center justify-center rounded-xl shadow-sm ${
+                  pinLockRemainingSeconds > 0 ? 'bg-neutral-grey1' : 'bg-neutral-white'
+                }`}
                 onPress={handlePressBiometricPayment}
               >
-                <Feather name="smile" size={24} color="#2FAB84" />
-                <Text className="mt-1 font-pretendard text-small-bold text-erum-main">
+                <Feather
+                  name="smile"
+                  size={24}
+                  color={pinLockRemainingSeconds > 0 ? '#B4B8BD' : '#2FAB84'}
+                />
+                <Text
+                  className={`mt-1 font-pretendard text-small-bold ${
+                    pinLockRemainingSeconds > 0
+                      ? 'text-neutral-disabled'
+                      : 'text-erum-main'
+                  }`}
+                >
                   생체
                 </Text>
               </Pressable>
@@ -668,30 +730,71 @@ function isWeakPinPattern(pin: string) {
 }
 
 function isPaymentPinError(error: PaymentRequestError) {
-  return error.code === 'PIN_INVALID' || error.code === 'PIN_LOCKED';
+  return (
+    error.code === 'PIN_INVALID' ||
+    error.code === 'PIN_VERIFY_FAILED' ||
+    error.code === 'PIN_LOCKED' ||
+    error.code === 'PIN_RESET_REQUIRED'
+  );
 }
 
 function getPaymentPinErrorMessage(
   error: PaymentRequestError,
   failCount: number,
+  requiresSmsVerification = false,
+  lockedUntil: number | null = null,
 ) {
-  if (error.details?.requireSmsVerification) {
+  if (requiresSmsVerification) {
     return '10회 이상 실패했습니다.\nSMS 재인증 후 PIN을 다시 설정해주세요.';
   }
 
-  if (error.details?.lockedUntil) {
-    return '비밀번호 입력이 잠겼습니다.\n잠시 후 다시 시도해주세요.';
+  if (lockedUntil) {
+    return '비밀번호 입력이 잠겼습니다.\n5:00 후 다시 시도해주세요.';
   }
 
-  if (error.code === 'PIN_INVALID') {
+  if (error.code === 'PIN_INVALID' || error.code === 'PIN_VERIFY_FAILED') {
     const remainCount = error.details?.remainCount;
 
     if (typeof remainCount === 'number') {
       return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회, 남은 ${remainCount}회)`;
     }
 
+    if (failCount === 5) {
+      return `비밀번호가 일치하지 않습니다.\n${failCount}회 실패하여 5분 후 다시 시도해주세요.`;
+    }
+
     return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회)`;
   }
 
   return error.message || '결제 비밀번호 확인에 실패했습니다.';
+}
+
+function getPaymentPinLockedUntil(
+  error: PaymentRequestError,
+  failCount: number,
+) {
+  if (failCount >= 10 || error.code === 'PIN_RESET_REQUIRED') {
+    return null;
+  }
+
+  if (error.details?.lockedUntil) {
+    const lockedUntil = new Date(error.details.lockedUntil).getTime();
+
+    if (Number.isFinite(lockedUntil) && lockedUntil > Date.now()) {
+      return lockedUntil;
+    }
+  }
+
+  if (error.code === 'PIN_LOCKED' || failCount === 5) {
+    return Date.now() + PIN_LOCK_DURATION_SECONDS * 1000;
+  }
+
+  return null;
+}
+
+function formatLockRemainingTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }

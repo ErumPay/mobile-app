@@ -221,6 +221,10 @@ function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
   }
 
   if (participant.amount != null) {
+    if (participant.host) {
+      return 'EMPTY' as const;
+    }
+
     return 'AMOUNT_CONFIRMED' as const;
   }
 
@@ -257,8 +261,15 @@ function toDutchPayGroupData(
   currentUserId: number,
 ): DutchPayGroupData {
   const scenario = toDutchPayScenario(session, role);
+  const canEditMembers = role === 'OWNER' && scenario === 'OWNER_INITIAL';
   const members = session.participants.map((participant) =>
-    toDutchPayMember(participant, currentUserId),
+    {
+      const member = toDutchPayMember(participant, currentUserId);
+      return {
+        ...member,
+        canOpenMenu: canEditMembers && !member.isOwner,
+      };
+    },
   );
 
   return {

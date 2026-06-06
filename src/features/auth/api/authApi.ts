@@ -1,4 +1,4 @@
-import { AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
+import { AUTH_API_BASE_URL, AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
 
 export type SendSmsResponse = {
   verificationId: number;
@@ -17,6 +17,14 @@ export type SetupPinResponse = {
 
 export type ResetPinResponse = {
   message: string;
+};
+
+export type AuthFriendResponse = {
+  relationId: number;
+  userId: number;
+  name: string;
+  phoneLastFour: string;
+  isFavorite: boolean;
 };
 
 type DevUserResponse = {
@@ -148,6 +156,28 @@ export async function resetPin(
   }
 
   return response.json();
+}
+
+export async function fetchAuthFriends(): Promise<AuthFriendResponse[]> {
+  const accessToken = await getAccessTokenForAuthRequest(undefined, {
+    useExistingDevUser: true,
+  });
+  const response = await fetchAuth(`${AUTH_API_BASE_URL}/api/v1/friends`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new AuthApiError(
+      error?.message ?? '친구 목록을 불러오지 못했습니다.',
+      response.status,
+    );
+  }
+
+  const data = await response.json();
+  return Array.isArray(data.friends) ? data.friends : [];
 }
 
 async function fetchAuth(input: RequestInfo, init?: RequestInit) {
