@@ -39,12 +39,12 @@ const webShimmerStyle: CSSProperties = {
   animationName: 'erumSkeletonShimmer',
   animationTimingFunction: 'ease-in-out',
   backgroundImage:
-    'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.9), rgba(255,255,255,0))',
-  bottom: 0,
+    'linear-gradient(105deg, rgba(255,255,255,0), rgba(255,255,255,0.82), rgba(255,255,255,0))',
+  height: '180%',
   left: 0,
   position: 'absolute',
-  top: 0,
-  width: '46%',
+  top: '-40%',
+  width: '42%',
 };
 
 export function Skeleton({
@@ -52,12 +52,12 @@ export function Skeleton({
   height = 16,
   rounded = 'md',
 }: SkeletonProps) {
-  const shimmerTranslateX = useRef(new Animated.Value(-120)).current;
+  const shimmerProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
-      Animated.timing(shimmerTranslateX, {
-        toValue: 320,
+      Animated.timing(shimmerProgress, {
+        toValue: 1,
         duration: 1300,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
@@ -70,6 +70,11 @@ export function Skeleton({
       animation.stop();
     };
   }, []);
+
+  const shimmerTranslateX = shimmerProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-120, 320],
+  });
 
   if (Platform.OS === 'web') {
     return (
@@ -98,10 +103,15 @@ export function Skeleton({
       <Animated.View
         style={{
           backgroundColor: colors.neutral.white,
-          height: '100%',
-          opacity: 0.75,
-          transform: [{ translateX: shimmerTranslateX }],
-          width: 96,
+          height: '180%',
+          opacity: 0.68,
+          position: 'absolute',
+          top: '-40%',
+          transform: [
+            { translateX: shimmerTranslateX },
+            { rotate: '12deg' },
+          ],
+          width: 64,
         }}
       />
     </View>

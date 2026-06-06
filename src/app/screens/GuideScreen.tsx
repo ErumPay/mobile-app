@@ -830,7 +830,7 @@ export default function GuideScreen({ navigation }: Props) {
                               }
 
                               if (page.route === "PaymentMethodSelect") {
-                                navigation.navigate("PaymentMethodSelect");
+                                navigation.navigate("QrScan");
                                 return;
                               }
 

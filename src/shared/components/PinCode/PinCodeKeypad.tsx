@@ -7,12 +7,14 @@
  ******************************************************************************/
 
 import { Feather } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { colors } from '../../styles/designTokens';
 
 type PinCodeKeypadProps = {
     onPressNumber: (value: string) => void;
     onPressDelete: () => void;
+    leftAction?: ReactNode;
 };
 
 const keypadRows = [
@@ -25,6 +27,7 @@ const keypadRows = [
 export default function PinCodeKeypad({
                                           onPressNumber,
                                           onPressDelete,
+                                          leftAction,
                                       }: PinCodeKeypadProps) {
     return (
         <View className="w-full flex-[0.58] justify-center rounded-t-3xl bg-neutral-grey2 px-[7.5%] py-[4%]">
@@ -37,7 +40,9 @@ export default function PinCodeKeypad({
                                     <View
                                         key={`${rowIndex}-${columnIndex}`}
                                         className="flex-1"
-                                    />
+                                    >
+                                        {leftAction}
+                                    </View>
                                 );
                             }
 

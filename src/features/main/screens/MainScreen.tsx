@@ -18,7 +18,6 @@ import { FloatingButton } from "../../../shared/components/FloatingButton";
 import { RejectConfirmModal } from "../../../shared/components/Modal";
 import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
-import { mockPaymentRequestSummary } from "../../payment/constants/paymentMethod.mock";
 import {
   getActiveRemotePaymentRequests,
   rejectRemotePaymentRequest,
@@ -46,10 +45,6 @@ type QuickMenu = {
 
 const hasNotification = false;
 const isNotificationLoading = false;
-
-const paymentMethodSelectParams = {
-  summary: mockPaymentRequestSummary,
-};
 
 export default function MainScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -260,7 +255,7 @@ export default function MainScreen({ navigation }: Props) {
       return;
     }
 
-    navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+    navigation.navigate("QrScan");
   };
 
   const handlePressPaymentProgressAccept = () => {
@@ -274,7 +269,7 @@ export default function MainScreen({ navigation }: Props) {
       return;
     }
 
-    navigation.navigate("PaymentMethodSelect", paymentMethodSelectParams);
+    navigation.navigate("QrScan");
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +16,13 @@ import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgres
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import {
+  canUseBiometricPaymentAuth,
+  disableBiometricPayment,
+  enableBiometricPayment,
+  getBiometricPaymentPin,
+  isBiometricPaymentEnabled,
+} from '../utils/biometricPaymentAuth';
 import { resetPin, setupPin } from '../../auth/api/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
@@ -82,6 +89,13 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [resetCompleteModalVisible, setResetCompleteModalVisible] = useState(false);
+  const [biometricSetupModalVisible, setBiometricSetupModalVisible] = useState(false);
+  const [pendingBiometricPin, setPendingBiometricPin] = useState('');
+  const [biometricSetupNextScreen, setBiometricSetupNextScreen] =
+    useState<'SIGNUP_COMPLETE' | 'MYPAGE_RESET'>('SIGNUP_COMPLETE');
+  const [canUseBiometric, setCanUseBiometric] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [hasTriedBiometric, setHasTriedBiometric] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
 
   const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
@@ -95,6 +109,35 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     return paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
   }, [paymentParams]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBiometricState = async () => {
+      try {
+        const [nextCanUseBiometric, nextBiometricEnabled] = await Promise.all([
+          canUseBiometricPaymentAuth(),
+          isBiometricPaymentEnabled(),
+        ]);
+
+        if (isMounted) {
+          setCanUseBiometric(nextCanUseBiometric);
+          setBiometricEnabled(nextBiometricEnabled);
+        }
+      } catch {
+        if (isMounted) {
+          setCanUseBiometric(false);
+          setBiometricEnabled(false);
+        }
+      }
+    };
+
+    void loadBiometricState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handlePressClose = () => {
     if (isSubmitting) {
@@ -267,12 +310,29 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
         await resetPin(verificationId, completedPin, firstPin);
         setSetupErrorMessage('');
+        await disableBiometricPayment();
+
+        if (canUseBiometric) {
+          setPendingBiometricPin(completedPin);
+          setBiometricSetupNextScreen('MYPAGE_RESET');
+          setBiometricSetupModalVisible(true);
+          return;
+        }
+
         setResetCompleteModalVisible(true);
         return;
       }
 
       await setupPin(completedPin, firstPin);
       setSetupErrorMessage('');
+
+      if (canUseBiometric) {
+        setPendingBiometricPin(completedPin);
+        setBiometricSetupNextScreen('SIGNUP_COMPLETE');
+        setBiometricSetupModalVisible(true);
+        return;
+      }
+
       navigation.replace('SignupComplete');
     } catch (error) {
       setPin('');
@@ -284,6 +344,88 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       setIsSubmitting(false);
     }
   };
+
+  const finishPinSetupAfterBiometric = () => {
+    setPendingBiometricPin('');
+    setBiometricSetupModalVisible(false);
+
+    if (biometricSetupNextScreen === 'MYPAGE_RESET') {
+      setResetCompleteModalVisible(true);
+      return;
+    }
+
+    navigation.replace('SignupComplete');
+  };
+
+  const handleConfirmBiometricSetup = async () => {
+    if (!pendingBiometricPin || isSubmitting) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await enableBiometricPayment(pendingBiometricPin);
+      setBiometricEnabled(true);
+      finishPinSetupAfterBiometric();
+    } catch (error) {
+      setSetupErrorMessage(
+        error instanceof Error ? error.message : '생체 인증 등록에 실패했습니다.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelBiometricSetup = async () => {
+    await disableBiometricPayment();
+    setBiometricEnabled(false);
+    finishPinSetupAfterBiometric();
+  };
+
+  const handlePressBiometricPayment = async () => {
+    if (mode !== 'PAYMENT_INPUT' || isSubmitting) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSetupErrorMessage('');
+      const biometricPin = await getBiometricPaymentPin();
+
+      if (!biometricPin) {
+        setBiometricEnabled(false);
+        setSetupErrorMessage('생체 인증 정보를 찾을 수 없습니다.\nPIN으로 입력해주세요.');
+        return;
+      }
+
+      await handleCompletePin(biometricPin);
+    } catch {
+      setSetupErrorMessage('생체 인증에 실패했습니다.\nPIN으로 입력해주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      mode !== 'PAYMENT_INPUT'
+      || !canUseBiometric
+      || !biometricEnabled
+      || hasTriedBiometric
+      || isSubmitting
+    ) {
+      return;
+    }
+
+    setHasTriedBiometric(true);
+    void handlePressBiometricPayment();
+  }, [
+    biometricEnabled,
+    canUseBiometric,
+    hasTriedBiometric,
+    isSubmitting,
+    mode,
+  ]);
 
   const handlePressNumber = (value: string) => {
     if (pin.length >= PIN_LENGTH || isSubmitting) {
@@ -370,6 +512,21 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <PinCodeKeypad
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+          leftAction={
+            mode === 'PAYMENT_INPUT' && canUseBiometric && biometricEnabled ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="생체 인증"
+                className="flex-1 items-center justify-center rounded-xl bg-neutral-white shadow-sm"
+                onPress={handlePressBiometricPayment}
+              >
+                <Feather name="smile" size={24} color="#2FAB84" />
+                <Text className="mt-1 font-pretendard text-small-bold text-erum-main">
+                  생체
+                </Text>
+              </Pressable>
+            ) : null
+          }
         />
 
         {isPinResetFlow ? (
@@ -416,6 +573,23 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           />
         ) : null}
       </View>
+
+      <Modal
+        visible={biometricSetupModalVisible}
+        type="two"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-erum-main">
+            <Feather name="shield" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="생체 인증을 사용할까요?"
+        description="다음 결제부터 Face ID 또는 Touch ID로 간편비밀번호 입력을 대신할 수 있습니다."
+        confirmLabel="사용하기"
+        cancelLabel="나중에"
+        onConfirm={handleConfirmBiometricSetup}
+        onCancel={handleCancelBiometricSetup}
+        onClose={handleCancelBiometricSetup}
+      />
 
       <Modal
         visible={resetCompleteModalVisible}
