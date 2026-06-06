@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { Modal as RNModal, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
@@ -173,7 +174,7 @@ export default function TermsAgreementScreen({ navigation }: Props) {
         visible={termsModalVisible}
         onRequestClose={() => setTermsModalVisible(false)}
       >
-        <View className="flex-1 bg-neutral-white">
+        <SafeAreaView className="flex-1 bg-neutral-white">
           <View className="flex-row items-center justify-between px-5 py-4">
             <Text className="font-pretendard text-heading-3 text-neutral-black1">
               {termsModalTitle}
@@ -185,7 +186,10 @@ export default function TermsAgreementScreen({ navigation }: Props) {
 
           <View className="h-px bg-neutral-grey1" />
 
-          <ScrollView className="flex-1 px-5 py-6">
+          <ScrollView
+            className="flex-1 px-5 py-6"
+            contentContainerClassName="pb-8"
+          >
             {termsModalTitle === '개인정보 수집이용' ? (
               <View className="gap-4">
                 <Text className="font-pretendard text-large-bold text-neutral-black1">
@@ -269,7 +273,7 @@ export default function TermsAgreementScreen({ navigation }: Props) {
               </Text>
             )}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </RNModal>
     </PageWrap>
   );
