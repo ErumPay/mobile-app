@@ -16,6 +16,7 @@ import { SkeletonCard } from '../../../shared/components/Skeleton';
 import { Tab } from '../../../shared/components/Tab';
 import {
   deleteManagedCard,
+  fetchManagedCards,
   fetchCardBenefits,
   fetchPaymentHistoriesByCard,
   setManagedDefaultCard,
@@ -71,12 +72,52 @@ export function CardDetailScreen({ navigation, route }: Props) {
   const [aliasValue, setAliasValue] = useState('');
   const [cardBenefits, setCardBenefits] = useState<CardBenefit[]>([]);
   const [cardPayments, setCardPayments] = useState<PaymentHistoryItem[]>([]);
+  const [isResolvingCard, setIsResolvingCard] = useState(false);
+  const [hasCardLookupFailed, setHasCardLookupFailed] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const cards = useManagedCardsStore((state) => state.cards);
+  const setCards = useManagedCardsStore((state) => state.setCards);
   const setDefaultCard = useManagedCardsStore((state) => state.setDefaultCard);
   const deleteCard = useManagedCardsStore((state) => state.deleteCard);
   const updateCardAlias = useManagedCardsStore((state) => state.updateCardAlias);
   const card = cards.find((item) => item.id === route.params.cardId);
+
+  useEffect(() => {
+    if (card) {
+      setHasCardLookupFailed(false);
+      return;
+    }
+
+    let isActive = true;
+
+    setIsResolvingCard(true);
+    setHasCardLookupFailed(false);
+    fetchManagedCards()
+      .then((nextCards) => {
+        if (!isActive) return;
+
+        setCards(nextCards);
+        setHasCardLookupFailed(
+          !nextCards.some((item) => item.id === route.params.cardId),
+        );
+      })
+      .catch((error) => {
+        console.warn('Failed to resolve card detail.', error);
+        if (isActive) {
+          setHasCardLookupFailed(true);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsResolvingCard(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [card, route.params.cardId, setCards]);
 
   useEffect(() => {
     if (card) {
@@ -134,7 +175,20 @@ export function CardDetailScreen({ navigation, route }: Props) {
           />
         }
       >
-        <EmptyState title="카드 정보를 찾을 수 없습니다." />
+        {isResolvingCard ? (
+          <View className="gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        ) : (
+          <EmptyState
+            title={
+              hasCardLookupFailed
+                ? '카드 정보를 불러오지 못했습니다.'
+                : '카드 정보를 찾을 수 없습니다.'
+            }
+          />
+        )}
       </PageWrap>
     );
   }
@@ -240,10 +294,12 @@ export function CardDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <View className="gap-3">
-                <Button
-                  label="대표카드로 설정"
-                  onPress={() => setDialog('default')}
-                />
+                {!card.isDefault ? (
+                  <Button
+                    label="대표카드로 설정"
+                    onPress={() => setDialog('default')}
+                  />
+                ) : null}
                 <Button
                   label="카드 별칭 수정"
                   variant="secondary"
@@ -292,6 +348,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
           } catch (error) {
             console.warn('Failed to set default card.', error);
             setDialog(null);
+            setActionMessage('대표카드 설정에 실패했습니다.');
           }
         }}
         onCancel={() => setDialog(null)}
@@ -311,6 +368,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
           } catch (error) {
             console.warn('Failed to update card alias.', error);
             setDialog(null);
+            setActionMessage('카드 별칭 수정에 실패했습니다.');
           }
         }}
       />
@@ -328,6 +386,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
           } catch (error) {
             console.warn('Failed to delete card.', error);
             setDialog(null);
+            setActionMessage('카드 삭제에 실패했습니다.');
           }
         }}
         onCancel={() => setDialog(null)}
@@ -379,6 +438,15 @@ export function CardDetailScreen({ navigation, route }: Props) {
           setDialog(null);
           navigation.navigate('CardManagementScreen');
         }}
+      />
+
+      <Modal
+        visible={Boolean(actionMessage)}
+        type="one"
+        title={actionMessage ?? ''}
+        confirmLabel="확인"
+        onConfirm={() => setActionMessage(null)}
+        onClose={() => setActionMessage(null)}
       />
     </>
   );

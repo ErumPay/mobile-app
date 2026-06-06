@@ -22,12 +22,14 @@ export function CardManagementScreen({ navigation }: Props) {
   const cards = useManagedCardsStore((state) => state.cards);
   const setCards = useManagedCardsStore((state) => state.setCards);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
       setIsLoading(true);
+      setHasLoadError(false);
 
       fetchManagedCards()
         .then((nextCards) => {
@@ -37,6 +39,10 @@ export function CardManagementScreen({ navigation }: Props) {
         })
         .catch((error) => {
           console.warn('Failed to fetch managed cards.', error);
+          if (isActive) {
+            setCards([]);
+            setHasLoadError(true);
+          }
         })
         .finally(() => {
           if (isActive) {
@@ -70,7 +76,13 @@ export function CardManagementScreen({ navigation }: Props) {
               <SkeletonCard />
             </>
           ) : cards.length === 0 ? (
-            <EmptyState title="등록된 카드가 없습니다." />
+            <EmptyState
+              title={
+                hasLoadError
+                  ? '카드 목록을 불러오지 못했습니다.'
+                  : '등록된 카드가 없습니다.'
+              }
+            />
           ) : (
             cards.map((card) => (
               <ManagedCardItem

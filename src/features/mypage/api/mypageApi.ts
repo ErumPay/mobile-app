@@ -246,11 +246,16 @@ export async function fetchPaymentHistoriesByCard(
   cardId: string,
 ): Promise<PaymentHistoryItem[]> {
   const payments = await fetchPaymentHistories();
-  const paymentDetails = await Promise.all(
+  const paymentDetailResults = await Promise.allSettled(
     payments.map((payment) => fetchPaymentDetail(payment.id)),
   );
 
-  return paymentDetails
+  return paymentDetailResults
+    .filter(
+      (result): result is PromiseFulfilledResult<PaymentDetail> =>
+        result.status === 'fulfilled',
+    )
+    .map((result) => result.value)
     .filter((payment) =>
       (payment.cards ?? []).some((card) => card.id === cardId),
     )
