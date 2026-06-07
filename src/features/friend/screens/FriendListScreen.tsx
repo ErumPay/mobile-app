@@ -29,36 +29,6 @@ type FriendListEntry = AuthFriendResponse & {
 
 const friendAddIcon = require('../../../assets/images/friend-add.png');
 
-const mockFriends: FriendListEntry[] = [
-  {
-    relationId: 10001,
-    userId: 20001,
-    name: '김민수',
-    phoneLastFour: '1111',
-    phoneNumber: '010-1111-1111',
-    isFavorite: false,
-    avatarColorClassName: 'bg-[#9E42F4]',
-  },
-  {
-    relationId: 10002,
-    userId: 20002,
-    name: '이지현',
-    phoneLastFour: '2222',
-    phoneNumber: '010-2222-2222',
-    isFavorite: false,
-    avatarColorClassName: 'bg-[#F02892]',
-  },
-  {
-    relationId: 10003,
-    userId: 20003,
-    name: '박서준',
-    phoneLastFour: '3333',
-    phoneNumber: '010-3333-3333',
-    isFavorite: true,
-    avatarColorClassName: 'bg-[#08C752]',
-  },
-];
-
 const avatarColorClasses = ['bg-[#9E42F4]', 'bg-[#F02892]', 'bg-[#08C752]', 'bg-[#2FAB84]'];
 
 function toDisplayFriend(friend: AuthFriendResponse, index: number): FriendListEntry {
@@ -70,7 +40,7 @@ function toDisplayFriend(friend: AuthFriendResponse, index: number): FriendListE
 }
 
 export default function FriendListScreen({ navigation }: Props) {
-  const [friends, setFriends] = useState<FriendListEntry[]>(mockFriends);
+  const [friends, setFriends] = useState<FriendListEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [openedMenuRelationId, setOpenedMenuRelationId] = useState<number | null>(null);
@@ -113,7 +83,7 @@ export default function FriendListScreen({ navigation }: Props) {
 
           console.log('[FriendListScreen] fetched friends', {
             count: nextFriends.length,
-            relationIds: nextFriends.map((friend) => friend.relationId),
+            // relationIds: nextFriends.map((friend) => friend.relationId),
           });
           setFriends(nextFriends.map(toDisplayFriend));
         })
@@ -139,9 +109,9 @@ export default function FriendListScreen({ navigation }: Props) {
     try {
       setFavoriteUpdatingRelationId(friend.relationId);
       console.log('[FriendListScreen] toggling favorite', {
-        relationId: friend.relationId,
-        userId: friend.userId,
         isFavorite: nextIsFavorite,
+        // relationId: friend.relationId,
+        // userId: friend.userId,
       });
       await updateAuthFriendFavorite(friend.userId, nextIsFavorite);
       setFriends((prevFriends) =>
@@ -151,9 +121,9 @@ export default function FriendListScreen({ navigation }: Props) {
       );
       setOpenedMenuRelationId(null);
       console.log('[FriendListScreen] toggled favorite', {
-        relationId: friend.relationId,
-        userId: friend.userId,
         isFavorite: nextIsFavorite,
+        // relationId: friend.relationId,
+        // userId: friend.userId,
       });
     } catch (error) {
       console.warn('[FriendListScreen] failed to toggle favorite', error);
@@ -174,16 +144,16 @@ export default function FriendListScreen({ navigation }: Props) {
     try {
       setIsDeletingFriend(true);
       console.log('[FriendListScreen] deleting friend', {
-        relationId: friend.relationId,
-        userId: friend.userId,
+        // relationId: friend.relationId,
+        // userId: friend.userId,
       });
       await deleteAuthFriend(friend.userId);
       setFriends((prevFriends) => prevFriends.filter((item) => item.relationId !== friend.relationId));
       setOpenedMenuRelationId(null);
       setPendingDeleteFriend(null);
       console.log('[FriendListScreen] deleted friend', {
-        relationId: friend.relationId,
-        userId: friend.userId,
+        // relationId: friend.relationId,
+        // userId: friend.userId,
       });
     } catch (error) {
       console.warn('[FriendListScreen] failed to delete friend', error);

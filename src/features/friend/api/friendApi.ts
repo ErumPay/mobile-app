@@ -9,6 +9,37 @@ export type AuthFriendResponse = {
   isFavorite: boolean;
 };
 
+function describeFriendsResponse(data: unknown) {
+  if (Array.isArray(data)) {
+    return {
+      bodyType: 'array',
+      keys: [],
+      hasFriendsKey: false,
+      friendsFieldType: 'missing',
+    };
+  }
+
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>;
+    const keys = Object.keys(record);
+    const friendsValue = record.friends;
+
+    return {
+      bodyType: 'object',
+      keys,
+      hasFriendsKey: Object.prototype.hasOwnProperty.call(record, 'friends'),
+      friendsFieldType: Array.isArray(friendsValue) ? 'array' : typeof friendsValue,
+    };
+  }
+
+  return {
+    bodyType: typeof data,
+    keys: [],
+    hasFriendsKey: false,
+    friendsFieldType: 'missing',
+  };
+}
+
 // [FE] 다윤 260608 00:00 | 친구 목록 조회 api
 export async function fetchAuthFriends(): Promise<AuthFriendResponse[]> {
   const accessToken = await getAccessTokenForAuthRequest(undefined, {
@@ -18,7 +49,7 @@ export async function fetchAuthFriends(): Promise<AuthFriendResponse[]> {
   console.log('[fetchAuthFriends] request start', {
     url: `${AUTH_API_BASE_URL}/api/v1/friends`,
     hasAccessToken: Boolean(accessToken),
-    tokenPreview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
+    // tokenPreview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
   });
 
   const response = await fetchAuth(`${AUTH_API_BASE_URL}/api/v1/friends`, {
@@ -38,13 +69,24 @@ export async function fetchAuthFriends(): Promise<AuthFriendResponse[]> {
     throw new AuthApiError(error?.message ?? '친구 목록을 불러오지 못했습니다.', response.status);
   }
 
-  const data = await response.json();
-  console.log('[fetchAuthFriends] response body', data);
+  const data: unknown = await response.json();
+  const responseInfo = describeFriendsResponse(data);
+
+  if (!responseInfo.hasFriendsKey || !Array.isArray((data as { friends?: unknown }).friends)) {
+    console.warn('[fetchAuthFriends] invalid response schema', responseInfo);
+    throw new Error(
+      `Invalid friends response schema: bodyType=${responseInfo.bodyType}, keys=${responseInfo.keys.join(',') || '(none)'}, friendsFieldType=${responseInfo.friendsFieldType}`,
+    );
+  }
+
+  const friends = (data as { friends: AuthFriendResponse[] }).friends;
+
+  // console.log('[fetchAuthFriends] response body', data);
   console.log('[fetchAuthFriends] response body parsed', {
-    friendCount: Array.isArray(data.friends) ? data.friends.length : 0,
+    friendCount: friends.length,
   });
 
-  return Array.isArray(data.friends) ? data.friends : [];
+  return friends;
 }
 
 // [FE] 다윤 260608 00:00 | 친구 삭제 요청 api
@@ -55,9 +97,9 @@ export async function deleteAuthFriend(friendUserId: number): Promise<void> {
 
   console.log('[deleteAuthFriend] request start', {
     url: `${AUTH_API_BASE_URL}/api/v1/friends/${friendUserId}`,
-    friendUserId,
     hasAccessToken: Boolean(accessToken),
-    tokenPreview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
+    // friendUserId,
+    // tokenPreview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
   });
 
   const response = await fetchAuth(`${AUTH_API_BASE_URL}/api/v1/friends/${friendUserId}`, {
@@ -70,7 +112,7 @@ export async function deleteAuthFriend(friendUserId: number): Promise<void> {
   console.log('[deleteAuthFriend] response received', {
     status: response.status,
     ok: response.ok,
-    friendUserId,
+    // friendUserId,
   });
 
   if (!response.ok) {
@@ -80,7 +122,7 @@ export async function deleteAuthFriend(friendUserId: number): Promise<void> {
   }
 
   const data = await response.json().catch(() => null);
-  console.log('[deleteAuthFriend] response body', data);
+  // console.log('[deleteAuthFriend] response body', data);
 }
 
 // [FE] 다윤 260608 00:00 | 친구 즐겨찾기 토글 api
@@ -91,10 +133,10 @@ export async function updateAuthFriendFavorite(friendUserId: number, isFavorite:
 
   console.log('[updateAuthFriendFavorite] request start', {
     url: `${AUTH_API_BASE_URL}/api/v1/friends/${friendUserId}/favorite`,
-    friendUserId,
     isFavorite,
     hasAccessToken: Boolean(accessToken),
-    tokenPreview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
+    // friendUserId,
+    // tokenPreview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
   });
 
   const response = await fetchAuth(`${AUTH_API_BASE_URL}/api/v1/friends/${friendUserId}/favorite`, {
@@ -109,8 +151,8 @@ export async function updateAuthFriendFavorite(friendUserId: number, isFavorite:
   console.log('[updateAuthFriendFavorite] response received', {
     status: response.status,
     ok: response.ok,
-    friendUserId,
     isFavorite,
+    // friendUserId,
   });
 
   if (!response.ok) {
@@ -120,5 +162,5 @@ export async function updateAuthFriendFavorite(friendUserId: number, isFavorite:
   }
 
   const data = await response.json().catch(() => null);
-  console.log('[updateAuthFriendFavorite] response body', data);
+  // console.log('[updateAuthFriendFavorite] response body', data);
 }
