@@ -3,6 +3,17 @@ import { CARD_API_BASE_URL, CARD_API_TIMEOUT_MS } from './cardApiConfig';
 
 const REGISTER_CARD_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
 
+export class CardApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'CardApiError';
+  }
+}
+
 function getCardUserHeaders() {
   return {
     'X-User-Id': String(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2'),
@@ -26,9 +37,11 @@ export async function registerCard(
   );
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => '');
-    throw new Error(
-      `CARD_REGISTER_REQUEST_FAILED:${response.status}:${errorBody}`,
+    const errorBody = await parseErrorBody(response);
+    throw new CardApiError(
+      response.status,
+      errorBody.code,
+      errorBody.message,
     );
   }
 
@@ -68,6 +81,24 @@ async function fetchWithTimeout(
     });
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+async function parseErrorBody(response: Response) {
+  const fallback = {
+    code: 'CARD_REGISTER_REQUEST_FAILED',
+    message: '카드 등록 요청에 실패했습니다.',
+  };
+
+  try {
+    const body = (await response.json()) as Record<string, unknown>;
+
+    return {
+      code: String(body.code ?? fallback.code),
+      message: String(body.message ?? fallback.message),
+    };
+  } catch {
+    return fallback;
   }
 }
 

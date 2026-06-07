@@ -4,8 +4,11 @@ import { CardOcrScreen } from './CardOcrScreen';
 import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
 import { CardRegisterResultScreen } from './CardRegisterResultScreen';
-import { registerCard } from '../api/cardApi';
-import { getCardRegisterUserId } from '../api/cardApiConfig';
+import { CardApiError, registerCard } from '../api/cardApi';
+import {
+  CARD_API_BASE_URL,
+  getCardRegisterUserId,
+} from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
 
@@ -63,7 +66,20 @@ export function CardRegisterScreen({ navigation }: Props) {
       setRegisteredCard(registeredCard);
       setMode('success');
     } catch (error) {
-      console.warn('Card registration failed.', error);
+      if (error instanceof CardApiError) {
+        console.error('Card registration failed.', {
+          url: `${CARD_API_BASE_URL}/api/v1/cards`,
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        });
+      } else {
+        console.error('Card registration request failed.', {
+          url: `${CARD_API_BASE_URL}/api/v1/cards`,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       setMode('failure');
     } finally {
       setIsSubmitting(false);
