@@ -175,6 +175,17 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <Button label="전자영수증" onPress={() => setIsReceiptOpen(true)} />
+              {payment.status === 'completed' ? (
+                <Button
+                  label="결제취소"
+                  variant="danger"
+                  onPress={() =>
+                    navigation.navigate('PaymentCancel', {
+                      paymentId: Number(payment.id),
+                    })
+                  }
+                />
+              ) : null}
             </>
           ) : (
             <EmptyState title="결제 정보를 찾을 수 없습니다." />

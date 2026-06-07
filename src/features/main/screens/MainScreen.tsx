@@ -600,7 +600,9 @@ function toDutchPayProgressVariant(
     session.status === "COMPLETED" ||
     session.status === "FAILED" ||
     session.status === "TIMEOUT_HANDLED" ||
-    session.session_progress_step === "COMPLETED"
+    session.session_progress_step === "COMPLETED" ||
+    session.session_progress_step === "FAILED" ||
+    session.session_progress_step === "TIMEOUT_HANDLED"
   ) {
     return null;
   }
@@ -610,7 +612,7 @@ function toDutchPayProgressVariant(
   );
 
   if (role === "OWNER" && isLocallyCancelled) {
-    return "DUTCHPAY_OWNER_GROUP_CREATE_READY";
+    return null;
   }
 
   if (
@@ -618,7 +620,7 @@ function toDutchPayProgressVariant(
     session.status === "CREATED" &&
     !hasParticipantBeyondOwner
   ) {
-    return "DUTCHPAY_OWNER_GROUP_CREATE_READY";
+    return null;
   }
 
   if (role === "OWNER") {
@@ -636,10 +638,9 @@ function toDutchPayProgressVariant(
       case "PAYMENT_IN_PROGRESS":
         return "DUTCHPAY_OWNER_WAITING_MEMBERS";
       case "FINAL_PAYMENT_REQUIRED":
-      case "TIMEOUT_HANDLED":
         return "DUTCHPAY_OWNER_FINAL_PAYMENT_READY";
       default:
-        return "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY";
+        return null;
     }
   }
 
@@ -647,7 +648,11 @@ function toDutchPayProgressVariant(
     (participant) => participant.user_id === currentUserId,
   );
 
-  if (!myParticipant || myParticipant.status === "REJECTED") {
+  if (
+    !myParticipant ||
+    myParticipant.status === "REJECTED" ||
+    myParticipant.status === "TIMEOUT"
+  ) {
     return null;
   }
 
