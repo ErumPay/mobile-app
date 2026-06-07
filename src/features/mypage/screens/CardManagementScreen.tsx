@@ -1,6 +1,6 @@
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import type { RootStackParamList } from '../../../../App';
@@ -130,14 +130,7 @@ function ManagedCardItem({
     <Card onPress={onPress}>
       <View className="relative">
         <View className="flex-row items-center">
-          <View className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${card.colorClassName}`}>
-            <Text className="font-pretendard text-[9px] text-neutral-white">
-              {card.issuer}
-            </Text>
-            <Text className="mt-1 font-pretendard text-[10px] font-bold text-neutral-white">
-              ****
-            </Text>
-          </View>
+          <ManagedCardThumbnail card={card} />
 
           <View className="min-w-0 flex-1">
             <View className="flex-row items-center">
@@ -178,6 +171,55 @@ function ManagedCardItem({
         ) : null}
       </View>
     </Card>
+  );
+}
+
+function ManagedCardThumbnail({ card }: { card: ManagedCard }) {
+  const [isVerticalImage, setIsVerticalImage] = useState(false);
+
+  useEffect(() => {
+    if (!card.imageUrl) {
+      setIsVerticalImage(false);
+      return;
+    }
+
+    Image.getSize(
+      card.imageUrl,
+      (width, height) => {
+        setIsVerticalImage(height > width);
+      },
+      () => {
+        setIsVerticalImage(false);
+      },
+    );
+  }, [card.imageUrl]);
+
+  if (!card.imageUrl) {
+    return (
+      <View className={`mr-3 h-12 w-20 rounded-lg px-2 py-2 ${card.colorClassName}`}>
+        <Text className="font-pretendard text-[9px] text-neutral-white">
+          {card.issuer}
+        </Text>
+        <Text className="mt-1 font-pretendard text-[10px] font-bold text-neutral-white">
+          ****
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="mr-3 h-12 w-20 items-center justify-center overflow-hidden rounded-lg bg-neutral-grey3">
+      <Image
+        source={{ uri: card.imageUrl }}
+        resizeMode="cover"
+        className={isVerticalImage ? undefined : 'h-full w-full'}
+        style={
+          isVerticalImage
+            ? { width: 48, height: 80, transform: [{ rotate: '90deg' }] }
+            : undefined
+        }
+      />
+    </View>
   );
 }
 
