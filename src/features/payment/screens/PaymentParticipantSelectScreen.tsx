@@ -21,7 +21,7 @@ import ConfirmModal from '../../../shared/components/Modal';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
-import { fetchAuthFriends, type AuthFriendResponse } from '../../auth/api/authApi';
+import { fetchAuthFriends, type AuthFriendResponse } from '../../friend/api/friendApi';
 import { fetchUserProfile } from '../../mypage/api/mypageApi';
 import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
