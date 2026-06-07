@@ -4,22 +4,25 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
   Modal as RNModal,
   Pressable,
   ScrollView,
   Text,
   TextInput,
+  type TextStyle,
   View,
 } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
 import Checkbox from '../../../shared/components/Checkbox';
+import FriendListItem from '../../../shared/components/FriendListItem';
 import ConfirmModal from '../../../shared/components/Modal';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
+import { fetchAuthFriends, type AuthFriendResponse } from '../../auth/api/authApi';
+import { fetchUserProfile } from '../../mypage/api/mypageApi';
 import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { requestRemotePayment } from '../api/remotePaymentApi';
@@ -33,6 +36,7 @@ import type {
   ParticipantFriend,
   ParticipantSelectMode,
 } from '../types/paymentParticipantSelect.types';
+import { removeCancelledDutchPaySession } from '../utils/cancelledDutchPaySessions';
 
 type Props = NativeStackScreenProps<
   RootStackParamList,
@@ -47,11 +51,65 @@ const MOCK_REMOTE_PAYMENT = {
   merchantName: '롯데시네마 홍대입구점',
   paymentId: 1,
 };
+const WORD_JOINER = '\u2060';
+
+function keepAllText(text: string) {
+  return text
+    .split(/(\s+)/)
+    .map((chunk) =>
+      /\s+/.test(chunk) ? chunk : Array.from(chunk).join(WORD_JOINER),
+    )
+    .join('');
+}
+
+const keepAllTextStyle = {
+  overflowWrap: 'normal',
+  wordBreak: 'keep-all',
+  wordWrap: 'normal',
+} as TextStyle;
 
 function toDutchPayUserIds(friendIds: string[]) {
   return friendIds
-    .map((friendId) => Number(friendId.replace(/[^0-9]/g, '')) + 1)
+    .map((friendId) => Number(friendId))
     .filter((userId) => Number.isFinite(userId) && userId > 1);
+}
+
+function toUserIdFromFriendId(friendId: string) {
+  const userId = Number(friendId);
+
+  return Number.isFinite(userId) && userId > 1 ? userId : undefined;
+}
+
+function toParticipantFriend(friend: AuthFriendResponse): ParticipantFriend {
+  const phoneSuffix = friend.phoneLastFour || String(friend.userId).padStart(4, '0').slice(-4);
+
+  return {
+    id: String(friend.userId),
+    name: friend.name || `사용자 ${friend.userId}`,
+    phoneNumber: `010-****-${phoneSuffix}`,
+    phoneSuffix,
+    initial: (friend.name || '사').slice(0, 1),
+    colorClassName: friend.isFavorite ? 'bg-erum-main' : 'bg-[#2E7CF6]',
+    favorite: friend.isFavorite,
+  };
+}
+
+function toOwnerParticipantFriend(profile: {
+  name: string;
+  phone: string;
+}): ParticipantFriend {
+  const phoneNumber = profile.phone || '';
+  const phoneSuffix = phoneNumber.replace(/-/g, '').slice(-4) || '0000';
+  const name = profile.name || '나';
+
+  return {
+    id: 'owner',
+    name,
+    phoneNumber,
+    phoneSuffix,
+    initial: name.slice(0, 1),
+    colorClassName: 'bg-erum-main',
+  };
 }
 
 function getModeContent(mode: ParticipantSelectMode) {
@@ -100,27 +158,6 @@ function ParticipantSelectHeader({
   );
 }
 
-function Avatar({ friend }: { friend: ParticipantFriend }) {
-  if (friend.profileImageUrl) {
-    return (
-      <Image
-        source={{ uri: friend.profileImageUrl }}
-        className="h-12 w-12 rounded-full"
-      />
-    );
-  }
-
-  return (
-    <View
-      className={`h-12 w-12 items-center justify-center rounded-full ${friend.colorClassName}`}
-    >
-      <Text className="font-pretendard text-large-bold text-neutral-white">
-        {friend.initial}
-      </Text>
-    </View>
-  );
-}
-
 function CheckCircle({ selected }: { selected: boolean }) {
   return (
     <View
@@ -137,24 +174,15 @@ function CheckCircle({ selected }: { selected: boolean }) {
 
 function OwnerCard({ owner }: { owner: ParticipantFriend }) {
   return (
-    <View className="mb-5 flex-row items-center rounded-xl border border-erum-secondary bg-[#EDFFF8] px-4 py-4">
-      <Avatar friend={owner} />
-      <View className="ml-4 min-w-0 flex-1">
-        <View className="flex-row items-center">
-          <Text className="font-pretendard text-large-bold text-neutral-black1">
-            {owner.name}
-          </Text>
-          <View className="ml-2 rounded-full bg-erum-main px-2 py-1">
-            <Text className="font-pretendard text-small-bold text-neutral-white">
-              나
-            </Text>
-          </View>
-        </View>
-        <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-          {owner.phoneNumber}
-        </Text>
-      </View>
-    </View>
+    <FriendListItem
+      name={owner.name}
+      initial={owner.initial}
+      phoneNumber={owner.phoneNumber}
+      profileImageUrl={owner.profileImageUrl}
+      avatarColorClassName={owner.colorClassName}
+      containerClassName="mb-5 flex-row items-center rounded-xl border border-erum-secondary bg-[#EDFFF8] px-4 py-4"
+      contentClassName="ml-4 min-w-0 flex-1"
+    />
   );
 }
 
@@ -168,41 +196,37 @@ function FriendRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      className={`flex-row items-center rounded-xl px-3 py-3 ${
+    <FriendListItem
+      name={friend.name}
+      initial={friend.initial}
+      phoneSuffix={friend.phoneSuffix}
+      phoneNumber={friend.phoneNumber}
+      profileImageUrl={friend.profileImageUrl}
+      avatarColorClassName={friend.colorClassName}
+      containerClassName={`flex-row items-center rounded-xl px-3 py-3 ${
         selected
           ? 'border border-erum-main bg-[#EDFFF8]'
           : 'border border-transparent bg-neutral-grey2'
       }`}
+      leading={<CheckCircle selected={selected} />}
+      avatarWrapperClassName="ml-3"
+      nameSuffix={
+        friend.favorite ? (
+          <Feather
+            name="star"
+            size={13}
+            color="#F2B705"
+            style={{ marginLeft: 4 }}
+          />
+        ) : null
+      }
+      right={
+        selected ? (
+          <Feather name="check" size={18} color={colors.erum.main} />
+        ) : null
+      }
       onPress={onPress}
-    >
-      <CheckCircle selected={selected} />
-      <View className="ml-3">
-        <Avatar friend={friend} />
-      </View>
-      <View className="ml-3 min-w-0 flex-1">
-        <View className="flex-row items-center">
-          <Text className="font-pretendard text-large-bold text-neutral-black1">
-            {friend.name}({friend.phoneSuffix})
-          </Text>
-          {friend.favorite ? (
-            <Feather
-              name="star"
-              size={13}
-              color="#F2B705"
-              style={{ marginLeft: 4 }}
-            />
-          ) : null}
-        </View>
-        <Text className="mt-1 font-pretendard text-large-regular text-neutral-black2">
-          {friend.phoneNumber}
-        </Text>
-      </View>
-      {selected ? (
-        <Feather name="check" size={18} color={colors.erum.main} />
-      ) : null}
-    </Pressable>
+    />
   );
 }
 
@@ -308,8 +332,13 @@ function ShareLinkModal({
                 size={24}
                 color={colors.erum.main}
               />
-              <Text className="ml-2 min-w-0 flex-1 font-pretendard text-heading-3 text-neutral-black1">
-                {isCopied ? 'URL이 복사되었습니다.' : content.shareTitle}
+              <Text
+                className="ml-2 min-w-0 flex-1 font-pretendard text-heading-3 text-neutral-black1"
+                style={keepAllTextStyle}
+              >
+                {keepAllText(
+                  isCopied ? 'URL이 복사되었습니다.' : content.shareTitle,
+                )}
               </Text>
             </View>
             <Pressable
@@ -322,8 +351,13 @@ function ShareLinkModal({
             </Pressable>
           </View>
 
-          <Text className="font-pretendard text-large-regular text-neutral-black2">
-            {isCopied ? copiedDescription : content.shareDescription}
+          <Text
+            className="font-pretendard text-large-regular text-neutral-black2"
+            style={keepAllTextStyle}
+          >
+            {keepAllText(
+              isCopied ? copiedDescription : content.shareDescription,
+            )}
           </Text>
 
           <View className="mt-5 rounded-xl border border-neutral-grey1 bg-neutral-grey2 px-4 py-4">
@@ -334,8 +368,11 @@ function ShareLinkModal({
 
           {isCopied ? (
             <View className="mt-5 rounded-xl bg-[#EDFFF8] px-4 py-4">
-              <Text className="text-center font-pretendard text-large-bold text-erum-main">
-                {nextStepDescription}
+              <Text
+                className="text-center font-pretendard text-large-bold text-erum-main"
+                style={keepAllTextStyle}
+              >
+                {keepAllText(nextStepDescription)}
               </Text>
             </View>
           ) : (
@@ -401,6 +438,10 @@ export default function PaymentParticipantSelectScreen({
   const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
     useState(false);
   const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
+  const [serverFriends, setServerFriends] = useState<ParticipantFriend[] | null>(null);
+  const [owner, setOwner] = useState<ParticipantFriend>(initialState.owner);
+  const [friendsErrorMessage, setFriendsErrorMessage] = useState('');
+  const shouldUseMockFriends = scenario !== 'DEFAULT';
   const setRequesterProgress = useRemotePaymentProgressStore(
     (state) => state.setRequesterProgress,
   );
@@ -411,6 +452,25 @@ export default function PaymentParticipantSelectScreen({
   const latestAutoSplitCheckedRef = useRef(autoSplitChecked);
   const isDutchPay = mode === 'DUTCH_PAY';
   const normalizedSearchKeyword = searchKeyword.trim().replace(/-/g, '');
+  const baseFavoriteFriends = useMemo(
+    () =>
+      shouldUseMockFriends
+        ? initialState.favoriteFriends
+        : (serverFriends ?? []).filter((friend) => friend.favorite),
+    [initialState.favoriteFriends, serverFriends, shouldUseMockFriends],
+  );
+  const baseAllFriends = useMemo(
+    () =>
+      shouldUseMockFriends
+        ? [...initialState.favoriteFriends, ...initialState.allFriends]
+        : (serverFriends ?? []),
+    [
+      initialState.allFriends,
+      initialState.favoriteFriends,
+      serverFriends,
+      shouldUseMockFriends,
+    ],
+  );
   const filterFriends = useCallback((friends: ParticipantFriend[]) => {
     if (!normalizedSearchKeyword) {
       return friends;
@@ -427,12 +487,12 @@ export default function PaymentParticipantSelectScreen({
     });
   }, [normalizedSearchKeyword]);
   const favoriteFriends = useMemo(
-    () => filterFriends(initialState.favoriteFriends),
-    [filterFriends, initialState.favoriteFriends],
+    () => filterFriends(baseFavoriteFriends),
+    [baseFavoriteFriends, filterFriends],
   );
   const allFriends = useMemo(
-    () => filterFriends(initialState.allFriends),
-    [filterFriends, initialState.allFriends],
+    () => filterFriends(baseAllFriends),
+    [baseAllFriends, filterFriends],
   );
   const hasSearchKeyword = normalizedSearchKeyword.length > 0;
   const hasVisibleFriends = favoriteFriends.length > 0 || allFriends.length > 0;
@@ -446,16 +506,55 @@ export default function PaymentParticipantSelectScreen({
     const selectedFriendId = selectedFriendIds[0];
 
     return (
-      [...initialState.favoriteFriends, ...initialState.allFriends].find(
+      [...baseFavoriteFriends, ...baseAllFriends].find(
         (friend) => friend.id === selectedFriendId,
       ) ?? null
     );
   }, [
-    initialState.allFriends,
-    initialState.favoriteFriends,
+    baseAllFriends,
+    baseFavoriteFriends,
     isDutchPay,
     selectedFriendIds,
   ]);
+
+  useEffect(() => {
+    if (shouldUseMockFriends) {
+      setOwner(initialState.owner);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadParticipantData = async () => {
+      try {
+        setFriendsErrorMessage('');
+        const [profile, friends] = await Promise.all([
+          fetchUserProfile(),
+          fetchAuthFriends(),
+        ]);
+
+        if (isMounted) {
+          setOwner(toOwnerParticipantFriend(profile));
+          setServerFriends(friends.map(toParticipantFriend));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setServerFriends([]);
+          setFriendsErrorMessage(
+            error instanceof Error
+              ? error.message
+              : '친구 목록을 불러오지 못했습니다.',
+          );
+        }
+      }
+    };
+
+    void loadParticipantData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialState.owner, shouldUseMockFriends]);
 
   const handlePressClose = () => {
     setStopModalVisible(true);
@@ -544,12 +643,18 @@ export default function PaymentParticipantSelectScreen({
       resetShareModal();
 
       if (latestModeRef.current === 'DUTCH_PAY') {
-        navigation.navigate('PaymentCardSelect', {
-          paymentId: route.params?.paymentId,
-          amount: route.params?.amount,
-          flow: 'DUTCH_PAY',
+        if (!route.params?.dutchSessionId) {
+          Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+          return;
+        }
+
+        void removeCancelledDutchPaySession(route.params.dutchSessionId);
+        navigation.navigate('DutchPayGroup', {
+          role: 'OWNER',
+          sessionId: route.params.dutchSessionId,
           selectedUserIds: toDutchPayUserIds(selectedFriendIds),
           splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
+          splitType: latestAutoSplitCheckedRef.current ? 'AUTO_SPLIT' : 'MANUAL',
           orderName: route.params?.orderName,
           merchantId: route.params?.merchantId,
         });
@@ -569,6 +674,10 @@ export default function PaymentParticipantSelectScreen({
   }, [
     navigation,
     resetShareModal,
+    route.params?.dutchSessionId,
+    route.params?.merchantId,
+    route.params?.orderName,
+    selectedFriendIds,
     shareCountdown,
     shareModalVisible,
     shareStep,
@@ -580,12 +689,18 @@ export default function PaymentParticipantSelectScreen({
 
   const handlePressSubmit = async () => {
     if (isDutchPay) {
-      navigation.navigate('PaymentCardSelect', {
-        paymentId: route.params?.paymentId,
-        amount: route.params?.amount,
-        flow: 'DUTCH_PAY',
+      if (!route.params?.dutchSessionId) {
+        Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+        return;
+      }
+
+      void removeCancelledDutchPaySession(route.params.dutchSessionId);
+      navigation.navigate('DutchPayGroup', {
+        role: 'OWNER',
+        sessionId: route.params.dutchSessionId,
         selectedUserIds: toDutchPayUserIds(selectedFriendIds),
         splitMethod: autoSplitChecked ? 'EQUAL' : 'CUSTOM',
+        splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
         orderName: route.params?.orderName,
         merchantId: route.params?.merchantId,
       });
@@ -599,11 +714,23 @@ export default function PaymentParticipantSelectScreen({
     try {
       setIsRemoteRequesting(true);
 
+      const recipientUserId = toUserIdFromFriendId(selectedRemoteFriend.id);
+
+      if (!recipientUserId) {
+        throw new Error('recipient user id is invalid');
+      }
+
       const response = await requestRemotePayment({
         ...MOCK_REMOTE_PAYMENT,
+        paymentId: route.params?.paymentId ?? MOCK_REMOTE_PAYMENT.paymentId,
+        remoteRequestId: route.params?.remoteRequestId,
+        amount: route.params?.amount ?? MOCK_REMOTE_PAYMENT.amount,
+        merchantName: route.params?.orderName ?? MOCK_REMOTE_PAYMENT.merchantName,
+        orderName: route.params?.orderName,
+        merchantId: route.params?.merchantId,
         recipientName: selectedRemoteFriend.name,
         recipientPhoneSuffix: selectedRemoteFriend.phoneSuffix,
-        recipientUserId: selectedRemoteFriend.id,
+        recipientUserId: String(recipientUserId),
       });
 
       setRequesterProgress(response);
@@ -640,14 +767,16 @@ export default function PaymentParticipantSelectScreen({
       <View className="flex-1">
         <ScrollView
           className="flex-1"
-          contentContainerClassName="px-4 pb-6 pt-5"
+          contentContainerClassName="px-4 pb-36 pt-5"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full self-center">
-            <View className="mb-3">
-              <PaymentMockBadge />
-            </View>
+            {shouldUseMockFriends ? (
+              <View className="mb-3">
+                <PaymentMockBadge />
+              </View>
+            ) : null}
 
             {isDutchPay ? (
               <View className="mb-3 flex-row items-center justify-between">
@@ -693,7 +822,7 @@ export default function PaymentParticipantSelectScreen({
               </Pressable>
             )}
 
-            {isDutchPay ? <OwnerCard owner={initialState.owner} /> : null}
+            {isDutchPay ? <OwnerCard owner={owner} /> : null}
 
             <View className="mb-5 flex-row items-center rounded-xl border border-neutral-grey1 bg-neutral-grey2 px-4 py-3">
               <Feather name="search" size={20} color={colors.neutral.black2} />
@@ -706,6 +835,12 @@ export default function PaymentParticipantSelectScreen({
                 onChangeText={setSearchKeyword}
               />
             </View>
+
+            {friendsErrorMessage ? (
+              <Text className="mb-4 text-center font-pretendard text-normal-regular text-state-error">
+                {friendsErrorMessage}
+              </Text>
+            ) : null}
 
             {!hasVisibleFriends ? (
               <EmptyMessage

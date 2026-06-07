@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { Modal as RNModal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
@@ -41,6 +42,7 @@ const requiredIds = terms.filter((t) => t.required).map((t) => t.id);
 type Props = NativeStackScreenProps<RootStackParamList, 'TermsAgreement'>;
 
 export default function TermsAgreementScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [termsModalTitle, setTermsModalTitle] = useState('');
@@ -173,7 +175,13 @@ export default function TermsAgreementScreen({ navigation }: Props) {
         visible={termsModalVisible}
         onRequestClose={() => setTermsModalVisible(false)}
       >
-        <View className="flex-1 bg-neutral-white">
+        <View
+          className="flex-1 bg-neutral-white"
+          style={{
+            paddingTop: Math.max(insets.top, 16),
+            paddingBottom: insets.bottom,
+          }}
+        >
           <View className="flex-row items-center justify-between px-5 py-4">
             <Text className="font-pretendard text-heading-3 text-neutral-black1">
               {termsModalTitle}
@@ -185,7 +193,10 @@ export default function TermsAgreementScreen({ navigation }: Props) {
 
           <View className="h-px bg-neutral-grey1" />
 
-          <ScrollView className="flex-1 px-5 py-6">
+          <ScrollView
+            className="flex-1 px-5 py-6"
+            contentContainerClassName="pb-8"
+          >
             {termsModalTitle === '개인정보 수집이용' ? (
               <View className="gap-4">
                 <Text className="font-pretendard text-large-bold text-neutral-black1">

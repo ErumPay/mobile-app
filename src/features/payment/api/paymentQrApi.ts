@@ -1,7 +1,39 @@
+import type { OfflinePaymentQrRequestPayload } from '../types/offlinePaymentQr.types';
 import type { PaymentQrValidateResponse } from '../types/paymentQr.types';
 
+import { PAYMENT_API_BASE_URL } from './paymentApiConfig';
+
 const PAYMENT_QR_VALIDATE_URL =
-    'http://localhost:8083/api/v1/payment/qr/validate';
+    `${PAYMENT_API_BASE_URL}/api/v1/payment/qr/validate`;
+const PAYMENT_QR_REQUEST_URL =
+    `${PAYMENT_API_BASE_URL}/api/v1/payment/qr/request`;
+
+type PaymentQrErrorResponse = {
+    code?: string;
+    reason?: string;
+    message?: string;
+};
+
+export class PaymentQrValidateError extends Error {
+    status: number;
+    code?: string;
+    reason?: string;
+
+    constructor(
+        message: string,
+        options: {
+            status: number;
+            code?: string;
+            reason?: string;
+        },
+    ) {
+        super(message);
+        this.name = 'PaymentQrValidateError';
+        this.status = options.status;
+        this.code = options.code;
+        this.reason = options.reason;
+    }
+}
 
 export async function validatePaymentQr(
     token: string,
@@ -17,8 +49,57 @@ export async function validatePaymentQr(
     });
 
     if (!response.ok) {
-        throw new Error('QR 결제 정보를 불러오지 못했습니다.');
+        const error = await response.json().catch(() => null) as
+            | PaymentQrErrorResponse
+            | null;
+
+        throw new PaymentQrValidateError(
+            error?.message ?? 'QR 결제 정보를 불러오지 못했습니다.',
+            {
+                status: response.status,
+                code: error?.code,
+                reason: error?.reason,
+            },
+        );
     }
 
     return response.json();
+}
+
+export async function requestOfflinePaymentQrImage(
+    payload: OfflinePaymentQrRequestPayload,
+): Promise<string> {
+    const response = await fetch(PAYMENT_QR_REQUEST_URL, {
+        method: 'POST',
+        headers: {
+            Accept: 'image/png',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        throw new Error('오프라인 결제 QR을 생성하지 못했습니다.');
+    }
+
+    const blob = await response.blob();
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+                resolve(reader.result);
+                return;
+            }
+
+            reject(new Error('QR 이미지 응답을 읽지 못했습니다.'));
+        };
+
+        reader.onerror = () => {
+            reject(new Error('QR 이미지 응답을 읽지 못했습니다.'));
+        };
+
+        reader.readAsDataURL(blob);
+    });
 }

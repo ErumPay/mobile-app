@@ -15,6 +15,7 @@ import type {
     CardCombinationType,
     PaymentCard,
     PaymentCardSelectData,
+    PaymentCardFlowType,
 } from '../types/paymentCard.types';
 import {
     preparePayment,
@@ -25,11 +26,25 @@ import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCardSelect'>;
 
+function toFiniteNumber(value: unknown) {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : undefined;
+    }
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+        const parsedValue = Number(value);
+
+        return Number.isFinite(parsedValue) ? parsedValue : undefined;
+    }
+
+    return undefined;
+}
+
 function PaymentCardSelectSkeleton() {
     return (
         <ScrollView
             className="flex-1"
-            contentContainerClassName="px-4 pb-6 pt-6"
+            contentContainerClassName="px-4 pb-36 pt-6"
             showsVerticalScrollIndicator={false}
         >
             <View className="rounded-lg border border-neutral-grey1 bg-neutral-white p-4">
@@ -56,17 +71,68 @@ function PaymentCardSelectSkeleton() {
     );
 }
 
+function applyPaymentCardFlowUi(
+    data: PaymentCardSelectData,
+    flowType: PaymentCardFlowType,
+): PaymentCardSelectData {
+    if (flowType === 'DUTCH_PAY') {
+        return {
+            ...data,
+            flowType,
+            recommendedCard: {
+                ...data.recommendedCard,
+                title: '대표카드로 결제합니다',
+                description: undefined,
+                badgeText: undefined,
+                card: {
+                    ...data.recommendedCard.card,
+                    isPrimary: true,
+                },
+            },
+            cardCombinations: data.cardCombinations.map((combination, index) =>
+                index === 0
+                    ? {
+                        ...combination,
+                        label: '대표카드',
+                        description: '가결제 진행',
+                        benefitDescription: '이 결제는 가결제로 먼저 진행돼요!',
+                    }
+                    : combination,
+            ),
+        };
+    }
+
+    if (flowType === 'DUTCH_PAY_FINAL') {
+        return {
+            ...data,
+            flowType,
+        };
+    }
+
+    if (flowType === 'REMOTE_PAYMENT') {
+        return {
+            ...data,
+            flowType,
+            recommendedCard: {
+                ...data.recommendedCard,
+                title: '원격결제 카드를 선택해주세요',
+                badgeText: undefined,
+            },
+        };
+    }
+
+    return {
+        ...data,
+        flowType,
+    };
+}
+
 export default function PaymentCardSelectScreen({ navigation, route }: Props) {
-    const routePaymentId = route.params?.paymentId;
-    const paymentId =
-        typeof routePaymentId === 'string'
-            ? Number(routePaymentId)
-            : routePaymentId;
-    const routeAmount = route.params?.amount;
-    const amount =
-        typeof routeAmount === 'string'
-            ? Number(routeAmount)
-            : routeAmount;
+    const paymentId = toFiniteNumber(route.params?.paymentId);
+    const remoteRequestId = toFiniteNumber(route.params?.remoteRequestId);
+    const amount = toFiniteNumber(route.params?.amount);
+    const routeDutchSessionId = toFiniteNumber(route.params?.dutchSessionId);
+    const merchantId = toFiniteNumber(route.params?.merchantId);
     const hasValidPaymentId =
         typeof paymentId === 'number' && Number.isFinite(paymentId);
     const hasValidAmount = typeof amount === 'number' && Number.isFinite(amount);
@@ -74,12 +140,15 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const isDutchPayRoute = routeFlow === 'DUTCH_PAY';
     const isDutchFinalRoute = routeFlow === 'DUTCH_PAY_FINAL';
     const isRemotePaymentRoute = routeFlow === 'REMOTE_PAYMENT';
+    const hasValidRemoteRequestId =
+        typeof remoteRequestId === 'number' && Number.isFinite(remoteRequestId);
     const hasValidDutchSessionId =
-        typeof route.params?.dutchSessionId === 'number' &&
-        Number.isFinite(route.params.dutchSessionId);
+        typeof routeDutchSessionId === 'number' &&
+        Number.isFinite(routeDutchSessionId);
     const canPreparePayment =
         hasValidAmount &&
         (hasValidPaymentId ||
+            (hasValidRemoteRequestId && isRemotePaymentRoute) ||
             (hasValidDutchSessionId && (isDutchPayRoute || isDutchFinalRoute)));
     const idempotencyKey = useMemo(() => {
         if (!canPreparePayment) {
@@ -88,23 +157,22 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
         return (
             route.params?.idempotencyKey ??
-            createPaymentIdempotencyKey(paymentId ?? route.params?.dutchSessionId ?? 0)
+            createPaymentIdempotencyKey(paymentId ?? remoteRequestId ?? routeDutchSessionId ?? 0)
         );
     }, [
         canPreparePayment,
         paymentId,
-        route.params?.dutchSessionId,
+        remoteRequestId,
+        routeDutchSessionId,
         route.params?.idempotencyKey,
     ]);
-    const [dutchSessionId, setDutchSessionId] = useState(
-        route.params?.dutchSessionId,
-    );
+    const [dutchSessionId, setDutchSessionId] = useState(routeDutchSessionId);
     const [preparedPaymentId, setPreparedPaymentId] = useState(paymentId);
 
     const [data, setData] = useState<PaymentCardSelectData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState(
-        canPreparePayment ? '' : '寃곗젣 ?뺣낫媛 ?놁뒿?덈떎.',
+        canPreparePayment ? '' : '결제 정보가 없습니다.',
     );
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [pendingCardId, setPendingCardId] = useState<string | null>(null);
@@ -114,8 +182,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
     const [stopModalVisible, setStopModalVisible] = useState(false);
     const paymentFlow = data?.flowType ?? routeFlow;
-    const isDutchPay =
-        paymentFlow === 'DUTCH_PAY' || paymentFlow === 'DUTCH_PAY_FINAL';
+    const isDutchPay = paymentFlow === 'DUTCH_PAY';
     const isRemotePayment = paymentFlow === 'REMOTE_PAYMENT';
     const hasPreparedPaymentId =
         typeof preparedPaymentId === 'number' && Number.isFinite(preparedPaymentId);
@@ -133,9 +200,6 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
     const isRecommendedSelected =
         !!displayedRecommendedCard?.card &&
         selectedCardId === displayedRecommendedCard.card.id;
-
-    const isSubmitDisabled =
-        !data || (!selectedCardId && !isCombinationSelected);
 
     const selectedPaymentCard = useMemo<PaymentCard | null>(() => {
         if (!data) {
@@ -162,11 +226,60 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         selectedCardId,
         selectedCombination?.cards,
     ]);
+    const selectedPaymentCombination = useMemo(() => {
+        if (!data) {
+            return null;
+        }
+
+        if (isCombinationSelected && selectedCombination) {
+            return selectedCombination;
+        }
+
+        if (!selectedPaymentCard) {
+            return null;
+        }
+
+        const recommendedCombination = data.cardCombinations[0];
+
+        if (
+            recommendedCombination &&
+            displayedRecommendedCard?.card &&
+            selectedPaymentCard.id === displayedRecommendedCard.card.id
+        ) {
+            return recommendedCombination;
+        }
+
+        return data.cardCombinations.find((combination) =>
+            combination.cards.length === 1 &&
+            combination.cards[0]?.id === selectedPaymentCard.id &&
+            combination.cards[0]?.amount === selectedPaymentCard.amount
+        ) ?? null;
+    }, [
+        data,
+        displayedRecommendedCard?.card,
+        isCombinationSelected,
+        selectedCombination,
+        selectedPaymentCard,
+    ]);
+    const selectedPaymentCards = useMemo(
+        () =>
+            selectedPaymentCombination?.cards.map((card) => ({
+                cardId: Number(card.id),
+                amount: card.amount,
+            })) ?? [],
+        [selectedPaymentCombination?.cards],
+    );
+    const selectedStrategyType = selectedPaymentCombination?.strategyType;
+    const isSubmitDisabled =
+        !data ||
+        (!selectedCardId && !isCombinationSelected) ||
+        !selectedStrategyType ||
+        !selectedPaymentCards.length;
 
     useEffect(() => {
         if (!canPreparePayment || !idempotencyKey) {
             setData(null);
-            setErrorMessage('寃곗젣 ?뺣낫媛 ?놁뒿?덈떎.');
+            setErrorMessage('결제 정보가 없습니다.');
             return;
         }
 
@@ -179,6 +292,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
 
                 const prepareResponse = await preparePayment({
                     paymentId,
+                    remoteRequestId: isRemotePaymentRoute ? remoteRequestId : undefined,
                     amount,
                     idempotencyKey,
                     paymentType: isDutchPayRoute || isDutchFinalRoute
@@ -193,25 +307,27 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                             : isDutchPayRoute
                                 ? 'MEMBER'
                                 : undefined,
-                    sessionId: route.params?.dutchSessionId,
+                    sessionId: routeDutchSessionId,
                     orderName: route.params?.orderName,
-                    merchantId: route.params?.merchantId,
+                    merchantId,
                 });
 
                 const response = await subscribePaymentCardRecommendations(prepareResponse.paymentId);
-                const nextData = {
-                    ...toPaymentCardSelectData(response),
-                    flowType: isDutchFinalRoute
-                        ? 'DUTCH_PAY_FINAL'
-                        : isDutchPayRoute
-                            ? 'DUTCH_PAY'
-                            : isRemotePaymentRoute
-                                ? 'REMOTE_PAYMENT'
-                                : 'NORMAL',
-                } as PaymentCardSelectData;
+
+                const nextFlowType = isDutchFinalRoute
+                    ? 'DUTCH_PAY_FINAL'
+                    : isDutchPayRoute
+                        ? 'DUTCH_PAY'
+                        : isRemotePaymentRoute
+                            ? 'REMOTE_PAYMENT'
+                            : 'NORMAL';
+                const nextData = applyPaymentCardFlowUi(
+                    toPaymentCardSelectData(response),
+                    nextFlowType,
+                );
 
                 if (isMounted) {
-                    setDutchSessionId(prepareResponse.dutchSessionId ?? route.params?.dutchSessionId);
+                    setDutchSessionId(prepareResponse.dutchSessionId ?? routeDutchSessionId);
                     setPreparedPaymentId(prepareResponse.paymentId);
                     setData(nextData);
                 }
@@ -221,7 +337,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     setErrorMessage(
                         error instanceof Error
                             ? error.message
-                            : '寃곗젣 移대뱶 異붿쿇 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??',
+                            : '결제 카드 추천 정보를 불러오지 못했습니다.',
                     );
                 }
             } finally {
@@ -244,9 +360,10 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         isDutchFinalRoute,
         isDutchPayRoute,
         isRemotePaymentRoute,
+        merchantId,
         paymentId,
-        route.params?.dutchSessionId,
-        route.params?.merchantId,
+        remoteRequestId,
+        routeDutchSessionId,
         route.params?.orderName,
     ]);
 
@@ -312,8 +429,18 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         const selectedCard = data?.registeredCards.find(
             (card) => card.id === pendingCardId,
         );
+        const selectedCombinationForCard = data?.cardCombinations.find((combination) =>
+            combination.cards.length === 1 &&
+            combination.cards[0]?.id === selectedCard?.id &&
+            combination.cards[0]?.amount === selectedCard?.amount
+        );
 
-        if (!hasPreparedPaymentId || !selectedCard || !idempotencyKey) {
+        if (
+            !hasPreparedPaymentId ||
+            !selectedCard ||
+            !selectedCombinationForCard ||
+            !idempotencyKey
+        ) {
             return;
         }
 
@@ -330,18 +457,30 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId: preparedPaymentId,
             cardId: Number(selectedCard.id),
             amount: selectedCard.amount,
+            strategyType: selectedCombinationForCard.strategyType,
+            cards: selectedCombinationForCard.cards.map((card) => ({
+                cardId: Number(card.id),
+                amount: card.amount,
+            })),
             flow: paymentFlow,
             idempotencyKey,
+            remoteRequestId,
             dutchSessionId,
             selectedUserIds: route.params?.selectedUserIds,
             splitMethod: route.params?.splitMethod,
             orderName: route.params?.orderName,
-            merchantId: route.params?.merchantId,
+            merchantId,
         });
     };
 
     const handlePressSubmit = () => {
-        if (!hasPreparedPaymentId || !selectedPaymentCard || !idempotencyKey) {
+        if (
+            !hasPreparedPaymentId ||
+            !selectedPaymentCard ||
+            !selectedStrategyType ||
+            !selectedPaymentCards.length ||
+            !idempotencyKey
+        ) {
             return;
         }
 
@@ -349,14 +488,17 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             mode: 'PAYMENT_INPUT',
             paymentId: preparedPaymentId,
             cardId: Number(selectedPaymentCard.id),
-            amount: selectedPaymentCard.amount,
+            amount: selectedPaymentCards.reduce((sum, card) => sum + card.amount, 0),
+            strategyType: selectedStrategyType,
+            cards: selectedPaymentCards,
             flow: paymentFlow,
             idempotencyKey,
+            remoteRequestId,
             dutchSessionId,
             selectedUserIds: route.params?.selectedUserIds,
             splitMethod: route.params?.splitMethod,
             orderName: route.params?.orderName,
-            merchantId: route.params?.merchantId,
+            merchantId,
         });
     };
 
@@ -364,7 +506,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
             <View className="flex-1 bg-neutral-white">
                 <Header
-                    title="寃곗젣 移대뱶 ?좏깮"
+                    title="결제 카드 선택"
                     type="close"
                     onPressRight={handlePressClose}
                 />
@@ -389,7 +531,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                             recommendedCard={displayedRecommendedCard}
                             selected={isRecommendedSelected}
                             showBenefitDescription={!isDutchPay}
-                            actionLabel={isDutchPay ? '?ㅻⅨ 寃곗젣 移대뱶 ?좏깮' : undefined}
+                            actionLabel={isDutchPay ? '다른 결제 카드 선택' : undefined}
                             onPress={handlePressRecommendedCard}
                             onPressAction={isDutchPay ? handleOpenBottomSheet : undefined}
                         />
@@ -397,7 +539,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                         {isDutchPay ? (
                             <View className="mt-2">
                                 <Text className="text-small-regular text-neutral-black2">
-                                    쨌 {data.cardCombinations[0]?.benefitDescription}
+                                    • {data.cardCombinations[0]?.benefitDescription}
                                 </Text>
                             </View>
                         ) : (
@@ -430,14 +572,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     onPressSubmit={handleSubmitBottomSheet}
                     submitDisabled={!pendingCardId}
                     notice={
-                        isDutchPay ? '??寃곗젣??媛寃곗젣濡?癒쇱? 吏꾪뻾?쇱슂!' : undefined
+                        isDutchPay ? '이 결제는 가결제로 먼저 진행돼요!' : undefined
                     }
                 />
                 <PaymentStopConfirmModal
                     visible={stopModalVisible}
                     description={
                         isDutchPay || isRemotePayment
-                            ? '以묒??섏뀛??硫붿씤?먯꽌 寃곗젣 吏꾪뻾?곹깭瑜??뺤씤?????덉뒿?덈떎.'
+                            ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
                             : undefined
                     }
                     onConfirm={handleConfirmStopPayment}

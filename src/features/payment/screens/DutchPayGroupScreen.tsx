@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
@@ -29,6 +29,8 @@ import {
   type DutchPayParticipantResponse,
   type DutchPaySessionDetailResponse,
 } from '../api/dutchPayApi';
+import { getPaymentUserId } from '../api/paymentApiConfig';
+import { addCancelledDutchPaySession } from '../utils/cancelledDutchPaySessions';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
 
@@ -47,8 +49,6 @@ const nextScenarioByScenario = {
   PARTICIPANT_PAYMENT_REQUEST: 'PARTICIPANT_PAYMENT_PROGRESS',
   PARTICIPANT_FINAL_PAYMENT_PROGRESS: 'PARTICIPANT_FINAL_PAYMENT_PROGRESS',
 } as const;
-
-const DEV_USER_ID = 1;
 
 function DutchPayHeader({
   title,
@@ -107,6 +107,20 @@ function getHeaderTitle(scenario: DutchPayScenario) {
   return '더치페이 결제 그룹 참여';
 }
 
+function toFiniteNumber(value: unknown) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsedValue = Number(value);
+
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+  }
+
+  return undefined;
+}
+
 function parseAmount(value?: string) {
   return Number((value ?? '').replace(/[^0-9]/g, '')) || 0;
 }
@@ -155,10 +169,18 @@ function applyFailedPaymentAmountToOwner(
 function toDutchPayScenario(
   session: DutchPaySessionDetailResponse,
   role: 'OWNER' | 'PARTICIPANT',
+  routeSplitType?: 'AUTO_SPLIT' | 'MANUAL',
 ): DutchPayScenario {
+  const isEqualSplit =
+    session.split_method === 'EQUAL' || routeSplitType === 'AUTO_SPLIT';
+
   if (role === 'PARTICIPANT') {
     switch (session.session_progress_step) {
       case 'AMOUNT_INPUT':
+        if (isEqualSplit) {
+          return 'PARTICIPANT_PAYMENT_REQUEST';
+        }
+
         return 'PARTICIPANT_AMOUNT_INPUT';
       case 'PAYMENT_REQUEST':
         return 'PARTICIPANT_PAYMENT_REQUEST';
@@ -177,6 +199,10 @@ function toDutchPayScenario(
     case 'PARTICIPANT_CONFIRM':
       return 'OWNER_INITIAL';
     case 'AMOUNT_INPUT':
+      if (isEqualSplit) {
+        return 'OWNER_AMOUNT_INPUT_COMPLETE';
+      }
+
       return 'OWNER_AMOUNT_INPUT_WAITING';
     case 'PAYMENT_REQUEST':
       return 'OWNER_AMOUNT_INPUT_COMPLETE';
@@ -208,7 +234,15 @@ function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
   }
 
   if (participant.amount != null) {
+    if (participant.host) {
+      return 'EMPTY' as const;
+    }
+
     return 'AMOUNT_CONFIRMED' as const;
+  }
+
+  if (participant.host) {
+    return 'EMPTY' as const;
   }
 
   if (participant.status === 'PENDING') {
@@ -218,7 +252,29 @@ function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
   return 'EMPTY' as const;
 }
 
-function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMember {
+function toOwnerPaymentProgressMember(member: DutchPayMember): DutchPayMember {
+  if (member.isOwner) {
+    return member;
+  }
+
+  if (
+    member.status === 'PAYMENT_COMPLETED' ||
+    member.status === 'PAYMENT_FAILED' ||
+    member.status === 'PAYMENT_PENDING'
+  ) {
+    return member;
+  }
+
+  return {
+    ...member,
+    status: 'PAYMENT_PENDING',
+  };
+}
+
+function toDutchPayMember(
+  participant: DutchPayParticipantResponse,
+  currentUserId: number,
+): DutchPayMember {
   const name = participant.host ? '대표자' : `참여자 ${participant.user_id}`;
   const phoneSuffix = String(participant.user_id).padStart(4, '0').slice(-4);
 
@@ -228,7 +284,7 @@ function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMem
     phoneSuffix,
     initial: name.slice(0, 1),
     isOwner: participant.host,
-    isMe: participant.user_id === DEV_USER_ID,
+    isMe: participant.user_id === currentUserId,
     amount: participant.amount ?? undefined,
     status: toDutchPayMemberStatus(participant),
     canOpenMenu: !participant.host,
@@ -238,9 +294,20 @@ function toDutchPayMember(participant: DutchPayParticipantResponse): DutchPayMem
 function toDutchPayGroupData(
   session: DutchPaySessionDetailResponse,
   role: 'OWNER' | 'PARTICIPANT',
+  currentUserId: number,
+  routeSplitType?: 'AUTO_SPLIT' | 'MANUAL',
 ): DutchPayGroupData {
-  const scenario = toDutchPayScenario(session, role);
-  const members = session.participants.map(toDutchPayMember);
+  const scenario = toDutchPayScenario(session, role, routeSplitType);
+  const canEditMembers = role === 'OWNER' && scenario === 'OWNER_INITIAL';
+  const members = session.participants.map((participant) =>
+    {
+      const member = toDutchPayMember(participant, currentUserId);
+      return {
+        ...member,
+        canOpenMenu: canEditMembers && !member.isOwner,
+      };
+    },
+  );
 
   return {
     role,
@@ -262,7 +329,7 @@ function getServerFooter(scenario: DutchPayScenario) {
   if (scenario === 'OWNER_PAYMENT_PROGRESS') {
     return {
       type: 'button' as const,
-      label: '결제 전체 상태 보기',
+      label: '최종 결제하기',
       disabled: true,
     };
   }
@@ -275,13 +342,24 @@ function getServerFooter(scenario: DutchPayScenario) {
     };
   }
 
-  if (
-    scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
-    scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
-  ) {
+  if (scenario === 'OWNER_AMOUNT_INPUT_WAITING') {
     return {
       type: 'button' as const,
       label: '금액 확정하기',
+    };
+  }
+
+  if (scenario === 'OWNER_AMOUNT_INPUT_COMPLETE') {
+    return {
+      type: 'button' as const,
+      label: '참여자에게 결제 요청하기',
+    };
+  }
+
+  if (scenario === 'OWNER_PAYMENT_REQUEST') {
+    return {
+      type: 'button' as const,
+      label: '결제 전체 상태 보기',
     };
   }
 
@@ -310,21 +388,51 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? 'OWNER';
   const scenario = route.params?.scenario;
   const splitType = route.params?.splitType ?? 'MANUAL';
-  const sessionId = route.params?.sessionId;
+  const sessionId = toFiniteNumber(route.params?.sessionId);
+  const routeUserId = toFiniteNumber(route.params?.userId);
+  const merchantId = toFiniteNumber(route.params?.merchantId);
+  const isServerMode = typeof sessionId === 'number';
+  const currentUserId = (routeUserId ?? Number(getPaymentUserId())) || 1;
+  const resolvedSplitMethod =
+    route.params?.splitMethod ?? (splitType === 'AUTO_SPLIT' ? 'EQUAL' : 'CUSTOM');
   const selectedUserIds = useMemo(
     () => route.params?.selectedUserIds ?? [],
     [route.params?.selectedUserIds],
   );
   const [serverSession, setServerSession] =
     useState<DutchPaySessionDetailResponse | null>(null);
+  const [serverErrorMessage, setServerErrorMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLeavingForPayment, setIsLeavingForPayment] = useState(false);
+  const [forcedScenario, setForcedScenario] = useState<DutchPayScenario | null>(
+    isServerMode ? scenario ?? null : null,
+  );
   const invitedSessionIdsRef = useRef<Set<number>>(new Set());
+  const isPollingSessionRef = useRef(false);
   const data = useMemo(
-    () =>
-      serverSession
-        ? toDutchPayGroupData(serverSession, role)
-        : getMockDutchPayGroupData({ role, scenario }),
-    [role, scenario, serverSession],
+    () => {
+      const nextData = serverSession
+        ? toDutchPayGroupData(serverSession, role, currentUserId, splitType)
+        : getMockDutchPayGroupData({ role, scenario });
+
+      if (
+        !forcedScenario ||
+        nextData.scenario !== 'OWNER_AMOUNT_INPUT_COMPLETE'
+      ) {
+        return nextData;
+      }
+
+      return {
+        ...nextData,
+        scenario: forcedScenario,
+        footer: getServerFooter(forcedScenario),
+        members:
+          forcedScenario === 'OWNER_PAYMENT_PROGRESS'
+            ? nextData.members.map(toOwnerPaymentProgressMember)
+            : nextData.members,
+      };
+    },
+    [currentUserId, forcedScenario, role, scenario, serverSession, splitType],
   );
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openMenuMemberId, setOpenMenuMemberId] = useState<string | null>(null);
@@ -338,18 +446,35 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const isAutoSplitParticipantInput =
     isParticipantAmountInputScenario && splitType === 'AUTO_SPLIT';
   const participantMembers = members.filter((member) => !member.isOwner);
+  const failedPaymentMembers = participantMembers.filter(
+    (member) => member.status === 'PAYMENT_FAILED',
+  );
   const confirmedParticipantAmount = participantMembers.reduce(
     (total, member) =>
       member.status === 'AMOUNT_CONFIRMED' ? total + (member.amount ?? 0) : total,
     0,
   );
-  const ownerAmount = Math.max(data.totalAmount - confirmedParticipantAmount, 0);
-  const allParticipantsConfirmed =
-    participantMembers.length > 0 &&
-    participantMembers.every((member) => member.status === 'AMOUNT_CONFIRMED');
+  const assignedParticipantAmount = participantMembers.reduce(
+    (total, member) => total + (member.amount ?? 0),
+    0,
+  );
+  const isParticipantAmountOverLimit =
+    Math.max(confirmedParticipantAmount, assignedParticipantAmount) >
+    data.totalAmount;
   const isOwnerAmountCheckScenario =
     data.scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
     data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE';
+  const ownerAmount = Math.max(
+    data.totalAmount -
+      (isOwnerAmountCheckScenario ? confirmedParticipantAmount : assignedParticipantAmount),
+    0,
+  );
+  const allParticipantsConfirmed =
+    participantMembers.length > 0 &&
+    participantMembers.every((member) => member.status === 'AMOUNT_CONFIRMED');
+  const isOwnerFinalPaymentScenario =
+    data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
+    data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE';
   const myMember = members.find((member) => member.isMe);
   const myEditableAmount = parseAmount(myMember?.editableAmount);
   const isMyAmountConfirmed =
@@ -364,6 +489,16 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           ...member,
           amount: ownerAmount,
           status: 'AMOUNT_CONFIRMED',
+          showAmountCheck: data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE',
+        };
+      }
+
+      if (member.isOwner && isOwnerFinalPaymentScenario) {
+        return {
+          ...member,
+          amount: ownerAmount,
+          status: 'AMOUNT_CONFIRMED',
+          showAmountCheck: true,
         };
       }
 
@@ -374,6 +509,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     data.footer.type === 'button' &&
     (isSyncing ||
       (data.footer.disabled && !isOwnerAmountCheckScenario) ||
+      (isOwnerFinalPaymentScenario && isParticipantAmountOverLimit) ||
+      (isOwnerAmountCheckScenario && isParticipantAmountOverLimit) ||
       (isOwnerAmountCheckScenario && !allParticipantsConfirmed) ||
       (isParticipantAmountInputScenario &&
         !isMyAmountConfirmed &&
@@ -403,16 +540,16 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   );
 
   const refreshServerSession = useCallback(async () => {
-    if (!sessionId) {
+    if (sessionId == null) {
       return;
     }
 
-    const nextSession = await getDutchPaySession(sessionId);
+    const nextSession = await getDutchPaySession(sessionId, currentUserId);
     setServerSession(nextSession);
-  }, [sessionId]);
+  }, [currentUserId, sessionId]);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (sessionId == null) {
       return;
     }
 
@@ -421,14 +558,34 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     const syncSession = async () => {
       try {
         setIsSyncing(true);
+        setServerErrorMessage('');
 
         if (
           selectedUserIds.length > 0 &&
           !invitedSessionIdsRef.current.has(sessionId)
         ) {
+          const currentSession = await getDutchPaySession(sessionId, currentUserId);
+          const existingUserIds = new Set(
+            currentSession.participants.map((participant) => participant.user_id),
+          );
+          const nextUserIds = selectedUserIds.filter(
+            (userId) => !existingUserIds.has(userId),
+          );
+
+          if (nextUserIds.length === 0) {
+            invitedSessionIdsRef.current.add(sessionId);
+
+            if (isMounted) {
+              setServerSession(currentSession);
+            }
+
+            return;
+          }
+
           const invitedSession = await inviteDutchPayAppFriends({
             sessionId,
-            userIds: selectedUserIds,
+            userIds: nextUserIds,
+            userId: currentUserId,
           });
 
           invitedSessionIdsRef.current.add(sessionId);
@@ -440,13 +597,18 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           return;
         }
 
-        const nextSession = await getDutchPaySession(sessionId);
+        const nextSession = await getDutchPaySession(sessionId, currentUserId);
 
         if (isMounted) {
           setServerSession(nextSession);
         }
       } catch (error) {
         if (isMounted) {
+          setServerErrorMessage(
+            error instanceof Error
+              ? error.message
+              : '더치페이 세션 정보를 불러오지 못했습니다.',
+          );
           Alert.alert(
             '더치페이',
             error instanceof Error
@@ -466,11 +628,54 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     return () => {
       isMounted = false;
     };
-  }, [selectedUserIds, sessionId]);
+  }, [currentUserId, selectedUserIds, sessionId]);
 
   useEffect(() => {
     latestPaymentAmountRef.current = myPaymentAmount;
   }, [myPaymentAmount]);
+
+  useEffect(() => {
+    if (!forcedScenario || !serverSession) {
+      return;
+    }
+
+    const serverScenario = toDutchPayScenario(serverSession, role, splitType);
+
+    if (serverScenario !== 'OWNER_AMOUNT_INPUT_COMPLETE') {
+      setForcedScenario(null);
+    }
+  }, [forcedScenario, role, serverSession, splitType]);
+
+  useEffect(() => {
+    if (!isServerMode || sessionId == null || isLeavingForPayment) {
+      return;
+    }
+
+    const shouldPollSession =
+      data.scenario === 'OWNER_PAYMENT_PROGRESS' ||
+      data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE' ||
+      data.scenario === 'PARTICIPANT_PAYMENT_PROGRESS' ||
+      data.scenario === 'PARTICIPANT_FINAL_PAYMENT_PROGRESS';
+
+    if (!shouldPollSession) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      if (isPollingSessionRef.current) {
+        return;
+      }
+
+      isPollingSessionRef.current = true;
+      void refreshServerSession().finally(() => {
+        isPollingSessionRef.current = false;
+      });
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [data.scenario, isLeavingForPayment, isServerMode, refreshServerSession, sessionId]);
 
   useEffect(() => {
     if (isAutoSplitParticipantInput) {
@@ -554,21 +759,42 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (sessionId && serverSession) {
+    if (sessionId != null && serverSession) {
       const runServerAction = async () => {
         try {
           setIsSyncing(true);
 
           if (
             data.scenario === 'OWNER_INITIAL' ||
-            data.scenario === 'OWNER_AUTO_SPLIT_READY' ||
-            data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
+            data.scenario === 'OWNER_AUTO_SPLIT_READY'
           ) {
             const nextSession = await confirmDutchPayParticipants({
               sessionId,
-              splitMethod: route.params?.splitMethod,
+              splitMethod: resolvedSplitMethod,
+              userId: currentUserId,
             });
             setServerSession(nextSession);
+            return;
+          }
+
+          if (data.scenario === 'OWNER_AMOUNT_INPUT_WAITING') {
+            await refreshServerSession();
+            return;
+          }
+
+          if (data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE') {
+            const nextSession = await confirmDutchPayParticipants({
+              sessionId,
+              splitMethod: resolvedSplitMethod,
+              userId: currentUserId,
+            });
+            setServerSession(nextSession);
+            setForcedScenario('OWNER_PAYMENT_PROGRESS');
+            return;
+          }
+
+          if (data.scenario === 'OWNER_PAYMENT_REQUEST') {
+            await refreshServerSession();
             return;
           }
 
@@ -576,18 +802,20 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             const nextSession = await updateDutchPayMyAmount({
               sessionId,
               amount: myEditableAmount,
+              userId: currentUserId,
             });
             setServerSession(nextSession);
             return;
           }
 
           if (data.scenario === 'PARTICIPANT_PAYMENT_REQUEST') {
+            setIsLeavingForPayment(true);
             navigation.navigate('PaymentCardSelect', {
               amount: myPaymentAmount,
               flow: 'DUTCH_PAY',
               dutchSessionId: sessionId,
               orderName: serverSession.order_name,
-              merchantId: serverSession.merchant_id,
+              merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;
           }
@@ -596,12 +824,13 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
             data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE'
           ) {
+            setIsLeavingForPayment(true);
             navigation.navigate('PaymentCardSelect', {
               amount: ownerDisplayAmount,
               flow: 'DUTCH_PAY_FINAL',
               dutchSessionId: sessionId,
               orderName: serverSession.order_name,
-              merchantId: serverSession.merchant_id,
+              merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;
           }
@@ -693,8 +922,20 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     setCancelGroupModalVisible(true);
   };
 
-  const handleConfirmCancelGroup = () => {
+  const handlePressRemoveMember = (memberId: string) => {
+    setMembers((prevMembers) =>
+      prevMembers.filter((member) => member.id !== memberId),
+    );
+    setOpenMenuMemberId(null);
+  };
+
+  const handleConfirmCancelGroup = async () => {
     setCancelGroupModalVisible(false);
+
+    if (sessionId != null) {
+      await addCancelledDutchPaySession(sessionId);
+    }
+
     navigation.navigate('Main');
   };
 
@@ -711,60 +952,55 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     );
   };
 
+  if (isServerMode && !serverSession) {
+    return (
+      <PageWrap
+        scroll={false}
+        padded={false}
+        backgroundClassName="bg-neutral-white"
+        header={
+          <DutchPayHeader
+            title={getHeaderTitle(data.scenario)}
+            onPressClose={handlePressClose}
+          />
+        }
+      >
+        <View className="flex-1 items-center justify-center px-4">
+          <Text className="text-center font-pretendard text-large-bold text-neutral-black1">
+            {isSyncing
+              ? '더치페이 정보를 확인 중입니다.'
+              : '더치페이 정보를 불러오지 못했습니다.'}
+          </Text>
+
+          {serverErrorMessage ? (
+            <Text className="mt-3 text-center font-pretendard text-normal-regular text-neutral-black2">
+              {serverErrorMessage}
+            </Text>
+          ) : null}
+        </View>
+
+        <PaymentStopConfirmModal
+          visible={stopModalVisible}
+          description="중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다."
+          onConfirm={handleConfirmStopPayment}
+          onCancel={() => setStopModalVisible(false)}
+        />
+      </PageWrap>
+    );
+  }
+
   return (
     <PageWrap
-      scroll={false}
       padded={false}
       backgroundClassName="bg-neutral-white"
+      scrollContentClassName="px-4 pt-6"
       header={
         <DutchPayHeader
           title={getHeaderTitle(data.scenario)}
           onPressClose={handlePressClose}
         />
       }
-    >
-      <View className="flex-1">
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-4 pb-6 pt-6"
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="w-full max-w-sm self-center">
-            <View className="mb-3">
-              <PaymentMockBadge />
-            </View>
-            <DutchPayTotalNotice amount={data.totalAmount} />
-
-            <View className="mt-9 gap-5">
-              {displayMembers.map((member, index) => (
-                <DutchPayMemberRow
-                  key={`${data.scenario}-${member.id}`}
-                  member={member}
-                  isLast={index === displayMembers.length - 1}
-                  menuOpen={openMenuMemberId === member.id}
-                  onPressMenu={(memberId) =>
-                    setOpenMenuMemberId((prev) =>
-                      prev === memberId ? null : memberId,
-                    )
-                  }
-                  onChangeEditableAmount={handleChangeEditableAmount}
-                />
-              ))}
-            </View>
-
-            {data.contentNotice ? (
-              <View className="mt-7">
-                <NoticeBox
-                  tone={data.contentNotice.tone}
-                  description={data.contentNotice.message}
-                />
-              </View>
-            ) : null}
-          </View>
-        </ScrollView>
-
-        <View className="border-t border-neutral-grey1 bg-neutral-white px-4 pb-5 pt-4">
+      footer={
           <View className="w-full max-w-sm self-center">
             {data.footer.type === 'button' ? (
               <>
@@ -790,7 +1026,9 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               <NoticeBox tone={data.footer.tone} description={data.footer.message} />
             )}
           </View>
-        </View>
+      }
+      overlay={
+        <>
         <Toast
           visible={toastVisible}
           type="info"
@@ -813,6 +1051,65 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           onCancel={() => setCancelGroupModalVisible(false)}
           onClose={() => setCancelGroupModalVisible(false)}
         />
+        </>
+      }
+    >
+      <View className="w-full max-w-sm self-center">
+        {!isServerMode ? (
+          <View className="mb-3">
+            <PaymentMockBadge />
+          </View>
+        ) : null}
+        <DutchPayTotalNotice amount={data.totalAmount} />
+
+        <View>
+          {displayMembers.map((member, index) => (
+            <DutchPayMemberRow
+              key={`${data.scenario}-${member.id}`}
+              member={member}
+              isLast={index === displayMembers.length - 1}
+              menuOpen={openMenuMemberId === member.id}
+              onPressMenu={(memberId) =>
+                setOpenMenuMemberId((prev) =>
+                  prev === memberId ? null : memberId,
+                )
+              }
+              onPressRemoveMember={handlePressRemoveMember}
+              onChangeEditableAmount={handleChangeEditableAmount}
+            />
+          ))}
+        </View>
+
+        {(isOwnerAmountCheckScenario || isOwnerFinalPaymentScenario) &&
+        isParticipantAmountOverLimit ? (
+          <View className="mt-7">
+            <NoticeBox
+              tone="error"
+              description="참여자 금액 합계가 총 결제금액을 초과했습니다."
+            />
+          </View>
+        ) : null}
+
+        {data.contentNotice ? (
+          <View className="mt-7">
+            <NoticeBox
+              tone={data.contentNotice.tone}
+              description={data.contentNotice.message}
+            />
+          </View>
+        ) : null}
+
+        {isOwnerFinalPaymentScenario && failedPaymentMembers.length > 0 ? (
+          <View className="mt-7 gap-3">
+            {failedPaymentMembers.map((member) => (
+              <NoticeBox
+                key={`failed-payment-notice-${member.id}`}
+                tone="error"
+                description={`${member.name}(${member.phoneSuffix})님의 결제가 실패하여,\n대표자 결제 금액이 변경되었습니다.`}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
     </PageWrap>
   );

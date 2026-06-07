@@ -20,6 +20,7 @@ import {
 
 import type { RootStackParamList } from "../../../App";
 import { Accordion } from "../../shared/components/Accordion";
+import { ActionMenu } from "../../shared/components/ActionMenu";
 import {
   BottomSheet,
   DraggableBottomSheet,
@@ -30,6 +31,7 @@ import { Checkbox } from "../../shared/components/Checkbox";
 import { EmptyState } from "../../shared/components/EmptyState";
 import { ErrorPage } from "../../shared/components/ErrorPage";
 import { FloatingButton } from "../../shared/components/FloatingButton";
+import { FriendListItem } from "../../shared/components/FriendListItem";
 import { Header } from "../../shared/components/Header";
 import { ListItem } from "../../shared/components/ListItem";
 import { Loading } from "../../shared/components/Loading";
@@ -82,8 +84,10 @@ type ComponentPreview =
   | "checkbox"
   | "radio"
   | "accordion"
+  | "actionMenu"
   | "card"
   | "listItem"
+  | "friendListItem"
   | "emptyState"
   | "noticeBox"
   | "pageWrap"
@@ -138,6 +142,15 @@ const guidePages: GuidePage[] = [
   },
   {
     depth1: "payment",
+    depth2: "offline-qr",
+    pageName: "오프라인 결제 QR 표시",
+    routeName: "OfflinePaymentQr",
+    route: "OfflinePaymentQr",
+    status: "done",
+    note: "담당자 : 조보름",
+  },
+  {
+    depth1: "payment",
     depth2: "method-select",
     pageName: "카드결제 결제수단 선택",
     routeName: "PaymentMethodSelect",
@@ -164,18 +177,18 @@ const guidePages: GuidePage[] = [
     note: "담당자 : 조보름",
   },
   {
-    depth1: "payment",
-    depth2: "pin-register",
-    pageName: "카드결제 간편비밀번호 등록",
+    depth1: "pin",
+    depth2: "register",
+    pageName: "간편비밀번호 등록",
     routeName: "PaymentPin",
     route: "PaymentPin",
     status: "done",
     note: "담당자 : 조보름",
   },
   {
-    depth1: "payment",
-    depth2: "pin-confirm",
-    pageName: "카드결제 간편비밀번호 확인",
+    depth1: "pin",
+    depth2: "confirm",
+    pageName: "간편비밀번호 확인",
     routeName: "PaymentPin",
     route: "PaymentPin",
     status: "done",
@@ -495,6 +508,13 @@ const componentGuideItems: ComponentGuideItem[] = [
     preview: "accordion",
   },
   {
+    name: "ActionMenu",
+    path: "src/shared/components/ActionMenu",
+    status: "done",
+    preview: "actionMenu",
+    note: "더보기 메뉴 액션",
+  },
+  {
     name: "Card",
     path: "src/shared/components/Card",
     status: "done",
@@ -505,6 +525,13 @@ const componentGuideItems: ComponentGuideItem[] = [
     path: "src/shared/components/ListItem",
     status: "done",
     preview: "listItem",
+  },
+  {
+    name: "FriendListItem",
+    path: "src/shared/components/FriendListItem",
+    status: "done",
+    preview: "friendListItem",
+    note: "친구/참여자 정보 행",
   },
   {
     name: "EmptyState",
@@ -803,7 +830,16 @@ export default function GuideScreen({ navigation }: Props) {
                               }
 
                               if (page.route === "PaymentMethodSelect") {
-                                navigation.navigate("PaymentMethodSelect");
+                                navigation.navigate("QrScan");
+                                return;
+                              }
+
+                              if (page.route === "OfflinePaymentQr") {
+                                navigation.navigate("OfflinePaymentQr", {
+                                  merchantId: 101,
+                                  amount: 777777,
+                                  orderName: "아메리카노 27잔",
+                                });
                                 return;
                               }
 
@@ -829,16 +865,17 @@ export default function GuideScreen({ navigation }: Props) {
                               }
 
                               if (page.route === "PaymentPin") {
-                                if (page.depth2 === "pin-register") {
+                                if (page.depth2 === "register") {
                                   navigation.navigate("PaymentPin", {
                                     mode: "REGISTER",
                                   });
                                   return;
                                 }
 
-                                if (page.depth2 === "pin-confirm") {
+                                if (page.depth2 === "confirm") {
                                   navigation.navigate("PaymentPin", {
                                     mode: "CONFIRM",
+                                    firstPin: "123456",
                                   });
                                   return;
                                 }
@@ -848,6 +885,13 @@ export default function GuideScreen({ navigation }: Props) {
                                   paymentId: 1,
                                   cardId: 1,
                                   amount: 45000,
+                                  strategyType: "BENEFIT_SINGLE",
+                                  cards: [
+                                    {
+                                      cardId: 1,
+                                      amount: 45000,
+                                    },
+                                  ],
                                   flow: "NORMAL",
                                 });
                                 return;
@@ -1476,6 +1520,60 @@ function ComponentPreviewArea({
     );
   }
 
+  if (preview === "actionMenu") {
+    return (
+      <View className="gap-4 rounded-xl bg-neutral-grey2 p-4">
+        <View className="gap-2">
+          <Text className="font-pretendard text-normal-bold text-neutral-black1">
+            친구 더보기 메뉴
+          </Text>
+          <ActionMenu
+            visible
+            items={[
+              {
+                key: "favorite",
+                label: "즐겨찾기",
+                iconName: "star",
+                onPress: () => {},
+              },
+              {
+                key: "unfavorite",
+                label: "즐겨찾기 해제",
+                iconName: "star",
+                onPress: () => {},
+              },
+              {
+                key: "delete",
+                label: "친구 삭제",
+                iconName: "user-minus",
+                tone: "danger",
+                onPress: () => {},
+              },
+            ]}
+          />
+        </View>
+
+        <View className="gap-2">
+          <Text className="font-pretendard text-normal-bold text-neutral-black1">
+            그룹 참여자 메뉴
+          </Text>
+          <ActionMenu
+            visible
+            items={[
+              {
+                key: "remove",
+                label: "내보내기",
+                iconName: "user-x",
+                tone: "danger",
+                onPress: () => {},
+              },
+            ]}
+          />
+        </View>
+      </View>
+    );
+  }
+
   if (preview === "card") {
     return (
       <Card
@@ -1543,6 +1641,61 @@ function ComponentPreviewArea({
           title="이룸카페"
           onPress={() => {}}
         />
+        <ListItem
+          description="김철수님이 송금을 요청했어요"
+          left={
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#E0F6A8]">
+              <Text className="font-pretendard text-small-bold text-erum-main">
+                송금
+              </Text>
+            </View>
+          }
+          right={
+            <Text className="font-pretendard text-normal-regular text-neutral-black2">
+              2분 전
+            </Text>
+          }
+          title="송금요청"
+          onPress={() => {}}
+        />
+      </View>
+    );
+  }
+
+  if (preview === "friendListItem") {
+    return (
+      <View className="gap-3 rounded-xl bg-neutral-grey2 p-3">
+        <FriendListItem
+          name="김민수"
+          initial="김"
+          phoneSuffix="1111"
+          phoneNumber="010-1111-1111"
+          avatarColorClassName="bg-[#9B42F5]"
+          containerClassName="flex-row items-center rounded-xl bg-neutral-white px-4 py-3"
+          right={
+            <Text className="font-pretendard text-heading-3 text-neutral-black2">
+              ⋮
+            </Text>
+          }
+        />
+        <FriendListItem
+          name="김지지"
+          initial="김"
+          phoneSuffix="1234"
+          avatarColorClassName="bg-erum-main"
+          containerClassName="flex-row items-center rounded-xl bg-neutral-white px-4 py-3"
+          badges={
+            <View className="mr-2 rounded-full border border-erum-main bg-neutral-white px-2 py-1">
+              <Text className="font-pretendard text-small-bold text-erum-main">
+                나
+              </Text>
+            </View>
+          }
+        >
+          <Text className="mt-1 font-pretendard text-normal-bold text-erum-main">
+            결제완료
+          </Text>
+        </FriendListItem>
       </View>
     );
   }
@@ -1569,6 +1722,10 @@ function ComponentPreviewArea({
         <NoticeBox
           description="결제 전 금액을 다시 확인해주세요."
           tone="warning"
+        />
+        <NoticeBox
+          description="결제 요청을 처리하지 못했습니다."
+          tone="error"
         />
       </View>
     );

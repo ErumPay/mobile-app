@@ -19,6 +19,8 @@
     "expo-clipboard": "~8.0.8",
     "expo-crypto": "~15.0.9",
     "expo-image-manipulator": "~14.0.8",
+    "expo-local-authentication": "~17.0.8",
+    "expo-secure-store": "~15.0.8",
     "expo-web-browser": "~15.0.11",
     "nativewind": "~4.2.1",
     "react": "~19.1.0",

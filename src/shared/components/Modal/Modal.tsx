@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { TextStyle } from 'react-native';
 import { Modal as RNModal, Pressable, Text, View } from 'react-native';
 
 import { Button } from '../Button';
@@ -29,6 +30,15 @@ type TwoButtonModalProps = CommonModalProps & {
 };
 
 type ModalProps = OneButtonModalProps | TwoButtonModalProps;
+
+const WORD_JOINER = '\u2060';
+
+function keepAllText(text: string) {
+  return text
+    .split(/(\s+)/)
+    .map((chunk) => (/\s+/.test(chunk) ? chunk : Array.from(chunk).join(WORD_JOINER)))
+    .join('');
+}
 
 /**
  * 공통 Modal 컴포넌트
@@ -63,6 +73,11 @@ type ModalProps = OneButtonModalProps | TwoButtonModalProps;
  */
 export function Modal(modalProps: ModalProps) {
   const handleClose = modalProps.onClose;
+  const keepAllTextStyle = {
+    overflowWrap: 'normal',
+    wordBreak: 'keep-all',
+    wordWrap: 'normal',
+  } as TextStyle;
 
   return (
     <RNModal
@@ -81,13 +96,19 @@ export function Modal(modalProps: ModalProps) {
             <View className="mb-6">{modalProps.icon}</View>
           ) : null}
 
-          <Text className="text-center font-pretendard text-heading-3 text-neutral-black1">
-            {modalProps.title}
+          <Text
+            className="text-center font-pretendard text-heading-3 text-neutral-black1"
+            style={keepAllTextStyle}
+          >
+            {keepAllText(modalProps.title)}
           </Text>
 
           {modalProps.description ? (
-            <Text className="mt-3 text-center font-pretendard text-large-regular text-neutral-black2">
-              {modalProps.description}
+            <Text
+              className="mt-3 text-center font-pretendard text-large-regular text-neutral-black2"
+              style={keepAllTextStyle}
+            >
+              {keepAllText(modalProps.description)}
             </Text>
           ) : null}
 

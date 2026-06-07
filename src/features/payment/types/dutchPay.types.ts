@@ -29,11 +29,12 @@ export type DutchPayGroupRouteParams = {
   role?: DutchPayRole;
   scenario?: DutchPayScenario;
   splitType?: 'AUTO_SPLIT' | 'MANUAL';
-  sessionId?: number;
+  sessionId?: number | string;
+  userId?: number | string;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
   orderName?: string;
-  merchantId?: number;
+  merchantId?: number | string;
 };
 
 export type DutchPayMember = {
@@ -47,6 +48,7 @@ export type DutchPayMember = {
   status: DutchPayMemberStatus;
   editableAmount?: string;
   canOpenMenu?: boolean;
+  showAmountCheck?: boolean;
 };
 
 export type DutchPayGroupData = {

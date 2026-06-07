@@ -1,9 +1,10 @@
+import { Feather } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Header } from '../../../shared/components/Header';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
+import { colors } from '../../../shared/styles';
 
 interface CardRegisterMethodSelectScreenProps {
   onClose: () => void;
@@ -28,14 +29,14 @@ export function CardRegisterMethodSelectScreen({
 
         <View className="gap-4">
           <RegisterMethodCard
-            tone="blue"
+            tone="scan"
             title="카드 스캔하기"
             description="카드를 촬영해주세요"
             onPress={onPressOcr}
           />
 
           <RegisterMethodCard
-            tone="green"
+            tone="manual"
             title="직접 입력하기"
             description="카드 정보를 직접 입력해주세요"
             onPress={onPressManual}
@@ -57,25 +58,33 @@ function RegisterMethodCard({
   description,
   onPress,
 }: {
-  tone: 'blue' | 'green';
+  tone: 'scan' | 'manual';
   title: string;
   description: string;
   onPress: () => void;
 }) {
-  const isBlue = tone === 'blue';
-  const borderClassName = isBlue ? 'border-blue-700' : 'border-erum-secondary';
-  const iconClassName = isBlue ? 'bg-blue-700' : 'bg-erum-secondary';
+  const isScan = tone === 'scan';
+  const iconName = isScan ? 'camera' : 'edit-3';
+  const iconColor = colors.neutral.white;
+  const iconBackgroundColor = isScan ? '#3569A8' : colors.erum.secondary;
+  const cardBorderColor = isScan ? '#3569A8' : colors.erum.secondary;
+  const cardBackgroundColor = isScan ? '#F5FAFF' : '#F5FFFB';
 
   return (
     <Pressable
       accessibilityRole="button"
-      className={`w-full items-center justify-center rounded-2xl border-2 bg-neutral-white px-5 py-6 ${borderClassName}`}
+      className="w-full items-center justify-center rounded-2xl border-2 px-5 py-6"
+      style={{
+        backgroundColor: cardBackgroundColor,
+        borderColor: cardBorderColor,
+      }}
       onPress={onPress}
     >
       <View
-        className={`mb-5 h-16 w-16 items-center justify-center rounded-full ${iconClassName}`}
+        className="mb-5 h-16 w-16 items-center justify-center rounded-full"
+        style={{ backgroundColor: iconBackgroundColor }}
       >
-        {isBlue ? <CameraIcon /> : <PencilIcon />}
+        <Feather name={iconName} size={30} color={iconColor} />
       </View>
 
       <Text className="font-pretendard text-heading-2 text-neutral-black1">
@@ -86,56 +95,6 @@ function RegisterMethodCard({
         {description}
       </Text>
     </Pressable>
-  );
-}
-
-function CameraIcon() {
-  return (
-    <Svg width={34} height={30} viewBox="0 0 46 40" fill="none">
-      <Rect
-        x={7}
-        y={13}
-        width={32}
-        height={22}
-        rx={3}
-        stroke="white"
-        strokeWidth={3.5}
-      />
-      <Circle cx={23} cy={24} r={6} stroke="white" strokeWidth={3.5} />
-      <Path
-        d="M16 13L20 8H26L30 13"
-        stroke="white"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={3.5}
-      />
-    </Svg>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <Svg width={34} height={34} viewBox="0 0 46 46" fill="none">
-      <Path
-        d="M31 8L38 15L18 35L9 37L11 28L31 8Z"
-        stroke="white"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={4}
-      />
-      <Path
-        d="M28 12L35 19"
-        stroke="white"
-        strokeLinecap="round"
-        strokeWidth={4}
-      />
-      <Path
-        d="M18 37H36"
-        stroke="white"
-        strokeLinecap="round"
-        strokeWidth={4}
-      />
-    </Svg>
   );
 }
 

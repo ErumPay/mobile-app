@@ -10,15 +10,19 @@ import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import PaymentActionOptionList from '../components/PaymentActionOptionList';
 import PaymentRequestSummary from '../components/PaymentRequestSummary';
-import { getMockRemotePaymentRequestResponse } from '../constants/remotePayment.mock';
 import { getPaymentActionOptions } from '../utils/paymentMethodOptions';
 import type {
     PaymentActionType,
     PaymentRequestSummary as PaymentRequestSummaryType,
 } from '../types/paymentMethod.types';
 import { validatePaymentQr } from '../api/paymentQrApi';
+import {
+    getRemotePaymentRequest,
+    rejectRemotePaymentRequest,
+} from '../api/remotePaymentApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import { toPaymentRequestSummary } from '../utils/paymentQrAdapter';
+import { normalizePaymentQrToken } from '../utils/paymentQrToken';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 import { toRemotePaymentRecipientSummary } from '../utils/remotePaymentAdapter';
 
@@ -63,13 +67,37 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         }
 
         if (routeRemoteRequestId) {
-            const remotePaymentRequest =
-                getMockRemotePaymentRequestResponse(routeRemoteRequestId);
+            let isMounted = true;
 
-            setRecipientProgress(remotePaymentRequest);
-            setSummary(toRemotePaymentRecipientSummary(remotePaymentRequest));
-            setErrorMessage('');
-            return;
+            const loadRemotePaymentRequest = async () => {
+                try {
+                    setIsLoading(true);
+                    setErrorMessage('');
+
+                    const remotePaymentRequest =
+                        await getRemotePaymentRequest(routeRemoteRequestId);
+
+                    if (isMounted) {
+                        setRecipientProgress(remotePaymentRequest);
+                        setSummary(toRemotePaymentRecipientSummary(remotePaymentRequest));
+                    }
+                } catch {
+                    if (isMounted) {
+                        setSummary(null);
+                        setErrorMessage('원격결제 요청 정보를 불러오지 못했습니다.');
+                    }
+                } finally {
+                    if (isMounted) {
+                        setIsLoading(false);
+                    }
+                }
+            };
+
+            void loadRemotePaymentRequest();
+
+            return () => {
+                isMounted = false;
+            };
         }
 
         if (!routeToken) {
@@ -85,7 +113,9 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 setIsLoading(true);
                 setErrorMessage('');
 
-                const qrResult = await validatePaymentQr(routeToken);
+                const qrResult = await validatePaymentQr(
+                    normalizePaymentQrToken(routeToken),
+                );
 
                 if (qrResult.code !== 'VALID') {
                     if (isMounted) {
@@ -151,7 +181,14 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
             );
 
             navigation.navigate('PaymentCardSelect', {
-                paymentId: summary.paymentId,
+                paymentId:
+                    summary.type === 'REMOTE_RECIPIENT'
+                        ? undefined
+                        : summary.paymentId,
+                remoteRequestId:
+                    summary.type === 'REMOTE_RECIPIENT'
+                        ? routeRemoteRequestId ?? summary.remoteRequestId
+                        : undefined,
                 amount: summary.amount,
                 flow:
                     summary.type === 'REMOTE_RECIPIENT'
@@ -160,6 +197,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                           ? 'DUTCH_PAY'
                           : 'NORMAL',
                 idempotencyKey,
+                orderName: summary.merchantName,
             });
             return;
         }
@@ -170,18 +208,43 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         }
 
         if (type === 'REMOTE_REQUEST') {
+            if (!summary) {
+                return;
+            }
+
             navigation.navigate('PaymentParticipantSelect', {
                 mode: 'REMOTE_PAYMENT',
+                paymentId: summary.paymentId,
+                remoteRequestId: summary.remoteRequestId,
+                amount: summary.amount,
+                orderName: summary.merchantName,
             });
             return;
         }
 
         if (type === 'DUTCH_PAY') {
-            navigation.navigate('PaymentParticipantSelect', {
-                mode: 'DUTCH_PAY',
-                paymentId: summary?.paymentId,
-                amount: summary?.amount,
-                orderName: summary?.merchantName,
+            if (!summary) {
+                return;
+            }
+
+            const existingIdempotencyKey = paymentIdempotencyKeyMap.current.get(
+                summary.paymentId,
+            );
+            const idempotencyKey =
+                existingIdempotencyKey ??
+                createPaymentIdempotencyKey(summary.paymentId);
+
+            paymentIdempotencyKeyMap.current.set(
+                summary.paymentId,
+                idempotencyKey,
+            );
+
+            navigation.navigate('PaymentCardSelect', {
+                paymentId: summary.paymentId,
+                amount: summary.amount,
+                flow: 'DUTCH_PAY',
+                idempotencyKey,
+                orderName: summary.merchantName,
             });
             return;
         }
@@ -189,9 +252,20 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         Alert.alert('결제 수단 선택', `${type} 액션이 선택되었습니다.`);
     };
 
-    const handleConfirmReject = () => {
+    const handleConfirmReject = async () => {
         if (summary?.type === 'REMOTE_RECIPIENT') {
-            rejectRemoteRequest();
+            try {
+                if (routeRemoteRequestId ?? summary.remoteRequestId) {
+                    await rejectRemotePaymentRequest(
+                        routeRemoteRequestId ?? summary.remoteRequestId ?? '',
+                    );
+                }
+
+                rejectRemoteRequest();
+            } catch {
+                Alert.alert('원격결제 요청', '원격결제 요청 거절에 실패했습니다.');
+                return;
+            }
         }
 
         setRejectModalVisible(false);

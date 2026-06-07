@@ -96,10 +96,11 @@ function PaymentCancelCompleteScreenContent() {
             <PaymentCancelSummary />
           </View>
 
-          <View className="mt-6 rounded-xl bg-neutral-grey1 px-5 py-4">
-            <Text className="font-pretendard text-normal-regular text-neutral-black2">
-              환불 예정일은 카드사 사정에 따라 변경될 수 있습니다. 정확한 환불 일정은 카드사에 문의해주세요.
-            </Text>
+          <View className="mt-6">
+            <NoticeBox
+              tone="info"
+              description="환불 예정일은 카드사 사정에 따라 변경될 수 있습니다. 정확한 환불 일정은 카드사에 문의해주세요."
+            />
           </View>
         </View>
       </View>
@@ -206,7 +207,7 @@ export default function PaymentCancelScreen({ navigation, route }: Props) {
       <View className="flex-1">
         <ScrollView
           className="flex-1"
-          contentContainerClassName="flex-grow pb-4"
+          contentContainerClassName="flex-grow pb-28"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

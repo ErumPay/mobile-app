@@ -1,7 +1,11 @@
-const API_BASE_URL = 'http://localhost:8083';
-const DEV_USER_ID = '1';
+import {
+    getPaymentUserId,
+    PAYMENT_API_BASE_URL,
+} from './paymentApiConfig';
 
-const DUTCH_PAY_BASE_URL = `${API_BASE_URL}/api/v1/dutch-pay`;
+export const DUTCH_PAY_DEV_USER_ID = Number(getPaymentUserId()) || 1;
+
+const DUTCH_PAY_BASE_URL = `${PAYMENT_API_BASE_URL}/api/v1/dutch-pay`;
 
 export type DutchPayParticipantStatus =
     | 'INVITED'
@@ -79,18 +83,33 @@ export type DutchPayInviteLinkResponse = {
 async function requestJson<T>(
     url: string,
     options: RequestInit = {},
+    userId?: number | string,
 ): Promise<T> {
     const response = await fetch(url, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            'X-User-Id': DEV_USER_ID,
+            'X-User-Id': String(userId ?? getPaymentUserId()),
             ...options.headers,
         },
     });
 
     if (!response.ok) {
-        throw new Error('더치페이 정보를 불러오지 못했습니다.');
+        let errorMessage = '더치페이 정보를 불러오지 못했습니다.';
+
+        try {
+            const errorBody = await response.json();
+            const serverMessage =
+                errorBody?.message ?? errorBody?.error ?? errorBody?.code;
+
+            if (serverMessage) {
+                errorMessage = String(serverMessage);
+            }
+        } catch {
+            // Ignore malformed error bodies and keep the default message.
+        }
+
+        throw new Error(errorMessage);
     }
 
     return response.json();
@@ -98,100 +117,147 @@ async function requestJson<T>(
 
 export function getDutchPaySession(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}`);
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}`, {}, userId);
 }
 
-export function getActiveDutchPaySessions(): Promise<DutchPaySessionDetailResponse[]> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/active`);
+export function getActiveDutchPaySessions(
+    userId?: number | string,
+): Promise<DutchPaySessionDetailResponse[]> {
+    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/active`, {}, userId);
 }
 
 export function inviteDutchPayAppFriends({
     sessionId,
     userIds,
+    userId,
 }: {
     sessionId: number;
     userIds: number[];
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`, {
-        method: 'POST',
-        body: JSON.stringify({
-            user_ids: userIds,
-        }),
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                user_ids: userIds,
+            }),
+        },
+        userId,
+    );
 }
 
 export function createDutchPayInviteLink(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPayInviteLinkResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-links`, {
-        method: 'POST',
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-links`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
 }
 
 export function acceptDutchPayInviteLink(
     inviteToken: string,
+    userId?: number | string,
 ): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/invite-links/${inviteToken}/accept`, {
-        method: 'POST',
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/invite-links/${inviteToken}/accept`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
 }
 
 export function confirmDutchPayParticipants({
     sessionId,
     splitMethod,
+    userId,
 }: {
     sessionId: number;
     splitMethod?: DutchPaySplitMethod;
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/confirm`, {
-        method: 'POST',
-        body: JSON.stringify({
-            split_method: splitMethod,
-        }),
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/confirm`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                split_method: splitMethod,
+            }),
+        },
+        userId,
+    );
 }
 
 export function updateDutchPaySplitMethod({
     sessionId,
     splitMethod,
+    userId,
 }: {
     sessionId: number;
     splitMethod: DutchPaySplitMethod;
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/split-method`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-            split_method: splitMethod,
-        }),
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/split-method`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify({
+                split_method: splitMethod,
+            }),
+        },
+        userId,
+    );
 }
 
 export function updateDutchPayMyAmount({
     sessionId,
     amount,
+    userId,
 }: {
     sessionId: number;
     amount: number;
+    userId?: number | string;
 }): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-amount`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-            amount,
-        }),
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-amount`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify({
+                amount,
+            }),
+        },
+        userId,
+    );
 }
 
 export function rejectDutchPayInvite(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPaySessionDetailResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/reject`, {
-        method: 'POST',
-    });
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/reject`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
 }
 
 export function getDutchPayMyPayment(
     sessionId: number,
+    userId?: number | string,
 ): Promise<DutchPayMyPaymentResponse> {
-    return requestJson(`${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-payment`);
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/my-payment`,
+        {},
+        userId,
+    );
 }
