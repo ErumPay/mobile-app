@@ -29,6 +29,7 @@ import {
   rejectRemotePaymentRequest,
 } from "../../payment/api/remotePaymentApi";
 import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
+import { getCancelledDutchPaySessionIdSet } from "../../payment/utils/cancelledDutchPaySessions";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
 import {
   fetchPaymentHistories,
@@ -183,9 +184,11 @@ export default function MainScreen({ navigation }: Props) {
 
         try {
           const currentUserId = Number(getPaymentUserId()) || 1;
-          const [dutchSessions, requests] = await Promise.allSettled([
+          const [dutchSessions, requests, cancelledDutchSessionIds] =
+            await Promise.allSettled([
             getActiveDutchPaySessions(currentUserId),
             getActiveRemotePaymentRequests(),
+            getCancelledDutchPaySessionIdSet(),
           ]);
 
           if (!isActive) {
@@ -194,7 +197,13 @@ export default function MainScreen({ navigation }: Props) {
 
           if (dutchSessions.status === "fulfilled") {
             setDutchProgress(
-              getActiveDutchPayProgress(dutchSessions.value, currentUserId),
+              getActiveDutchPayProgress(
+                dutchSessions.value,
+                currentUserId,
+                cancelledDutchSessionIds.status === "fulfilled"
+                  ? cancelledDutchSessionIds.value
+                  : new Set(),
+              ),
             );
           } else {
             setDutchProgress(null);
@@ -290,6 +299,17 @@ export default function MainScreen({ navigation }: Props) {
 
   const handlePressPaymentProgressPrimary = () => {
     if (dutchProgress) {
+      if (dutchProgress.variant === "DUTCHPAY_OWNER_GROUP_CREATE_READY") {
+        navigation.navigate("PaymentParticipantSelect", {
+          mode: "DUTCH_PAY",
+          dutchSessionId: dutchProgress.session.session_id,
+          amount: dutchProgress.session.total_amount,
+          orderName: dutchProgress.session.order_name,
+          merchantId: dutchProgress.session.merchant_id,
+        });
+        return;
+      }
+
       navigation.navigate("DutchPayGroup", {
         role: dutchProgress.role,
         scenario: getDutchPayRouteScenario(dutchProgress.variant),
@@ -533,6 +553,7 @@ function formatGreeting(profile: UserProfile | null) {
 function getActiveDutchPayProgress(
   sessions: DutchPaySessionDetailResponse[],
   currentUserId: number,
+  cancelledSessionIds: Set<number>,
 ): ActiveDutchPayProgress | null {
   for (const session of sessions) {
     const isMySession = session.participants.some(
@@ -544,7 +565,12 @@ function getActiveDutchPayProgress(
     }
 
     const role = session.host_user_id === currentUserId ? "OWNER" : "PARTICIPANT";
-    const variant = toDutchPayProgressVariant(session, currentUserId, role);
+    const variant = toDutchPayProgressVariant(
+      session,
+      currentUserId,
+      role,
+      cancelledSessionIds.has(session.session_id),
+    );
 
     if (variant) {
       return {
@@ -562,6 +588,7 @@ function toDutchPayProgressVariant(
   session: DutchPaySessionDetailResponse,
   currentUserId: number,
   role: "OWNER" | "PARTICIPANT",
+  isLocallyCancelled = false,
 ): PaymentProgressVariant | null {
   if (
     session.status === "COMPLETED" ||
@@ -575,17 +602,24 @@ function toDutchPayProgressVariant(
     (participant) => participant.user_id !== session.host_user_id,
   );
 
+  if (role === "OWNER" && isLocallyCancelled) {
+    return "DUTCHPAY_OWNER_GROUP_CREATE_READY";
+  }
+
   if (
     role === "OWNER" &&
     session.status === "CREATED" &&
     !hasParticipantBeyondOwner
   ) {
-    return null;
+    return "DUTCHPAY_OWNER_GROUP_CREATE_READY";
   }
 
   if (role === "OWNER") {
     switch (session.session_progress_step) {
       case "GROUP_CREATED":
+        return hasParticipantBeyondOwner
+          ? "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY"
+          : "DUTCHPAY_OWNER_GROUP_CREATE_READY";
       case "PARTICIPANT_CONFIRM":
         return "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY";
       case "AMOUNT_INPUT":

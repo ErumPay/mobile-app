@@ -44,7 +44,7 @@ function PaymentCardSelectSkeleton() {
     return (
         <ScrollView
             className="flex-1"
-            contentContainerClassName="px-4 pb-6 pt-6"
+            contentContainerClassName="px-4 pb-36 pt-6"
             showsVerticalScrollIndicator={false}
         >
             <View className="rounded-lg border border-neutral-grey1 bg-neutral-white p-4">

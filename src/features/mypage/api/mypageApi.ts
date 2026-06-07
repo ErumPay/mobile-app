@@ -24,6 +24,12 @@ const CARD_COLORS = [
   'bg-slate-700',
 ];
 
+function getMypageUserHeaders() {
+  return {
+    'X-User-Id': String(getMypageUserId()),
+  };
+}
+
 export async function fetchUserProfile(): Promise<UserProfile> {
   const response = await fetchWithTimeout(
     `${MYPAGE_AUTH_API_BASE_URL}/internal/v1/users/${getMypageUserId()}`,
@@ -100,9 +106,10 @@ export async function checkWithdrawPendingTransactions(): Promise<{
 
 export async function fetchManagedCards(): Promise<ManagedCard[]> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards`,
+    {
+      headers: getMypageUserHeaders(),
+    },
   );
 
   if (!response.ok) {
@@ -117,12 +124,11 @@ export async function fetchManagedCards(): Promise<ManagedCard[]> {
 
 export async function updateManagedCardAlias(cardId: string, alias: string) {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/alias?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/alias`,
     {
       method: 'PATCH',
       headers: {
+        ...getMypageUserHeaders(),
         'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify({ cardAlias: alias.trim() || null }),
@@ -136,11 +142,10 @@ export async function updateManagedCardAlias(cardId: string, alias: string) {
 
 export async function setManagedDefaultCard(cardId: string) {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/default?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/default`,
     {
       method: 'PATCH',
+      headers: getMypageUserHeaders(),
     },
   );
 
@@ -151,11 +156,10 @@ export async function setManagedDefaultCard(cardId: string) {
 
 export async function deleteManagedCard(cardId: string) {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}`,
     {
       method: 'DELETE',
+      headers: getMypageUserHeaders(),
     },
   );
 
@@ -166,9 +170,10 @@ export async function deleteManagedCard(cardId: string) {
 
 export async function fetchCardBenefits(cardId: string): Promise<CardBenefit[]> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/benefits?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/benefits`,
+    {
+      headers: getMypageUserHeaders(),
+    },
   );
 
   if (!response.ok) {

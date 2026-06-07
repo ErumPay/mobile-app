@@ -22,29 +22,12 @@ import {
   setManagedDefaultCard,
   updateManagedCardAlias,
 } from '../api/mypageApi';
+import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
 import type { CardBenefit, PaymentHistoryItem, PaymentStatus } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
 type PaymentDetailTab = 'all' | 'completed' | 'canceled';
-
-const statusLabel = {
-  completed: '결제완료',
-  canceled: '결제취소',
-  cancelRequested: '결제취소요청',
-};
-
-const paymentStatusBadgeClassName: Record<PaymentStatus, string> = {
-  completed: 'border-erum-main',
-  canceled: 'border-state-error',
-  cancelRequested: 'border-state-orange',
-};
-
-const paymentStatusTextClassName: Record<PaymentStatus, string> = {
-  completed: 'text-erum-main',
-  canceled: 'text-state-error',
-  cancelRequested: 'text-state-orange',
-};
 
 const paymentHistoryTabs = [
   { label: '전체', value: 'all' },
@@ -279,7 +262,6 @@ export function CardDetailScreen({ navigation, route }: Props) {
                       {index > 0 ? <Divider /> : null}
                       <PaymentMiniRow
                         title={payment.title}
-                        status={statusLabel[payment.status]}
                         statusType={payment.status}
                         date={payment.date}
                         amount={payment.amount}
@@ -454,13 +436,11 @@ export function CardDetailScreen({ navigation, route }: Props) {
 
 function PaymentMiniRow({
   title,
-  status,
   statusType,
   date,
   amount,
 }: {
   title: string;
-  status: string;
   statusType: PaymentStatus;
   date: string;
   amount: string;
@@ -474,13 +454,7 @@ function PaymentMiniRow({
         >
           {title}
         </Text>
-        <View
-          className={`rounded-full border bg-neutral-white px-2.5 py-1 ${paymentStatusBadgeClassName[statusType]}`}
-        >
-          <Text className={`font-pretendard text-normal-bold ${paymentStatusTextClassName[statusType]}`}>
-            {status}
-          </Text>
-        </View>
+        <PaymentStatusBadge status={statusType} />
       </View>
       <View className="mt-2 flex-row items-center justify-between">
         <Text className="font-pretendard text-normal-regular text-neutral-black2">

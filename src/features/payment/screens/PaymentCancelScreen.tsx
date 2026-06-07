@@ -207,7 +207,7 @@ export default function PaymentCancelScreen({ navigation, route }: Props) {
       <View className="flex-1">
         <ScrollView
           className="flex-1"
-          contentContainerClassName="flex-grow pb-4"
+          contentContainerClassName="flex-grow pb-28"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

@@ -95,7 +95,21 @@ async function requestJson<T>(
     });
 
     if (!response.ok) {
-        throw new Error('더치페이 정보를 불러오지 못했습니다.');
+        let errorMessage = '더치페이 정보를 불러오지 못했습니다.';
+
+        try {
+            const errorBody = await response.json();
+            const serverMessage =
+                errorBody?.message ?? errorBody?.error ?? errorBody?.code;
+
+            if (serverMessage) {
+                errorMessage = String(serverMessage);
+            }
+        } catch {
+            // Ignore malformed error bodies and keep the default message.
+        }
+
+        throw new Error(errorMessage);
     }
 
     return response.json();

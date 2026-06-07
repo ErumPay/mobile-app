@@ -13,19 +13,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 type PageWrapProps = {
   children: ReactNode;
   header?: ReactNode;
+  footer?: ReactNode;
+  overlay?: ReactNode;
   scroll?: boolean;
   padded?: boolean;
   backgroundClassName?: string;
+  scrollContentClassName?: string;
+  bodyClassName?: string;
+  footerClassName?: string;
 };
 
 export function PageWrap({
                            children,
                            header,
+                           footer,
+                           overlay,
                            scroll = true,
                            padded = true,
                            backgroundClassName = 'bg-neutral-grey2',
+                           scrollContentClassName = '',
+                           bodyClassName = '',
+                           footerClassName = 'border-t border-neutral-grey1 bg-neutral-white px-4 pb-5 pt-4',
                          }: PageWrapProps) {
-  const contentClassName = `flex-1 ${padded ? 'px-5 py-6' : ''}`;
+  const bodyBaseClassName = `flex-1 ${padded ? 'px-5 py-6' : ''} ${bodyClassName}`;
+  const contentContainerClassName = `flex-grow ${
+    padded ? 'px-5 py-6' : ''
+  } ${footer ? 'pb-28' : ''} ${scrollContentClassName}`;
 
   return (
       <SafeAreaView style={{ flex: 1 }}>
@@ -39,15 +52,19 @@ export function PageWrap({
                   {scroll ? (
                       <ScrollView
                           className="flex-1"
-                          contentContainerClassName={`flex-grow ${padded ? 'px-5 py-6' : ''}`}
+                          contentContainerClassName={contentContainerClassName}
                           keyboardShouldPersistTaps="handled"
                       >
                           {children}
                       </ScrollView>
                   ) : (
-                      <View className={contentClassName}>{children}</View>
+                      <View className={bodyBaseClassName}>{children}</View>
                   )}
+                  {footer ? (
+                      <View className={footerClassName}>{footer}</View>
+                  ) : null}
               </KeyboardAvoidingView>
+              {overlay}
           </View>
       </SafeAreaView>
   );

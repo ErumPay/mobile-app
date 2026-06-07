@@ -19,11 +19,11 @@ import { PageWrap } from '../../../shared/components/PageWrap';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import { Tab } from '../../../shared/components/Tab';
 import { fetchPaymentHistories } from '../api/mypageApi';
+import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import type {
   PaymentBenefitType,
   PaymentHistoryItem,
   PaymentMethodType,
-  PaymentStatus,
 } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentHistoryScreen'>;
@@ -31,12 +31,6 @@ type PaymentTab = 'all' | 'completed' | 'canceled';
 type PeriodFilter = 'week' | 'month' | 'year' | 'custom' | null;
 type DatePickerTarget = 'start' | 'end' | null;
 const MAX_CUSTOM_RANGE_YEARS = 3;
-
-const statusLabel: Record<PaymentStatus, string> = {
-  completed: '결제완료',
-  canceled: '결제취소',
-  cancelRequested: '결제취소요청',
-};
 
 const methodLabel: Record<PaymentMethodType, string> = {
   remote: '원격결제',
@@ -490,23 +484,24 @@ function PaymentItem({
 }) {
   return (
     <Card onPress={onPress}>
-      <View className="flex-row items-center">
-        <View className="flex-row gap-2">
-          <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${methodClassName[payment.method]}`}>
-            {methodLabel[payment.method]}
-          </Text>
-          <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${benefitClassName[payment.benefitType]}`}>
-            {benefitLabel[payment.benefitType]}
-          </Text>
-        </View>
-        <Text className="ml-3 font-pretendard text-normal-regular text-neutral-black2">
-          {statusLabel[payment.status]}
+      <View className="flex-row gap-2">
+        <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${methodClassName[payment.method]}`}>
+          {methodLabel[payment.method]}
+        </Text>
+        <Text className={`rounded px-2 py-1 font-pretendard text-normal-bold ${benefitClassName[payment.benefitType]}`}>
+          {benefitLabel[payment.benefitType]}
         </Text>
       </View>
-      <Text className="mt-4 font-pretendard text-large-bold text-neutral-black1">
-        {payment.title}
-      </Text>
-      <View className="mt-4 flex-row items-center justify-between">
+      <View className="mt-4 flex-row items-center justify-between gap-3">
+        <Text
+          numberOfLines={1}
+          className="min-w-0 flex-1 font-pretendard text-large-bold text-neutral-black1"
+        >
+          {payment.title}
+        </Text>
+        <PaymentStatusBadge status={payment.status} />
+      </View>
+      <View className="mt-4 flex-row items-center justify-between gap-3">
         <Text className="font-pretendard text-normal-regular text-neutral-black2">
           {payment.date}
         </Text>

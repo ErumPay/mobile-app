@@ -275,7 +275,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
           /* ─── 인증 요청 / 인증번호 입력 (JOIN_003) ─── */
           <ScrollView
             className="flex-1"
-            contentContainerClassName="flex-grow px-8"
+            contentContainerClassName="flex-grow px-8 pb-36"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >

@@ -9,6 +9,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  type TextStyle,
   View,
 } from 'react-native';
 
@@ -35,6 +36,7 @@ import type {
   ParticipantFriend,
   ParticipantSelectMode,
 } from '../types/paymentParticipantSelect.types';
+import { removeCancelledDutchPaySession } from '../utils/cancelledDutchPaySessions';
 
 type Props = NativeStackScreenProps<
   RootStackParamList,
@@ -49,6 +51,22 @@ const MOCK_REMOTE_PAYMENT = {
   merchantName: '롯데시네마 홍대입구점',
   paymentId: 1,
 };
+const WORD_JOINER = '\u2060';
+
+function keepAllText(text: string) {
+  return text
+    .split(/(\s+)/)
+    .map((chunk) =>
+      /\s+/.test(chunk) ? chunk : Array.from(chunk).join(WORD_JOINER),
+    )
+    .join('');
+}
+
+const keepAllTextStyle = {
+  overflowWrap: 'normal',
+  wordBreak: 'keep-all',
+  wordWrap: 'normal',
+} as TextStyle;
 
 function toDutchPayUserIds(friendIds: string[]) {
   return friendIds
@@ -314,8 +332,13 @@ function ShareLinkModal({
                 size={24}
                 color={colors.erum.main}
               />
-              <Text className="ml-2 min-w-0 flex-1 font-pretendard text-heading-3 text-neutral-black1">
-                {isCopied ? 'URL이 복사되었습니다.' : content.shareTitle}
+              <Text
+                className="ml-2 min-w-0 flex-1 font-pretendard text-heading-3 text-neutral-black1"
+                style={keepAllTextStyle}
+              >
+                {keepAllText(
+                  isCopied ? 'URL이 복사되었습니다.' : content.shareTitle,
+                )}
               </Text>
             </View>
             <Pressable
@@ -328,8 +351,13 @@ function ShareLinkModal({
             </Pressable>
           </View>
 
-          <Text className="font-pretendard text-large-regular text-neutral-black2">
-            {isCopied ? copiedDescription : content.shareDescription}
+          <Text
+            className="font-pretendard text-large-regular text-neutral-black2"
+            style={keepAllTextStyle}
+          >
+            {keepAllText(
+              isCopied ? copiedDescription : content.shareDescription,
+            )}
           </Text>
 
           <View className="mt-5 rounded-xl border border-neutral-grey1 bg-neutral-grey2 px-4 py-4">
@@ -340,8 +368,11 @@ function ShareLinkModal({
 
           {isCopied ? (
             <View className="mt-5 rounded-xl bg-[#EDFFF8] px-4 py-4">
-              <Text className="text-center font-pretendard text-large-bold text-erum-main">
-                {nextStepDescription}
+              <Text
+                className="text-center font-pretendard text-large-bold text-erum-main"
+                style={keepAllTextStyle}
+              >
+                {keepAllText(nextStepDescription)}
               </Text>
             </View>
           ) : (
@@ -431,9 +462,14 @@ export default function PaymentParticipantSelectScreen({
   const baseAllFriends = useMemo(
     () =>
       shouldUseMockFriends
-        ? initialState.allFriends
-        : (serverFriends ?? []).filter((friend) => !friend.favorite),
-    [initialState.allFriends, serverFriends, shouldUseMockFriends],
+        ? [...initialState.favoriteFriends, ...initialState.allFriends]
+        : (serverFriends ?? []),
+    [
+      initialState.allFriends,
+      initialState.favoriteFriends,
+      serverFriends,
+      shouldUseMockFriends,
+    ],
   );
   const filterFriends = useCallback((friends: ParticipantFriend[]) => {
     if (!normalizedSearchKeyword) {
@@ -612,6 +648,7 @@ export default function PaymentParticipantSelectScreen({
           return;
         }
 
+        void removeCancelledDutchPaySession(route.params.dutchSessionId);
         navigation.navigate('DutchPayGroup', {
           role: 'OWNER',
           sessionId: route.params.dutchSessionId,
@@ -637,6 +674,10 @@ export default function PaymentParticipantSelectScreen({
   }, [
     navigation,
     resetShareModal,
+    route.params?.dutchSessionId,
+    route.params?.merchantId,
+    route.params?.orderName,
+    selectedFriendIds,
     shareCountdown,
     shareModalVisible,
     shareStep,
@@ -653,6 +694,7 @@ export default function PaymentParticipantSelectScreen({
         return;
       }
 
+      void removeCancelledDutchPaySession(route.params.dutchSessionId);
       navigation.navigate('DutchPayGroup', {
         role: 'OWNER',
         sessionId: route.params.dutchSessionId,
@@ -725,7 +767,7 @@ export default function PaymentParticipantSelectScreen({
       <View className="flex-1">
         <ScrollView
           className="flex-1"
-          contentContainerClassName="px-4 pb-6 pt-5"
+          contentContainerClassName="px-4 pb-36 pt-5"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
