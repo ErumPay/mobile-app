@@ -8,6 +8,33 @@ const PAYMENT_QR_VALIDATE_URL =
 const PAYMENT_QR_REQUEST_URL =
     `${PAYMENT_API_BASE_URL}/api/v1/payment/qr/request`;
 
+type PaymentQrErrorResponse = {
+    code?: string;
+    reason?: string;
+    message?: string;
+};
+
+export class PaymentQrValidateError extends Error {
+    status: number;
+    code?: string;
+    reason?: string;
+
+    constructor(
+        message: string,
+        options: {
+            status: number;
+            code?: string;
+            reason?: string;
+        },
+    ) {
+        super(message);
+        this.name = 'PaymentQrValidateError';
+        this.status = options.status;
+        this.code = options.code;
+        this.reason = options.reason;
+    }
+}
+
 export async function validatePaymentQr(
     token: string,
 ): Promise<PaymentQrValidateResponse> {
@@ -22,7 +49,18 @@ export async function validatePaymentQr(
     });
 
     if (!response.ok) {
-        throw new Error('QR 결제 정보를 불러오지 못했습니다.');
+        const error = await response.json().catch(() => null) as
+            | PaymentQrErrorResponse
+            | null;
+
+        throw new PaymentQrValidateError(
+            error?.message ?? 'QR 결제 정보를 불러오지 못했습니다.',
+            {
+                status: response.status,
+                code: error?.code,
+                reason: error?.reason,
+            },
+        );
     }
 
     return response.json();

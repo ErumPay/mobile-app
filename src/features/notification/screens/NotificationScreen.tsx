@@ -160,7 +160,7 @@ const NotificationScreen = ({ navigation }: Props) => {
     }
 
     if (value === 'payment') {
-      navigation.navigate('PaymentMethodSelect');
+      navigation.navigate('QrScan');
       return;
     }
 

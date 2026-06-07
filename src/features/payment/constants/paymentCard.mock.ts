@@ -63,6 +63,7 @@ export const mockNormalPaymentCardSelectData: PaymentCardSelectData = {
     cardCombinations: [
         {
             type: 'SINGLE_BENEFIT',
+            strategyType: 'BENEFIT_SINGLE',
             label: '단일혜택',
             description: '혜택 최대화',
             benefitDescription: '온라인 쇼핑 5% 캐시백',
@@ -70,12 +71,14 @@ export const mockNormalPaymentCardSelectData: PaymentCardSelectData = {
         },
         {
             type: 'SINGLE_PERFORMANCE',
+            strategyType: 'PERF_SINGLE',
             label: '단일실적',
             description: '실적 채우기',
             cards: [],
         },
         {
             type: 'SPLIT_BENEFIT',
+            strategyType: 'BENEFIT_SPLIT',
             label: '분할혜택',
             description: '혜택 최대화',
             benefitDescription: '온라인 쇼핑 5% 캐시백',
@@ -83,6 +86,7 @@ export const mockNormalPaymentCardSelectData: PaymentCardSelectData = {
         },
         {
             type: 'SPLIT_PERFORMANCE',
+            strategyType: 'PERF_SPLIT',
             label: '분할실적',
             description: '실적 채우기',
             cards: [],
@@ -102,6 +106,7 @@ export const mockDutchPayPaymentCardSelectData: PaymentCardSelectData = {
     cardCombinations: [
         {
             type: 'SINGLE_BENEFIT',
+            strategyType: 'BENEFIT_SINGLE',
             label: '대표카드',
             description: '가결제 진행',
             benefitDescription: '이 결제는 가결제로 먼저 진행돼요!',

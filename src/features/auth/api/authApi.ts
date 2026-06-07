@@ -1,4 +1,4 @@
-import { AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
+import { AUTH_API_BASE_URL, AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
 
 export type SendSmsResponse = {
   verificationId: number;
@@ -15,6 +15,18 @@ export type SetupPinResponse = {
   message: string;
 };
 
+export type ResetPinResponse = {
+  message: string;
+};
+
+export type AuthFriendResponse = {
+  relationId: number;
+  userId: number;
+  name: string;
+  phoneLastFour: string;
+  isFavorite: boolean;
+};
+
 type DevUserResponse = {
   userId: string;
   kakaoOauthId: string;
@@ -26,6 +38,10 @@ type DevTokenResponse = {
   status: string;
   accessToken: string;
   refreshToken: string;
+};
+
+type AuthRequestOptions = {
+  useExistingDevUser?: boolean;
 };
 
 let authSession: DevTokenResponse | null = null;
@@ -41,8 +57,11 @@ export class AuthApiError extends Error {
   }
 }
 
-export async function sendSmsCode(phoneNumber: string): Promise<SendSmsResponse> {
-  const accessToken = await getAccessTokenForAuthRequest(phoneNumber);
+export async function sendSmsCode(
+  phoneNumber: string,
+  options?: AuthRequestOptions,
+): Promise<SendSmsResponse> {
+  const accessToken = await getAccessTokenForAuthRequest(phoneNumber, options);
   const response = await fetchAuth(`${AUTH_API_URL}/sms/send`, {
     method: 'POST',
     headers: {
@@ -111,6 +130,56 @@ export async function setupPin(
   return response.json();
 }
 
+export async function resetPin(
+  verificationId: number,
+  newPin: string,
+  newPinConfirm: string,
+): Promise<ResetPinResponse> {
+  const accessToken = await getAccessTokenForAuthRequest(undefined, {
+    useExistingDevUser: true,
+  });
+  const response = await fetchAuth(`${AUTH_API_URL}/pin/reset`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ verificationId, newPin, newPinConfirm }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new AuthApiError(
+      error?.message ?? 'PIN 재설정에 실패했습니다.',
+      response.status,
+    );
+  }
+
+  return response.json();
+}
+
+export async function fetchAuthFriends(): Promise<AuthFriendResponse[]> {
+  const accessToken = await getAccessTokenForAuthRequest(undefined, {
+    useExistingDevUser: true,
+  });
+  const response = await fetchAuth(`${AUTH_API_BASE_URL}/api/v1/friends`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new AuthApiError(
+      error?.message ?? '친구 목록을 불러오지 못했습니다.',
+      response.status,
+    );
+  }
+
+  const data = await response.json();
+  return Array.isArray(data.friends) ? data.friends : [];
+}
+
 async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -142,7 +211,15 @@ async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   }
 }
 
-async function getAccessTokenForAuthRequest(phoneNumber?: string) {
+async function getAccessTokenForAuthRequest(
+  phoneNumber?: string,
+  options?: AuthRequestOptions,
+) {
+  if (__DEV__ && options?.useExistingDevUser) {
+    authSession = await issueDevToken(getAuthDevUserId());
+    return authSession.accessToken;
+  }
+
   if (authSession?.accessToken) {
     return authSession.accessToken;
   }

@@ -37,8 +37,7 @@ export function FloatingButton({
     return (
         <View className="absolute bottom-6 left-0 right-0 items-center px-4">
             <View
-                style={{ maxWidth: 320 }}
-                className="flex-row items-center justify-between rounded-full bg-neutral-white px-2 py-2 shadow-sm"
+                className="flex-row items-center self-center rounded-full bg-neutral-white px-2 py-2 shadow-sm"
             >
                 {items.map((item) => {
                     const isSelected = item.value === value;
@@ -50,11 +49,11 @@ export function FloatingButton({
                         <Pressable
                             key={item.value}
                             accessibilityRole="button"
-                            className="min-w-0 flex-1 items-center justify-center"
+                            className="w-[64px] items-center justify-center"
                             onPress={() => onChange?.(item.value)}
                         >
                             <View
-                                className={`aspect-square w-[28%] max-w-[3.8rem] min-w-[2.8rem] items-center justify-center rounded-full ${
+                                className={`h-11 w-11 items-center justify-center rounded-full ${
                                     isSelected
                                         ? '-mt-[2.1rem] bg-erum-secondary shadow-sm'
                                         : 'bg-neutral-grey2'

@@ -43,7 +43,7 @@ export type RootStackParamList = {
   Main: undefined;
   Guide: undefined;
   TermsAgreement: undefined;
-  SmsVerification: undefined;
+  SmsVerification: { flow?: 'SIGNUP' | 'PIN_RESET' } | undefined;
   SignupComplete: undefined;
   QrScan: undefined;
   PaymentMethodSelect:
@@ -140,7 +140,7 @@ export default function App() {
       <View className="flex-1 bg-neutral-white">
         <NavigationContainer linking={linking}>
           <Stack.Navigator
-            initialRouteName="Main"
+            initialRouteName="Tutorial"
             screenOptions={{ headerShown: false }}
           >
             <Stack.Screen name="Tutorial" component={TutorialScreen} />

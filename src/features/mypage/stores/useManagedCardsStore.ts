@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-import { mockManagedCards } from '../mocks/mypageMockData';
 import type { ManagedCard } from '../types/mypage';
 
 type AddCardInput = {
@@ -22,7 +21,7 @@ type ManagedCardsState = {
 };
 
 export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
-  cards: keepSingleDefaultCard(mockManagedCards),
+  cards: [],
 
   setCards: (cards) =>
     set({

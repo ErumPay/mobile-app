@@ -86,8 +86,7 @@ export default function TutorialScreen({ navigation }: Props) {
   };
 
   const handleSignup = () => {
-    // TODO: 회원가입 브랜치에서 TermsAgreement로 연결
-    navigation.navigate('Main');
+    navigation.navigate('TermsAgreement');
   };
 
   const handleLogin = () => {

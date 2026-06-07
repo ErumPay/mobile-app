@@ -7,6 +7,7 @@ export type PaymentRequestPayload = {
     pin: string;
     paymentId: number;
     totalAmount: number;
+    strategyType: string;
     cards: PaymentRequestCard[];
 };
 

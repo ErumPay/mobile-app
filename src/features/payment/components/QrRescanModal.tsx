@@ -5,11 +5,17 @@ import { colors } from '../../../shared/styles/designTokens';
 
 type QrRescanModalProps = {
   visible: boolean;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
   onConfirm: () => void;
 };
 
 export default function QrRescanModal({
   visible,
+  title = 'QR을 다시 스캔해주세요.',
+  description,
+  confirmLabel = '다시 스캔하기',
   onConfirm,
 }: QrRescanModalProps) {
   return (
@@ -23,8 +29,9 @@ export default function QrRescanModal({
           color={colors.state.gold}
         />
       }
-      title="QR을 다시 스캔해주세요."
-      confirmLabel="다시 스캔하기"
+      title={title}
+      description={description}
+      confirmLabel={confirmLabel}
       onConfirm={onConfirm}
       onClose={onConfirm}
     />

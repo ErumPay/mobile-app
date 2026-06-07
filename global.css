@@ -65,10 +65,10 @@ canvas {
 
 @keyframes erumSkeletonShimmer {
   0% {
-    transform: translateX(-140%);
+    transform: translateX(-160%) rotate(12deg);
   }
 
   100% {
-    transform: translateX(260%);
+    transform: translateX(280%) rotate(12deg);
   }
 }

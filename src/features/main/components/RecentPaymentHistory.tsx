@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { Skeleton } from "../../../shared/components/Skeleton";
 
 export type PaymentHistory = {
-  id: number;
+  id: number | string;
   merchantName: string;
   cardName: string;
   cardNumber: string;
@@ -114,6 +114,10 @@ function PaymentHistoryRow({
   history: PaymentHistory;
   onPress?: () => void;
 }) {
+  const cardDescription = history.cardNumber
+    ? `${history.cardName}(${history.cardNumber.slice(-4)})`
+    : history.cardName;
+
   return (
     <Pressable
       accessibilityRole={onPress ? "button" : undefined}
@@ -128,7 +132,7 @@ function PaymentHistoryRow({
           numberOfLines={1}
           className="mt-1 font-pretendard text-normal-regular text-neutral-black2"
         >
-          {history.cardName}({history.cardNumber.slice(-4)})
+          {cardDescription}
         </Text>
       </View>
       <View className="items-end">

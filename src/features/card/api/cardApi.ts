@@ -3,6 +3,12 @@ import { CARD_API_BASE_URL, CARD_API_TIMEOUT_MS } from './cardApiConfig';
 
 const REGISTER_CARD_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
 
+function getCardUserHeaders() {
+  return {
+    'X-User-Id': String(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2'),
+  };
+}
+
 export async function registerCard(
   payload: RegisterCardPayload,
 ): Promise<RegisteredCard> {
@@ -11,6 +17,7 @@ export async function registerCard(
     {
       method: 'POST',
       headers: {
+        ...getCardUserHeaders(),
         'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify(payload),

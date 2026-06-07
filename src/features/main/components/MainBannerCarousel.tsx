@@ -4,7 +4,7 @@ import type {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from "react-native";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Image, ScrollView, View } from "react-native";
 
 const BANNER_ASPECT_RATIO = 1008 / 426;
 const AUTO_SLIDE_INTERVAL_MS = 3500;
@@ -38,11 +38,7 @@ const bannerItems: MainBannerItem[] = [
   },
 ];
 
-type MainBannerCarouselProps = {
-  onPressItem?: (id: MainBannerId) => void;
-};
-
-export function MainBannerCarousel({ onPressItem }: MainBannerCarouselProps) {
+export function MainBannerCarousel() {
   const scrollRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [bannerWidth, setBannerWidth] = useState(0);
@@ -101,10 +97,6 @@ export function MainBannerCarousel({ onPressItem }: MainBannerCarouselProps) {
             }}
           >
             {bannerWidth > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => onPressItem?.(item.id)}
-              >
               <Image
                 accessibilityLabel={`${item.label} 배너`}
                 resizeMode="contain"
@@ -114,7 +106,6 @@ export function MainBannerCarousel({ onPressItem }: MainBannerCarouselProps) {
                   height: bannerWidth / BANNER_ASPECT_RATIO,
                 }}
               />
-              </Pressable>
             ) : null}
           </View>
         ))}
