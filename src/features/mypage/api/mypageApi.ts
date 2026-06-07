@@ -24,6 +24,12 @@ const CARD_COLORS = [
   'bg-slate-700',
 ];
 
+function getMypageUserHeaders() {
+  return {
+    'X-User-Id': String(getMypageUserId()),
+  };
+}
+
 export async function fetchUserProfile(): Promise<UserProfile> {
   const response = await fetchWithTimeout(
     `${MYPAGE_AUTH_API_BASE_URL}/internal/v1/users/${getMypageUserId()}`,
@@ -111,9 +117,10 @@ export async function checkWithdrawPendingTransactions(): Promise<{
 
 export async function fetchManagedCards(): Promise<ManagedCard[]> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards`,
+    {
+      headers: getMypageUserHeaders(),
+    },
   );
 
   if (!response.ok) {
@@ -128,12 +135,11 @@ export async function fetchManagedCards(): Promise<ManagedCard[]> {
 
 export async function updateManagedCardAlias(cardId: string, alias: string) {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/alias?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/alias`,
     {
       method: 'PATCH',
       headers: {
+        ...getMypageUserHeaders(),
         'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify({ cardAlias: alias.trim() || null }),
@@ -147,11 +153,10 @@ export async function updateManagedCardAlias(cardId: string, alias: string) {
 
 export async function setManagedDefaultCard(cardId: string) {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/default?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/default`,
     {
       method: 'PATCH',
+      headers: getMypageUserHeaders(),
     },
   );
 
@@ -162,11 +167,10 @@ export async function setManagedDefaultCard(cardId: string) {
 
 export async function deleteManagedCard(cardId: string) {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}`,
     {
       method: 'DELETE',
+      headers: getMypageUserHeaders(),
     },
   );
 
@@ -177,9 +181,10 @@ export async function deleteManagedCard(cardId: string) {
 
 export async function fetchCardBenefits(cardId: string): Promise<CardBenefit[]> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/benefits?${new URLSearchParams({
-      userId: String(getMypageUserId()),
-    })}`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/benefits`,
+    {
+      headers: getMypageUserHeaders(),
+    },
   );
 
   if (!response.ok) {
@@ -257,11 +262,16 @@ export async function fetchPaymentHistoriesByCard(
   cardId: string,
 ): Promise<PaymentHistoryItem[]> {
   const payments = await fetchPaymentHistories();
-  const paymentDetails = await Promise.all(
+  const paymentDetailResults = await Promise.allSettled(
     payments.map((payment) => fetchPaymentDetail(payment.id)),
   );
 
-  return paymentDetails
+  return paymentDetailResults
+    .filter(
+      (result): result is PromiseFulfilledResult<PaymentDetail> =>
+        result.status === 'fulfilled',
+    )
+    .map((result) => result.value)
     .filter((payment) =>
       (payment.cards ?? []).some((card) => card.id === cardId),
     )
@@ -364,6 +374,12 @@ function normalizeManagedCard(
     response.cardAlias ?? response.card_alias ?? '별칭미설정',
   );
   const status = toStringValue(response.status).toUpperCase();
+  const imageUrl = toStringValue(
+    response.imageUrl ?? response.image_url ?? response.cardImageUrl,
+  );
+  const registeredAt = toStringValue(
+    response.createdAt ?? response.created_at ?? response.registeredAt,
+  );
   const last4 = maskedNumber.replace(/\D/g, '').slice(-4);
 
   return {
@@ -373,7 +389,8 @@ function normalizeManagedCard(
     name: name || '등록 카드',
     alias: alias || '별칭미설정',
     cardNumber: maskedNumber || '**** **** **** ****',
-    registeredAt: '',
+    imageUrl,
+    registeredAt: formatDateTimeToDate(registeredAt),
     colorClassName: CARD_COLORS[index % CARD_COLORS.length],
     isDefault: Boolean(response.isDefault ?? response.is_default),
     disabled: status !== '' && status !== 'ACTIVE',

@@ -1,3 +1,4 @@
+import type { TextStyle } from "react-native";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, typography } from "../../styles";
@@ -7,6 +8,15 @@ type RejectConfirmModalProps = {
   onConfirm: () => void;
   visible: boolean;
 };
+
+const WORD_JOINER = "\u2060";
+
+function keepAllText(text: string) {
+  return text
+    .split(/(\s+)/)
+    .map((chunk) => (/\s+/.test(chunk) ? chunk : Array.from(chunk).join(WORD_JOINER)))
+    .join("");
+}
 
 export function RejectConfirmModal({
   onCancel,
@@ -22,9 +32,9 @@ export function RejectConfirmModal({
     >
       <View style={styles.backdrop}>
         <View style={styles.container}>
-          <Text style={styles.title}>결제 거절</Text>
+          <Text style={styles.title}>{keepAllText("결제 거절")}</Text>
           <Text style={styles.description}>
-            정말 거절하시겠습니까?
+            {keepAllText("정말 거절하시겠습니까?")}
           </Text>
           <View style={styles.actions}>
             <Pressable
@@ -102,14 +112,20 @@ const styles = StyleSheet.create({
     color: colors.neutral.black2,
     fontFamily: typography.fontFamily,
     marginTop: 12,
+    overflowWrap: "normal",
     textAlign: "center",
-  },
+    wordBreak: "keep-all",
+    wordWrap: "normal",
+  } as TextStyle,
   title: {
     ...typography.heading3,
     color: colors.neutral.black1,
     fontFamily: typography.fontFamily,
+    overflowWrap: "normal",
     textAlign: "center",
-  },
+    wordBreak: "keep-all",
+    wordWrap: "normal",
+  } as TextStyle,
 });
 
 export default RejectConfirmModal;

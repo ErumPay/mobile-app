@@ -22,6 +22,7 @@ import {
 } from '../api/remotePaymentApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import { toPaymentRequestSummary } from '../utils/paymentQrAdapter';
+import { normalizePaymentQrToken } from '../utils/paymentQrToken';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 import { toRemotePaymentRecipientSummary } from '../utils/remotePaymentAdapter';
 
@@ -112,7 +113,9 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 setIsLoading(true);
                 setErrorMessage('');
 
-                const qrResult = await validatePaymentQr(routeToken);
+                const qrResult = await validatePaymentQr(
+                    normalizePaymentQrToken(routeToken),
+                );
 
                 if (qrResult.code !== 'VALID') {
                     if (isMounted) {

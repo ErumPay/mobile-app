@@ -48,6 +48,7 @@ export type DutchPayMember = {
   status: DutchPayMemberStatus;
   editableAmount?: string;
   canOpenMenu?: boolean;
+  showAmountCheck?: boolean;
 };
 
 export type DutchPayGroupData = {

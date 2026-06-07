@@ -1,7 +1,9 @@
 import { forwardRef, useState } from 'react';
 import type {
+  StyleProp,
   TextInput as RNTextInputRef,
   TextInputProps as RNTextInputProps,
+  TextStyle,
 } from 'react-native';
 import { Text, TextInput as RNTextInput, View } from 'react-native';
 
@@ -49,34 +51,47 @@ export const Input = forwardRef<RNTextInputRef, InputProps>(function Input(
   };
 
   const handleFocus: NonNullable<RNTextInputProps['onFocus']> = (event) => {
-  if (readOnly) {
-    return;
-  }
+    if (readOnly) {
+      return;
+    }
 
-  setIsFocused(true);
-  onFocus?.(event);
-};
+    setIsFocused(true);
+    onFocus?.(event);
+  };
 
-const handleBlur: NonNullable<RNTextInputProps['onBlur']> = (event) => {
-  if (readOnly) {
-    return;
-  }
+  const handleBlur: NonNullable<RNTextInputProps['onBlur']> = (event) => {
+    if (readOnly) {
+      return;
+    }
 
-  setIsFocused(false);
-  onBlur?.(event);
-};
+    setIsFocused(false);
+    onBlur?.(event);
+  };
 
   const borderClassName = readOnly
-  ? 'border-neutral-grey1'
-  : errorMessage
-    ? 'border-state-error'
-    : isFocused
-      ? 'border-erum-main'
-      : 'border-neutral-grey1';
+    ? 'border-neutral-grey1'
+    : errorMessage
+      ? 'border-state-error'
+      : isFocused
+        ? 'border-erum-main'
+        : 'border-neutral-grey1';
 
   const stateClassName = readOnly
-    ? 'bg-neutral-grey2 text-neutral-black2'
+    ? 'bg-neutral-grey3 text-neutral-black2'
     : 'bg-neutral-white text-neutral-black1';
+  const heightClassName = props.multiline ? 'min-h-[96px]' : 'h-12';
+  const inputStyle: StyleProp<TextStyle> = [
+    {
+      backgroundColor: readOnly ? '#F1F1F1' : '#FFFFFF',
+      fontSize: 16,
+      includeFontPadding: false,
+      lineHeight: props.multiline ? 22 : 20,
+      paddingBottom: props.multiline ? 12 : 0,
+      paddingTop: props.multiline ? 12 : 0,
+      textAlignVertical: props.multiline ? 'top' : 'center',
+    },
+    props.style,
+  ];
 
   return (
     <View className="w-full">
@@ -86,7 +101,8 @@ const handleBlur: NonNullable<RNTextInputProps['onBlur']> = (event) => {
 
       <RNTextInput
         ref={ref}
-        className={`min-h-[46px] w-full rounded-xl border px-4 py-3 font-pretendard text-large-regular ${borderClassName} ${stateClassName} ${className}`}
+        className={`${heightClassName} w-full rounded-xl border px-4 py-0 font-pretendard ${borderClassName} ${stateClassName} ${className}`}
+        style={inputStyle}
         editable={!readOnly}
         pointerEvents={readOnly ? 'none' : 'auto'}
         selectTextOnFocus={!readOnly}

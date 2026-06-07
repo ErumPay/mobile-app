@@ -123,7 +123,9 @@ function MemberStatusLine({
 
   if (member.amount) {
     const autoSplit = member.status === 'AUTO_SPLIT';
-    const confirmed = member.status === 'AMOUNT_CONFIRMED';
+    const confirmed =
+      member.status === 'AMOUNT_CONFIRMED' &&
+      (!member.isOwner || member.showAmountCheck);
 
     return (
       <View className="mt-1 flex-row items-center">
@@ -165,7 +167,7 @@ export default function DutchPayMemberRow({
         badges={
           <>
             {member.isOwner ? <MemberBadge label="대표자" filled /> : null}
-            {member.isMe ? <MemberBadge label="나" /> : null}
+            {member.isMe && !member.isOwner ? <MemberBadge label="나" /> : null}
           </>
         }
         nameRight={

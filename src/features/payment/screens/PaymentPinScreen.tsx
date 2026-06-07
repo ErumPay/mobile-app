@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -16,9 +16,16 @@ import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgres
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
-import { setupPin } from '../../auth/api/authApi';
+import {
+  canUseBiometricPaymentAuth,
+  disableBiometricPayment,
+  enableBiometricPayment,
+  getBiometricPaymentPin,
+  isBiometricPaymentEnabled,
+} from '../utils/biometricPaymentAuth';
+import { resetPin, setupPin } from '../../auth/api/authApi';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PaymentPin'>;
+type Props = Partial<NativeStackScreenProps<RootStackParamList, 'PaymentPin'>>;
 
 type PaymentPinScreenText = {
   title: string;
@@ -28,6 +35,7 @@ type PaymentPinScreenText = {
 };
 
 const PIN_LENGTH = 6;
+const PIN_LOCK_DURATION_SECONDS = 5 * 60;
 const WEAK_PIN_ERROR_MESSAGE =
   '연속 숫자 또는 동일 숫자 4자리 이상은 사용할 수 없습니다.';
 
@@ -53,9 +61,21 @@ const screenTextByMode: Record<PaymentPinMode, PaymentPinScreenText> = {
 };
 
 export default function PaymentPinScreen({ navigation, route }: Props) {
-  const mode = route.params?.mode ?? 'PAYMENT_INPUT';
-  const screenText = screenTextByMode[mode];
-  const paymentParams = route.params?.mode === 'PAYMENT_INPUT' ? route.params : null;
+  const routeParams = route?.params;
+  const mode = routeParams?.mode ?? 'PAYMENT_INPUT';
+  const paymentParams = routeParams?.mode === 'PAYMENT_INPUT' ? routeParams : null;
+  const setupFlow =
+    routeParams?.mode === 'REGISTER' || routeParams?.mode === 'CONFIRM'
+      ? routeParams.flow ?? 'SIGNUP'
+      : 'SIGNUP';
+  const isPinResetFlow = setupFlow === 'PIN_RESET';
+  const screenText = isPinResetFlow && mode === 'REGISTER'
+    ? {
+        ...screenTextByMode.REGISTER,
+        title: '간편비밀번호 재설정',
+        description: '새 비밀번호 6자리를 입력해주세요.',
+      }
+    : screenTextByMode[mode];
 
   const paymentResultFlow: PaymentResultFlow =
     paymentParams?.flow === 'DUTCH_PAY'
@@ -70,9 +90,36 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [resetCompleteModalVisible, setResetCompleteModalVisible] = useState(false);
+  const [biometricSetupModalVisible, setBiometricSetupModalVisible] = useState(false);
+  const [pendingBiometricPin, setPendingBiometricPin] = useState('');
+  const [biometricSetupNextScreen, setBiometricSetupNextScreen] =
+    useState<'SIGNUP_COMPLETE' | 'MYPAGE_RESET'>('SIGNUP_COMPLETE');
+  const [canUseBiometric, setCanUseBiometric] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [hasTriedBiometric, setHasTriedBiometric] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
+  const [pinLockedUntil, setPinLockedUntil] = useState<number | null>(null);
+  const [pinLockRemainingSeconds, setPinLockRemainingSeconds] = useState(0);
 
   const completeRemoteRequest = useRemotePaymentProgressStore((state) => state.completeRequest);
+
+  const navigateToMain = () => {
+    navigation?.navigate('Main');
+  };
+
+  const navigateToMypage = () => {
+    navigation?.navigate('MypageHomeScreen');
+  };
+
+  const goBackOrMain = () => {
+    if (navigation?.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigateToMain();
+  };
 
   const idempotencyKey = useMemo(() => {
     const paymentId = paymentParams?.paymentId;
@@ -84,6 +131,75 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     return paymentParams?.idempotencyKey ?? createPaymentIdempotencyKey(paymentId);
   }, [paymentParams]);
 
+  const retryPaymentResultParams = paymentParams
+    ? {
+        paymentId: paymentParams.paymentId,
+        remoteRequestId: paymentParams.remoteRequestId,
+        amount: paymentParams.amount,
+        retryFlow: paymentParams.flow,
+        idempotencyKey,
+        dutchSessionId: paymentParams.dutchSessionId,
+        selectedUserIds: paymentParams.selectedUserIds,
+        splitMethod: paymentParams.splitMethod,
+        orderName: paymentParams.orderName,
+        merchantId: paymentParams.merchantId,
+      }
+    : {};
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBiometricState = async () => {
+      try {
+        const [nextCanUseBiometric, nextBiometricEnabled] = await Promise.all([
+          canUseBiometricPaymentAuth(),
+          isBiometricPaymentEnabled(),
+        ]);
+
+        if (isMounted) {
+          setCanUseBiometric(nextCanUseBiometric);
+          setBiometricEnabled(nextBiometricEnabled);
+        }
+      } catch {
+        if (isMounted) {
+          setCanUseBiometric(false);
+          setBiometricEnabled(false);
+        }
+      }
+    };
+
+    void loadBiometricState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pinLockedUntil) {
+      setPinLockRemainingSeconds(0);
+      return undefined;
+    }
+
+    const updateRemainingSeconds = () => {
+      const nextRemainingSeconds = Math.max(
+        0,
+        Math.ceil((pinLockedUntil - Date.now()) / 1000),
+      );
+
+      setPinLockRemainingSeconds(nextRemainingSeconds);
+
+      if (nextRemainingSeconds <= 0) {
+        setPinLockedUntil(null);
+      }
+    };
+
+    updateRemainingSeconds();
+    const intervalId = setInterval(updateRemainingSeconds, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [pinLockedUntil]);
+
   const handlePressClose = () => {
     if (isSubmitting) {
       return;
@@ -94,29 +210,38 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    navigation.goBack();
+    if (isPinResetFlow) {
+      setStopModalVisible(true);
+      return;
+    }
+
+    goBackOrMain();
   };
 
-  const handleConfirmStopPayment = () => {
+  const handleConfirmStopFlow = () => {
     if (isSubmitting) {
       return;
     }
 
     setStopModalVisible(false);
 
-    if (navigation.canGoBack()) {
-      navigation.goBack();
+    if (isPinResetFlow) {
+      navigateToMypage();
       return;
     }
 
-    navigation.navigate('Main');
+    goBackOrMain();
   };
 
   const handlePressForgotPassword = () => {
-    Alert.alert('간편비밀번호', '간편비밀번호 재설정 화면으로 이동합니다.');
+    navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
   };
 
   const handlePressDelete = () => {
+    if (isSubmitting || pinLockRemainingSeconds > 0) {
+      return;
+    }
+
     setPin((prev) => prev.slice(0, -1));
     setHasError(false);
     setSetupErrorMessage('');
@@ -127,27 +252,32 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       if (!paymentParams || !idempotencyKey) {
         setPin('');
         setHasError(true);
-        navigation.replace('PaymentResult', {
+        navigation?.replace('PaymentResult', {
           status: 'FAILURE',
           flow: paymentResultFlow,
+          ...retryPaymentResultParams,
         });
         return;
       }
 
       try {
         setIsSubmitting(true);
+        const requestCards = paymentParams.cards.length
+          ? paymentParams.cards
+          : [
+              {
+                cardId: paymentParams.cardId,
+                amount: paymentParams.amount,
+              },
+            ];
 
         const paymentResponse = await requestPayment(
           {
             pin: completedPin,
             paymentId: paymentParams.paymentId,
-            totalAmount: paymentParams.amount,
-            cards: [
-              {
-                cardId: paymentParams.cardId,
-                amount: paymentParams.amount,
-              },
-            ],
+            totalAmount: requestCards.reduce((sum, card) => sum + card.amount, 0),
+            strategyType: paymentParams.strategyType,
+            cards: requestCards,
           },
           idempotencyKey,
         );
@@ -159,9 +289,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setPin('');
         setHasError(false);
         setSetupErrorMessage('');
-        navigation.replace('PaymentResult', {
+        setPinLockedUntil(null);
+        navigation?.replace('PaymentResult', {
           status: 'SUCCESS',
           flow: paymentResultFlow,
+          paymentId: paymentResponse.paymentId ?? paymentParams.paymentId,
           dutchSessionId: paymentResponse.dutchSessionId ?? paymentParams.dutchSessionId,
           selectedUserIds: paymentParams.selectedUserIds,
           splitMethod: paymentParams.splitMethod,
@@ -171,13 +303,24 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       } catch (error) {
         if (error instanceof PaymentRequestError && isPaymentPinError(error)) {
           const nextFailCount = error.details?.failCount ?? failCount + 1;
+          const requiresSmsVerification =
+            Boolean(error.details?.requireSmsVerification) || nextFailCount >= 10;
+          const nextLockedUntil = getPaymentPinLockedUntil(error, nextFailCount);
 
           setPin('');
           setHasError(true);
           setFailCount(nextFailCount);
-          setSetupErrorMessage(getPaymentPinErrorMessage(error, nextFailCount));
+          setPinLockedUntil(nextLockedUntil);
+          setSetupErrorMessage(
+            getPaymentPinErrorMessage(
+              error,
+              nextFailCount,
+              requiresSmsVerification,
+              nextLockedUntil,
+            ),
+          );
 
-          if (error.details?.requireSmsVerification) {
+          if (requiresSmsVerification) {
             setFailModalVisible(true);
           }
 
@@ -187,9 +330,14 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setPin('');
         setHasError(true);
         setFailCount((prev) => prev + 1);
-        navigation.replace('PaymentResult', {
+        navigation?.replace('PaymentResult', {
           status: 'FAILURE',
           flow: paymentResultFlow,
+          failureMessage:
+            error instanceof Error
+              ? error.message
+              : '결제 요청에 실패했습니다. 다시 시도해주세요.',
+          ...retryPaymentResultParams,
         });
       } finally {
         setIsSubmitting(false);
@@ -208,17 +356,21 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
       setPin('');
       setSetupErrorMessage('');
-      navigation.replace('PaymentPin', {
+      navigation?.replace('PaymentPin', {
         mode: 'CONFIRM',
         firstPin: completedPin,
+        flow: setupFlow,
+        verificationId: routeParams?.mode === 'REGISTER'
+          ? routeParams.verificationId
+          : undefined,
       });
       return;
     }
 
-    const firstPin = route.params?.mode === 'CONFIRM' ? route.params.firstPin : null;
+    const firstPin = routeParams?.mode === 'CONFIRM' ? routeParams.firstPin : null;
 
     if (!firstPin) {
-      navigation.replace('PaymentPin', { mode: 'REGISTER' });
+      navigation?.replace('PaymentPin', { mode: 'REGISTER' });
       return;
     }
 
@@ -231,9 +383,40 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     try {
       setIsSubmitting(true);
+      if (isPinResetFlow) {
+        const verificationId =
+          routeParams?.mode === 'CONFIRM' ? routeParams.verificationId : undefined;
+
+        if (verificationId == null) {
+          throw new Error('SMS 인증 정보가 없습니다. 다시 인증해주세요.');
+        }
+
+        await resetPin(verificationId, completedPin, firstPin);
+        setSetupErrorMessage('');
+        await disableBiometricPayment();
+
+        if (canUseBiometric) {
+          setPendingBiometricPin(completedPin);
+          setBiometricSetupNextScreen('MYPAGE_RESET');
+          setBiometricSetupModalVisible(true);
+          return;
+        }
+
+        setResetCompleteModalVisible(true);
+        return;
+      }
+
       await setupPin(completedPin, firstPin);
       setSetupErrorMessage('');
-      navigation.replace('SignupComplete');
+
+      if (canUseBiometric) {
+        setPendingBiometricPin(completedPin);
+        setBiometricSetupNextScreen('SIGNUP_COMPLETE');
+        setBiometricSetupModalVisible(true);
+        return;
+      }
+
+      navigation?.replace('SignupComplete');
     } catch (error) {
       setPin('');
       setHasError(true);
@@ -245,8 +428,92 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     }
   };
 
+  const finishPinSetupAfterBiometric = () => {
+    setPendingBiometricPin('');
+    setBiometricSetupModalVisible(false);
+
+    if (biometricSetupNextScreen === 'MYPAGE_RESET') {
+      setResetCompleteModalVisible(true);
+      return;
+    }
+
+    navigation?.replace('SignupComplete');
+  };
+
+  const handleConfirmBiometricSetup = async () => {
+    if (!pendingBiometricPin || isSubmitting) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await enableBiometricPayment(pendingBiometricPin);
+      setBiometricEnabled(true);
+      finishPinSetupAfterBiometric();
+    } catch (error) {
+      setSetupErrorMessage(
+        error instanceof Error ? error.message : '생체 인증 등록에 실패했습니다.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelBiometricSetup = async () => {
+    await disableBiometricPayment();
+    setBiometricEnabled(false);
+    finishPinSetupAfterBiometric();
+  };
+
+  const handlePressBiometricPayment = async () => {
+    if (mode !== 'PAYMENT_INPUT' || isSubmitting || pinLockRemainingSeconds > 0) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSetupErrorMessage('');
+      const biometricPin = await getBiometricPaymentPin();
+
+      if (!biometricPin) {
+        setBiometricEnabled(false);
+        setSetupErrorMessage('생체 인증 정보를 찾을 수 없습니다.\nPIN으로 입력해주세요.');
+        return;
+      }
+
+      await handleCompletePin(biometricPin);
+    } catch {
+      setSetupErrorMessage('생체 인증에 실패했습니다.\nPIN으로 입력해주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      mode !== 'PAYMENT_INPUT'
+      || !canUseBiometric
+      || !biometricEnabled
+      || hasTriedBiometric
+      || isSubmitting
+      || pinLockRemainingSeconds > 0
+    ) {
+      return;
+    }
+
+    setHasTriedBiometric(true);
+    void handlePressBiometricPayment();
+  }, [
+    biometricEnabled,
+    canUseBiometric,
+    hasTriedBiometric,
+    isSubmitting,
+    mode,
+    pinLockRemainingSeconds,
+  ]);
+
   const handlePressNumber = (value: string) => {
-    if (pin.length >= PIN_LENGTH || isSubmitting) {
+    if (pin.length >= PIN_LENGTH || isSubmitting || pinLockRemainingSeconds > 0) {
       return;
     }
 
@@ -300,18 +567,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
           {setupErrorMessage ? (
             <Text className="mt-5 text-center font-pretendard text-normal-regular text-state-error">
-              {setupErrorMessage}
+              {pinLockRemainingSeconds > 0
+                ? `비밀번호 입력이 잠겼습니다.\n${formatLockRemainingTime(pinLockRemainingSeconds)} 후 다시 시도해주세요.`
+                : setupErrorMessage}
             </Text>
-          ) : null}
-
-          {isSubmitting ? (
-            <Loading
-              message={
-                mode === 'PAYMENT_INPUT'
-                  ? '결제를 처리하는 중입니다.'
-                  : 'PIN을 등록하는 중입니다.'
-              }
-            />
           ) : null}
 
           {screenText.showWarning && !isSubmitting ? (
@@ -326,13 +585,21 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           {screenText.showForgotLink && !isSubmitting ? (
             <Pressable
               accessibilityRole="button"
-              className="mt-16"
+              className="mt-12 flex-row items-center rounded-lg border border-[#FF6B35] bg-[#FFFBEA] px-4 py-3 shadow-sm"
               onPress={handlePressForgotPassword}
               onLongPress={__DEV__ ? handleMockError : undefined}
             >
-              <Text className="font-pretendard text-normal-bold text-erum-main">
-                간편 비밀번호를 잊으셨나요?
-              </Text>
+              <View className="mr-3 h-7 w-7 items-center justify-center rounded-full bg-[#FF6B35]">
+                <Feather name="alert-circle" size={18} color="#FFFFFF" />
+              </View>
+              <View className="min-w-0">
+                <Text className="font-pretendard text-normal-bold text-neutral-black1">
+                  간편비밀번호를 잊으셨나요?
+                </Text>
+                <Text className="mt-1 font-pretendard text-normal-bold text-neutral-black2">
+                  마이페이지에서 재설정할 수 있어요.
+                </Text>
+              </View>
             </Pressable>
           ) : null}
         </View>
@@ -340,20 +607,118 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         <PinCodeKeypad
           onPressNumber={isSubmitting ? () => {} : handlePressNumber}
           onPressDelete={isSubmitting ? () => {} : handlePressDelete}
+          disabled={isSubmitting || pinLockRemainingSeconds > 0}
+          leftAction={
+            mode === 'PAYMENT_INPUT' && canUseBiometric && biometricEnabled ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="생체 인증"
+                disabled={pinLockRemainingSeconds > 0}
+                className={`flex-1 items-center justify-center rounded-xl shadow-sm ${
+                  pinLockRemainingSeconds > 0 ? 'bg-neutral-grey1' : 'bg-neutral-white'
+                }`}
+                onPress={handlePressBiometricPayment}
+              >
+                <Feather
+                  name="smile"
+                  size={24}
+                  color={pinLockRemainingSeconds > 0 ? '#B4B8BD' : '#2FAB84'}
+                />
+                <Text
+                  className={`mt-1 font-pretendard text-small-bold ${
+                    pinLockRemainingSeconds > 0
+                      ? 'text-neutral-disabled'
+                      : 'text-erum-main'
+                  }`}
+                >
+                  생체
+                </Text>
+              </Pressable>
+            ) : null
+          }
         />
 
-        <PaymentStopConfirmModal
-          visible={stopModalVisible}
-          description={
-            paymentParams?.flow === 'DUTCH_PAY'
-            || paymentParams?.flow === 'REMOTE_PAYMENT'
-              ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
-              : undefined
-          }
-          onConfirm={handleConfirmStopPayment}
-          onCancel={() => setStopModalVisible(false)}
-        />
+        {isPinResetFlow ? (
+          <Modal
+            visible={stopModalVisible}
+            type="two"
+            icon={
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+                <Feather name="alert-triangle" size={30} color="#FFFFFF" />
+              </View>
+            }
+            title="간편비밀번호 재설정을 중지하시겠습니까?"
+            description="중지하면 기존 간편비밀번호가 유지됩니다."
+            confirmLabel="예"
+            cancelLabel="아니오"
+            onConfirm={handleConfirmStopFlow}
+            onCancel={() => setStopModalVisible(false)}
+            onClose={() => setStopModalVisible(false)}
+          />
+        ) : (
+          <PaymentStopConfirmModal
+            visible={stopModalVisible}
+            description={
+              paymentParams?.flow === 'DUTCH_PAY'
+              || paymentParams?.flow === 'REMOTE_PAYMENT'
+                ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+                : undefined
+            }
+            onConfirm={handleConfirmStopFlow}
+            onCancel={() => setStopModalVisible(false)}
+          />
+        )}
+
+        {isSubmitting ? (
+          <Loading
+            overlay
+            message={
+              mode === 'PAYMENT_INPUT'
+                ? '결제를 처리하는 중입니다.'
+                : isPinResetFlow
+                  ? 'PIN을 재설정하는 중입니다.'
+                  : 'PIN을 등록하는 중입니다.'
+            }
+          />
+        ) : null}
       </View>
+
+      <Modal
+        visible={biometricSetupModalVisible}
+        type="two"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-erum-main">
+            <Feather name="shield" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="생체 인증을 사용할까요?"
+        description="다음 결제부터 Face ID 또는 Touch ID로 간편비밀번호 입력을 대신할 수 있습니다."
+        confirmLabel="사용하기"
+        cancelLabel="나중에"
+        onConfirm={handleConfirmBiometricSetup}
+        onCancel={handleCancelBiometricSetup}
+        onClose={handleCancelBiometricSetup}
+      />
+
+      <Modal
+        visible={resetCompleteModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-erum-main">
+            <Feather name="check" size={32} color="#FFFFFF" />
+          </View>
+        }
+        title="간편비밀번호 재설정이 완료되었습니다."
+        confirmLabel="확인"
+        onConfirm={() => {
+          setResetCompleteModalVisible(false);
+          navigateToMypage();
+        }}
+        onClose={() => {
+          setResetCompleteModalVisible(false);
+          navigateToMypage();
+        }}
+      />
 
       <Modal
         visible={failModalVisible}
@@ -368,11 +733,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         confirmLabel="확인"
         onConfirm={() => {
           setFailModalVisible(false);
-          navigation.replace('SmsVerification');
+          navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
         onClose={() => {
           setFailModalVisible(false);
-          navigation.replace('SmsVerification');
+          navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
       />
     </PageWrap>
@@ -407,30 +772,71 @@ function isWeakPinPattern(pin: string) {
 }
 
 function isPaymentPinError(error: PaymentRequestError) {
-  return error.code === 'PIN_INVALID' || error.code === 'PIN_LOCKED';
+  return (
+    error.code === 'PIN_INVALID' ||
+    error.code === 'PIN_VERIFY_FAILED' ||
+    error.code === 'PIN_LOCKED' ||
+    error.code === 'PIN_RESET_REQUIRED'
+  );
 }
 
 function getPaymentPinErrorMessage(
   error: PaymentRequestError,
   failCount: number,
+  requiresSmsVerification = false,
+  lockedUntil: number | null = null,
 ) {
-  if (error.details?.requireSmsVerification) {
+  if (requiresSmsVerification) {
     return '10회 이상 실패했습니다.\nSMS 재인증 후 PIN을 다시 설정해주세요.';
   }
 
-  if (error.details?.lockedUntil) {
-    return '비밀번호 입력이 잠겼습니다.\n잠시 후 다시 시도해주세요.';
+  if (lockedUntil) {
+    return '비밀번호 입력이 잠겼습니다.\n5:00 후 다시 시도해주세요.';
   }
 
-  if (error.code === 'PIN_INVALID') {
+  if (error.code === 'PIN_INVALID' || error.code === 'PIN_VERIFY_FAILED') {
     const remainCount = error.details?.remainCount;
 
     if (typeof remainCount === 'number') {
       return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회, 남은 ${remainCount}회)`;
     }
 
+    if (failCount === 5) {
+      return `비밀번호가 일치하지 않습니다.\n${failCount}회 실패하여 5분 후 다시 시도해주세요.`;
+    }
+
     return `비밀번호가 일치하지 않습니다.\n다시 입력해주세요 (${failCount}회)`;
   }
 
   return error.message || '결제 비밀번호 확인에 실패했습니다.';
+}
+
+function getPaymentPinLockedUntil(
+  error: PaymentRequestError,
+  failCount: number,
+) {
+  if (failCount >= 10 || error.code === 'PIN_RESET_REQUIRED') {
+    return null;
+  }
+
+  if (error.details?.lockedUntil) {
+    const lockedUntil = new Date(error.details.lockedUntil).getTime();
+
+    if (Number.isFinite(lockedUntil) && lockedUntil > Date.now()) {
+      return lockedUntil;
+    }
+  }
+
+  if (error.code === 'PIN_LOCKED' || failCount === 5) {
+    return Date.now() + PIN_LOCK_DURATION_SECONDS * 1000;
+  }
+
+  return null;
+}
+
+function formatLockRemainingTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }

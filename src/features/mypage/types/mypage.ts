@@ -13,6 +13,7 @@ export type ManagedCard = {
   name: string;
   alias: string;
   cardNumber: string;
+  imageUrl?: string;
   registeredAt: string;
   colorClassName: string;
   isDefault: boolean;
@@ -66,5 +67,4 @@ export type CardBenefit = {
   title: string;
   description: string;
 };
-
 

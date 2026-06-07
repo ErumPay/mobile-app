@@ -13,12 +13,27 @@ import { colors } from '../../styles';
 type LoadingProps = {
   message?: string;
   fullScreen?: boolean;
+  overlay?: boolean;
 };
 
 export function Loading({
   message = '불러오는 중입니다.',
   fullScreen = false,
+  overlay = false,
 }: LoadingProps) {
+  if (overlay) {
+    return (
+      <View className="absolute inset-0 z-50 items-center justify-center bg-neutral-black1/45 px-8">
+        <View className="min-w-[180px] items-center justify-center gap-3 rounded-lg bg-neutral-white px-6 py-5">
+          <ActivityIndicator color={colors.erum.main} size="large" />
+          <Text className="text-center font-pretendard text-large-regular text-neutral-black2">
+            {message}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View
       className={`items-center justify-center gap-3 ${
