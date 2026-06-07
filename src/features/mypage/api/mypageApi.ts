@@ -95,7 +95,18 @@ export async function checkWithdrawPendingTransactions(): Promise<{
     throw new Error(`MYPAGE_WITHDRAW_PENDING_REQUEST_FAILED:${response.status}`);
   }
 
-  return response.json();
+  const data = (await response.json()) as Record<string, unknown>;
+  const hasPending =
+    typeof data.hasUnpaidPayments === 'boolean'
+      ? data.hasUnpaidPayments
+      : typeof data.possibility === 'boolean'
+        ? !data.possibility
+        : data.hasPending === true;
+
+  return {
+    hasPending,
+    reason: toStringValue(data.message ?? data.reason) || undefined,
+  };
 }
 
 export async function fetchManagedCards(): Promise<ManagedCard[]> {
@@ -268,9 +279,25 @@ export async function fetchPaymentHistoriesByCard(
 
 async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), MYPAGE_API_TIMEOUT_MS);
+  const requestUrl = typeof input === 'string' ? input : input.url;
+  const timeoutId = setTimeout(() => {
+    if (__DEV__) {
+      console.error('Mypage API request timed out.', {
+        url: requestUrl,
+        timeoutMs: MYPAGE_API_TIMEOUT_MS,
+      });
+    }
+    controller.abort();
+  }, MYPAGE_API_TIMEOUT_MS);
 
   try {
+    if (__DEV__) {
+      console.log('Mypage API request.', {
+        method: init?.method ?? 'GET',
+        url: requestUrl,
+      });
+    }
+
     return await fetch(input, {
       ...init,
       signal: controller.signal,
