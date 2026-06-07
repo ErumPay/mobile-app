@@ -31,8 +31,12 @@ function getMypageUserHeaders() {
 }
 
 export async function fetchUserProfile(): Promise<UserProfile> {
+  return fetchUserProfileById(getMypageUserId());
+}
+
+export async function fetchUserProfileById(userId: number): Promise<UserProfile> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_AUTH_API_BASE_URL}/internal/v1/users/${getMypageUserId()}`,
+    `${MYPAGE_AUTH_API_BASE_URL}/internal/v1/users/${userId}`,
   );
 
   if (!response.ok) {

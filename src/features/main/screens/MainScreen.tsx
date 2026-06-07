@@ -31,6 +31,7 @@ import {
 import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
 import { getCancelledDutchPaySessionIdSet } from "../../payment/utils/cancelledDutchPaySessions";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
+import { useDutchPayProgressUserStore } from "../../payment/stores/useDutchPayProgressUserStore";
 import {
   fetchPaymentHistories,
   fetchUserProfile,
@@ -59,7 +60,15 @@ type QuickMenu = {
 const hasNotification = false;
 const isNotificationLoading = false;
 
-export default function MainScreen({ navigation }: Props) {
+export default function MainScreen({ navigation, route }: Props) {
+  const routeUserId = toFiniteNumber(route.params?.userId);
+  const storedDutchPayProgressUserId = useDutchPayProgressUserStore(
+    (state) => state.userId,
+  );
+  const paymentProgressUserId =
+    routeUserId ??
+    storedDutchPayProgressUserId ??
+    (Number(getPaymentUserId()) || 1);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [monthlyPayment, setMonthlyPayment] = useState(() =>
     createMonthlyPayment([]),
@@ -185,7 +194,7 @@ export default function MainScreen({ navigation }: Props) {
         }
 
         try {
-          const currentUserId = Number(getPaymentUserId()) || 1;
+          const currentUserId = paymentProgressUserId;
           const [dutchSessions, requests, cancelledDutchSessionIds] =
             await Promise.allSettled([
             getActiveDutchPaySessions(currentUserId),
@@ -252,7 +261,12 @@ export default function MainScreen({ navigation }: Props) {
         isActive = false;
         clearInterval(intervalId);
       };
-    }, [clearRemoteProgress, setRecipientProgress, setRequesterProgress]),
+    }, [
+      clearRemoteProgress,
+      paymentProgressUserId,
+      setRecipientProgress,
+      setRequesterProgress,
+    ]),
   );
 
   const quickMenus: QuickMenu[] = [
@@ -320,7 +334,7 @@ export default function MainScreen({ navigation }: Props) {
         role: dutchProgress.role,
         scenario: getDutchPayRouteScenario(dutchProgress.variant),
         sessionId: dutchProgress.session.session_id,
-        userId: getPaymentUserId(),
+        userId: paymentProgressUserId,
       });
       return;
     }
@@ -554,6 +568,20 @@ function formatGreeting(profile: UserProfile | null) {
   const maskedId = profile.maskedId ? `(${profile.maskedId})` : "";
 
   return `${profile.name}${maskedId}님! 오늘도 좋은 하루 되세요 ✨`;
+}
+
+function toFiniteNumber(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsedValue = Number(value);
+
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+  }
+
+  return undefined;
 }
 
 function getActiveDutchPayProgress(

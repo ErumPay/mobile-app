@@ -41,7 +41,7 @@ import FriendListScreen from './src/features/friend/screens/FriendListScreen';
 
 export type RootStackParamList = {
   Tutorial: undefined;
-  Main: undefined;
+  Main: { userId?: number | string } | undefined;
   Guide: undefined;
   TermsAgreement: undefined;
   SmsVerification: { flow?: 'SIGNUP' | 'PIN_RESET' } | undefined;
