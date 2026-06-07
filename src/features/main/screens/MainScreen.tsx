@@ -179,8 +179,10 @@ export default function MainScreen({ navigation }: Props) {
     useCallback(() => {
       let isActive = true;
 
-      const loadActivePaymentProgress = async () => {
-        setIsPaymentProgressLoading(true);
+      const loadActivePaymentProgress = async (showLoading = false) => {
+        if (showLoading) {
+          setIsPaymentProgressLoading(true);
+        }
 
         try {
           const currentUserId = Number(getPaymentUserId()) || 1;
@@ -235,16 +237,20 @@ export default function MainScreen({ navigation }: Props) {
         } catch {
           // 메인 진입은 진행 결제 상태 조회 실패로 막지 않는다.
         } finally {
-          if (isActive) {
+          if (isActive && showLoading) {
             setIsPaymentProgressLoading(false);
           }
         }
       };
 
-      void loadActivePaymentProgress();
+      void loadActivePaymentProgress(true);
+      const intervalId = setInterval(() => {
+        void loadActivePaymentProgress();
+      }, 30_000);
 
       return () => {
         isActive = false;
+        clearInterval(intervalId);
       };
     }, [clearRemoteProgress, setRecipientProgress, setRequesterProgress]),
   );
@@ -593,6 +599,7 @@ function toDutchPayProgressVariant(
   if (
     session.status === "COMPLETED" ||
     session.status === "FAILED" ||
+    session.status === "TIMEOUT_HANDLED" ||
     session.session_progress_step === "COMPLETED"
   ) {
     return null;
