@@ -130,12 +130,14 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Tutorial');
 
   useEffect(() => {
-    loadAuthSession().then((hasSession) => {
-      if (hasSession) {
-        setInitialRoute('Main');
-      }
-      setIsReady(true);
-    });
+    loadAuthSession()
+      .then((hasSession) => {
+        if (hasSession) {
+          setInitialRoute('Main');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsReady(true));
   }, []);
 
   useEffect(() => {

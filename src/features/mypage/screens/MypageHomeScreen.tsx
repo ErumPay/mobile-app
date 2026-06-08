@@ -13,6 +13,7 @@ import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles';
 import {
+  checkWithdrawPendingTransactions,
   fetchUserProfile,
   logoutUser,
   withdrawUser,
@@ -127,10 +128,24 @@ export function MypageHomeScreen({ navigation }: Props) {
     }
   };
 
-  const handleRequestWithdraw = () => {
+  const handleRequestWithdraw = async () => {
     if (isSubmittingAccountAction) return;
 
+    setIsSubmittingAccountAction(true);
     setIsWithdrawVisible(false);
+
+    try {
+      const { hasPending } = await checkWithdrawPendingTransactions();
+      if (hasPending) {
+        setIsWithdrawPendingVisible(true);
+        return;
+      }
+    } catch {
+      // eligibility API 미구현 시 무시하고 진행
+    } finally {
+      setIsSubmittingAccountAction(false);
+    }
+
     setWithdrawPin('');
     setIsWithdrawPinVisible(true);
   };
