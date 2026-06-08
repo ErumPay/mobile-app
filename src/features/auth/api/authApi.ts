@@ -1,3 +1,4 @@
+import * as SecureStore from 'expo-secure-store';
 import { AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
 
 export type SendSmsResponse = {
@@ -36,10 +37,60 @@ export type AuthRequestOptions = {
   useExistingDevUser?: boolean;
 };
 
+const SECURE_STORE_KEYS = {
+  ACCESS_TOKEN: 'auth_accessToken',
+  REFRESH_TOKEN: 'auth_refreshToken',
+  USER_ID: 'auth_userId',
+} as const;
+
 let authSession: { accessToken: string; refreshToken?: string; userId?: number } | null = null;
 
-export function setAuthSession(accessToken: string, refreshToken?: string, userId?: number) {
+export async function setAuthSession(accessToken: string, refreshToken?: string, userId?: number) {
   authSession = { accessToken, refreshToken, userId };
+  await SecureStore.setItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN, accessToken);
+  if (refreshToken) {
+    await SecureStore.setItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN, refreshToken);
+  }
+  if (userId != null) {
+    await SecureStore.setItemAsync(SECURE_STORE_KEYS.USER_ID, String(userId));
+  }
+}
+
+export async function loadAuthSession(): Promise<boolean> {
+  const accessToken = await SecureStore.getItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN);
+  if (!accessToken) return false;
+  const refreshToken = await SecureStore.getItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
+  const userIdStr = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_ID);
+  authSession = {
+    accessToken,
+    refreshToken: refreshToken ?? undefined,
+    userId: userIdStr ? Number(userIdStr) : undefined,
+  };
+  return true;
+}
+
+export async function clearAuthSession() {
+  authSession = null;
+  await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN);
+  await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
+  await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.USER_ID);
+}
+
+export async function refreshAccessToken(): Promise<boolean> {
+  const rt = authSession?.refreshToken;
+  if (!rt) return false;
+  try {
+    const response = await fetch(`${AUTH_API_URL}/token/refresh`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${rt}` },
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    await setAuthSession(data.accessToken, data.refreshToken ?? rt, authSession?.userId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function getAuthSessionUserId(): number | null {
@@ -187,13 +238,30 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   });
 
   try {
-    return await Promise.race([
+    const response = await Promise.race([
       fetch(input, {
         ...init,
         signal: controller.signal,
       }),
       timeoutPromise,
     ]);
+
+    if (response.status === 401 && authSession?.refreshToken) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed && authSession?.accessToken) {
+        const retryInit = { ...init };
+        if (retryInit.headers && typeof retryInit.headers === 'object') {
+          retryInit.headers = {
+            ...retryInit.headers,
+            Authorization: `Bearer ${authSession.accessToken}`,
+          };
+        }
+        return fetch(input, { ...retryInit, signal: controller.signal });
+      }
+      await clearAuthSession();
+    }
+
+    return response;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('인증 서버 연결 시간이 초과되었습니다.');
