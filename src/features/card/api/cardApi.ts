@@ -1,5 +1,9 @@
 import type { RegisterCardPayload, RegisteredCard } from '../types/card';
-import { CARD_API_BASE_URL, CARD_API_TIMEOUT_MS } from './cardApiConfig';
+import {
+  CARD_API_BASE_URL,
+  CARD_API_TIMEOUT_MS,
+  getCardRegisterUserId,
+} from './cardApiConfig';
 
 const REGISTER_CARD_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
 
@@ -14,21 +18,39 @@ export class CardApiError extends Error {
   }
 }
 
-function getCardUserHeaders() {
+function getCardUserHeaders(userId: number) {
   return {
-    'X-User-Id': String(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2'),
+    'X-User-Id': String(userId),
   };
 }
 
 export async function registerCard(
   payload: RegisterCardPayload,
 ): Promise<RegisteredCard> {
+  const currentUserId = getCardRegisterUserId();
+
+  if (payload.userId !== currentUserId) {
+    throw new CardApiError(
+      0,
+      'CARD_REGISTER_USER_MISMATCH',
+      '로그인 사용자 정보가 카드 등록 요청과 일치하지 않습니다.',
+    );
+  }
+
+  if (__DEV__) {
+    console.log('Card API request.', {
+      method: 'POST',
+      url: REGISTER_CARD_URL,
+      userId: currentUserId,
+    });
+  }
+
   const response = await fetchWithTimeout(
     REGISTER_CARD_URL,
     {
       method: 'POST',
       headers: {
-        ...getCardUserHeaders(),
+        ...getCardUserHeaders(currentUserId),
         'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify(payload),

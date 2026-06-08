@@ -412,6 +412,7 @@ export default function MainScreen({ navigation, route }: Props) {
               <MainHeader
                 hasNotification={hasNotification || hasRemoteNotification}
                 isNotificationLoading={isNotificationLoading}
+                onPressNotification={() => navigation.navigate("NotificationScreen")}
               />
             </>
           }
