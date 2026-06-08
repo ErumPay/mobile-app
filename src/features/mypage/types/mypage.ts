@@ -8,6 +8,7 @@ export type PaymentBenefitType =
 
 export type ManagedCard = {
   id: string;
+  cardProductId?: number;
   issuer: string;
   title: string;
   name: string;
