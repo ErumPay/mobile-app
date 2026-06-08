@@ -282,7 +282,7 @@ export function CardDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <View className="gap-3">
-                {!card.isDefault ? (
+                {!card.isDefault && !card.disabled ? (
                   <Button
                     label="대표카드로 설정"
                     onPress={() => setDialog('default')}
