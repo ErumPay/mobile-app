@@ -171,6 +171,10 @@ export default function TutorialScreen({ navigation }: Props) {
     setIsLoggingIn(true);
     try {
       const result = await processKakaoAuthCode(code);
+      if (!Number.isFinite(result.userId)) {
+        throw new Error('로그인 사용자 정보를 확인할 수 없습니다.');
+      }
+
       setAuthSession(result.accessToken, result.refreshToken, result.userId);
       const flow = authFlowRef.current;
       const isSignupIncomplete = result.newUser || result.status === 'PENDING';

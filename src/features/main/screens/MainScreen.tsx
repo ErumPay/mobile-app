@@ -60,15 +60,34 @@ type QuickMenu = {
 const hasNotification = false;
 const isNotificationLoading = false;
 
+function resolvePaymentProgressUserId(
+  routeUserId?: number | null,
+  storedUserId?: number | null,
+) {
+  if (routeUserId != null) {
+    return routeUserId;
+  }
+
+  if (storedUserId != null) {
+    return storedUserId;
+  }
+
+  try {
+    return toFiniteNumber(getPaymentUserId());
+  } catch {
+    return null;
+  }
+}
+
 export default function MainScreen({ navigation, route }: Props) {
   const routeUserId = toFiniteNumber(route.params?.userId);
   const storedDutchPayProgressUserId = useDutchPayProgressUserStore(
     (state) => state.userId,
   );
-  const paymentProgressUserId =
-    routeUserId ??
-    storedDutchPayProgressUserId ??
-    (Number(getPaymentUserId()) || 1);
+  const paymentProgressUserId = resolvePaymentProgressUserId(
+    routeUserId,
+    storedDutchPayProgressUserId,
+  );
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [monthlyPayment, setMonthlyPayment] = useState(() =>
     createMonthlyPayment([]),
@@ -195,6 +214,12 @@ export default function MainScreen({ navigation, route }: Props) {
 
         try {
           const currentUserId = paymentProgressUserId;
+          if (currentUserId == null) {
+            setDutchProgress(null);
+            clearRemoteProgress();
+            return;
+          }
+
           const [dutchSessions, requests, cancelledDutchSessionIds] =
             await Promise.allSettled([
             getActiveDutchPaySessions(currentUserId),
@@ -335,7 +360,7 @@ export default function MainScreen({ navigation, route }: Props) {
         role: dutchProgress.role,
         scenario: getDutchPayRouteScenario(dutchProgress.variant),
         sessionId: dutchProgress.session.session_id,
-        userId: paymentProgressUserId,
+        userId: paymentProgressUserId ?? undefined,
       });
       return;
     }
