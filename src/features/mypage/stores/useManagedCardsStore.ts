@@ -4,11 +4,13 @@ import type { ManagedCard } from '../types/mypage';
 
 type AddCardInput = {
   id?: string;
+  cardProductId?: number;
   issuer?: string;
   name?: string;
   cardNumber: string;
   alias?: string;
   isDefault?: boolean;
+  disabled?: boolean;
 };
 
 type ManagedCardsState = {
@@ -39,6 +41,7 @@ export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
           ...state.cards,
           {
             id: card.id ?? `card-${Date.now()}`,
+            cardProductId: card.cardProductId,
             issuer,
             title: `${issuer} (${last4})`,
             name: card.name ?? '등록 카드',
@@ -47,6 +50,7 @@ export const useManagedCardsStore = create<ManagedCardsState>((set) => ({
             registeredAt: formatToday(),
             colorClassName: 'bg-blue-700',
             isDefault: card.isDefault ?? state.cards.length === 0,
+            disabled: card.disabled,
             hasPayments: false,
           },
         ]),

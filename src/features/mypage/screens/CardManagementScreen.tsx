@@ -161,7 +161,10 @@ function ManagedCardItem({
         </View>
 
         {card.disabled ? (
-          <View className="absolute -left-4 -right-4 -top-7 -bottom-4  flex-row items-center justify-center rounded-xl bg-neutral-black3/45">
+          <View
+            pointerEvents="none"
+            className="absolute -left-4 -right-4 -top-4 -bottom-4 flex-row items-center justify-center rounded-xl bg-neutral-black3/45"
+          >
             <View className="rounded-full bg-state-error px-4 py-2">
               <Text className="font-pretendard text-normal-bold text-neutral-white">
                 사용불가
