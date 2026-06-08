@@ -11,6 +11,7 @@ import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 import { PageWrap } from '../../../shared/components/PageWrap';
+import { Header } from '../../../shared/components/Header';
 import { Button } from '../../../shared/components/Button';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignupComplete'>;
@@ -24,22 +25,29 @@ export default function SignupCompleteScreen({ navigation }: Props) {
   };
 
   return (
-    <PageWrap scroll={false} padded={false} backgroundClassName="bg-neutral-white">
+    <PageWrap
+      scroll={false}
+      padded={false}
+      backgroundClassName="bg-neutral-white"
+      header={<Header title="회원가입 완료" type="close" onPressRight={handleGoMain} />}
+    >
       <View className="flex-1 items-center justify-center px-8">
         <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-erum-main">
-          <Feather name="check" size={48} color="#FFFFFF" />
+          <View className="h-12 w-12 items-center justify-center rounded-full border-[3px] border-white">
+            <Feather name="check" size={28} color="#FFFFFF" />
+          </View>
         </View>
         <Text className="mb-3 text-center font-pretendard text-heading-2 text-neutral-black1">
-          회원가입이 완료되었어요!
+          회원가입 완료!
         </Text>
         <Text className="text-center font-pretendard text-large-regular text-neutral-black2 leading-6">
-          이제 이룸페이의 다양한 서비스를{'\n'}이용해보세요.
+          이제 ErumPay를 사용할 수 있습니다
         </Text>
       </View>
 
       <View className="px-8 pb-10">
         <Button
-          label="시작하기"
+          label="메인으로 가기"
           variant="primary"
           size="large"
           onPress={handleGoMain}

@@ -39,6 +39,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
   const [code, setCode] = useState('');
   const [remainSeconds, setRemainSeconds] = useState(TIMER_SECONDS);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [failModalVisible, setFailModalVisible] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [verificationId, setVerificationId] = useState<number | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
@@ -206,21 +207,26 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
   const handleVerifyCode = async () => {
     if (isLoading) return;
 
-    if (code.length !== 6) {
-      setCodeError('인증번호 6자리를 입력해주세요.');
-      return;
-    }
     if (verificationId == null) {
       setCodeError('인증 요청을 먼저 진행해주세요.');
       return;
     }
+
+    // MO 인증: 이미 알고 있는 verificationCode 사용
+    const codeToVerify = verificationCode || code;
+    if (codeToVerify.length !== 6) {
+      setCodeError('인증번호 6자리를 입력해주세요.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await verifySmsCode(verificationId, code);
+      await verifySmsCode(verificationId, codeToVerify);
       if (timerRef.current) clearInterval(timerRef.current);
       setStep('complete');
     } catch (err) {
       setCodeError(err instanceof Error ? err.message : '인증번호 확인에 실패했습니다.');
+      setFailModalVisible(true);
     } finally {
       setIsLoading(false);
     }
@@ -264,11 +270,16 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
         {step === 'complete' ? (
           /* ─── 인증 완료 (JOIN_003_1) ─── */
           <View className="flex-1 items-center justify-center px-8">
-            <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-erum-main">
-              <Feather name="check" size={48} color="#FFFFFF" />
+            <View className="mb-8 h-24 w-24 items-center justify-center rounded-full bg-erum-main">
+              <View className="h-12 w-12 items-center justify-center rounded-full border-[3px] border-white">
+                <Feather name="check" size={28} color="#FFFFFF" />
+              </View>
             </View>
-            <Text className="text-center font-pretendard text-heading-2 text-neutral-black1">
-              본인 인증이 완료 되었어요!
+            <Text className="mb-3 text-center font-pretendard text-heading-2 text-neutral-black1">
+              본인 인증이 완료되었습니다
+            </Text>
+            <Text className="text-center font-pretendard text-large-regular text-neutral-black2 leading-6">
+              안전한 결제를 위해{'\n'}간편비밀번호를 설정해주세요
             </Text>
           </View>
         ) : (
@@ -367,20 +378,8 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
                   </View>
                 </View>
 
-                <Input
-                  label="인증번호"
-                  type="number"
-                  value={code}
-                  onChangeText={(text) => {
-                    setCode(text);
-                    setCodeError('');
-                  }}
-                  placeholder="인증번호 6자리 입력"
-                  maxLength={6}
-                />
-
-                {/* 타이머 + 재발송 */}
-                <View className="mt-2 mb-6 flex-row items-center justify-between">
+                {/* 타이머 */}
+                <View className="mt-4 mb-6 items-center">
                   <Text
                     className={`font-pretendard text-large-bold ${
                       remainSeconds <= 30 ? 'text-state-error' : 'text-erum-main'
@@ -388,25 +387,6 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
                   >
                     {remainSeconds > 0 ? formatTime(remainSeconds) : '시간 초과'}
                   </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{
-                      disabled: isLoading || requestCooldownSeconds > 0,
-                    }}
-                    onPress={handleResendSms}
-                  >
-                    <Text
-                      className={`font-pretendard text-large-regular underline ${
-                        requestCooldownSeconds > 0
-                          ? 'text-neutral-grey4'
-                          : 'text-neutral-black2'
-                      }`}
-                    >
-                      {requestCooldownSeconds > 0
-                        ? `${formatTime(requestCooldownSeconds)} 후 재발송 가능`
-                        : '인증번호 재발송'}
-                    </Text>
-                  </Pressable>
                 </View>
 
                 {/* 에러 메시지 */}
@@ -436,7 +416,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
               label={isLoading ? '확인 중...' : '인증 확인'}
               variant="primary"
               size="large"
-              disabled={code.length !== 6 || remainSeconds === 0 || isLoading}
+              disabled={(code.length !== 6 && !verificationCode) || remainSeconds === 0 || isLoading}
               onPress={handleVerifyCode}
             />
           )}
@@ -445,7 +425,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
               label={
                 isPinResetFlow
                   ? '간편비밀번호 재설정하기'
-                  : '간편 결제 비밀번호 설정하기'
+                  : '간편 비밀번호 등록하기'
               }
               variant="primary"
               size="large"
@@ -459,10 +439,15 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
       <Modal
         visible={cancelModalVisible}
         type="two"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-[#FF9500]">
+            <Feather name="alert-triangle" size={30} color="#FFFFFF" />
+          </View>
+        }
         title={
           isPinResetFlow
             ? '간편비밀번호 재설정을 중지하시겠습니까?'
-            : '본인 인증을 중지하시겠습니까?'
+            : '회원가입을 중지하시겠습니까?'
         }
         description={
           isPinResetFlow
@@ -474,6 +459,22 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
         onConfirm={handleConfirmCancel}
         onCancel={() => setCancelModalVisible(false)}
         onClose={() => setCancelModalVisible(false)}
+      />
+
+      {/* 인증 실패 모달 */}
+      <Modal
+        visible={failModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="본인 인증에 실패하였습니다."
+        description="다시 인증해주세요."
+        confirmLabel="확인"
+        onConfirm={() => setFailModalVisible(false)}
+        onClose={() => setFailModalVisible(false)}
       />
     </PageWrap>
   );

@@ -43,7 +43,7 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Main: undefined;
   Guide: undefined;
-  TermsAgreement: undefined;
+  TermsAgreement: { accessToken: string };
   SmsVerification: { flow?: 'SIGNUP' | 'PIN_RESET' } | undefined;
   SignupComplete: undefined;
   QrScan: undefined;

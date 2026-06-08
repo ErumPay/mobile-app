@@ -36,7 +36,11 @@ export type AuthRequestOptions = {
   useExistingDevUser?: boolean;
 };
 
-let authSession: DevTokenResponse | null = null;
+let authSession: { accessToken: string; refreshToken?: string } | null = null;
+
+export function setAuthSession(accessToken: string, refreshToken?: string) {
+  authSession = { accessToken, refreshToken };
+}
 const REQUEST_TIMEOUT_MS = 10000;
 
 export class AuthApiError extends Error {
@@ -49,7 +53,42 @@ export class AuthApiError extends Error {
   }
 }
 
-export async function sendSmsCode(phoneNumber: string, options?: AuthRequestOptions): Promise<SendSmsResponse> {
+export type AgreeTermsResponse = {
+    message: string;                                                                          
+  };
+                                                                                              
+  export async function agreeTerms(
+    accessToken: string,                                                                    
+    serviceTermsAgreed: boolean,
+    privacyTermsAgreed: boolean,
+    marketingTermsAgreed: boolean,
+  ): Promise<AgreeTermsResponse> {                                                            
+    const response = await fetchAuth(`${AUTH_API_URL}/terms/agree`, {
+      method: 'POST',                                                                         
+      headers: {  
+        'Content-Type': 'application/json',                                                 
+        Authorization: `Bearer ${accessToken}`,
+      },                                                                                      
+      body: JSON.stringify({
+        serviceTermsAgreed,                                                                   
+        privacyTermsAgreed,
+        marketingTermsAgreed,                                                               
+      }),
+    });
+
+    if (!response.ok) {                                                                       
+      const error = await response.json().catch(() => null);
+      throw new AuthApiError(                                                                 
+        error?.message ?? '약관 동의에 실패했습니다.',
+        response.status,                                                                    
+      );
+    }
+
+    return response.json();                                                                   
+  }
+                                                                                              
+  export async function sendSmsCode(phoneNumber: string, options?: AuthRequestOptions):
+  Promise<SendSmsResponse> {
   const accessToken = await getAccessTokenForAuthRequest(phoneNumber, options);
   const response = await fetchAuth(`${AUTH_API_URL}/sms/send`, {
     method: 'POST',
