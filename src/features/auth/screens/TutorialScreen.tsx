@@ -18,7 +18,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -71,9 +71,24 @@ const slides: TutorialSlide[] = [
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Tutorial'>;
 
+function getUrlQueryParam(url: string, key: string) {
+  const queryString = url.split('?')[1]?.split('#')[0];
+  if (!queryString) return null;
+
+  for (const part of queryString.split('&')) {
+    const [rawKey, rawValue = ''] = part.split('=');
+    if (decodeURIComponent(rawKey) === key) {
+      return decodeURIComponent(rawValue.replace(/\+/g, ' '));
+    }
+  }
+
+  return null;
+}
+
 export default function TutorialScreen({ navigation }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isLastSlide = currentIndex === slides.length - 1;
@@ -128,9 +143,8 @@ export default function TutorialScreen({ navigation }: Props) {
     setShowKakaoWebView(false);
 
     try {
-      const urlObj = new URL(url);
-      const code = urlObj.searchParams.get('code');
-      const error = urlObj.searchParams.get('error');
+      const code = getUrlQueryParam(url, 'code');
+      const error = getUrlQueryParam(url, 'error');
 
       if (error) {
         isProcessingRef.current = false;
@@ -157,7 +171,7 @@ export default function TutorialScreen({ navigation }: Props) {
     setIsLoggingIn(true);
     try {
       const result = await processKakaoAuthCode(code);
-      setAuthSession(result.accessToken, result.refreshToken);
+      setAuthSession(result.accessToken, result.refreshToken, result.userId);
       const flow = authFlowRef.current;
       const isSignupIncomplete = result.newUser || result.status === 'PENDING';
       if (flow === 'signup') {
@@ -323,9 +337,17 @@ export default function TutorialScreen({ navigation }: Props) {
       <RNModal
         visible={showKakaoWebView}
         animationType="slide"
+        presentationStyle="fullScreen"
         onRequestClose={() => setShowKakaoWebView(false)}
       >
-        <SafeAreaView style={{ flex: 1 }} className="bg-neutral-white">
+        <View
+          className="bg-neutral-white"
+          style={{
+            flex: 1,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          }}
+        >
           <View className="flex-row items-center justify-between px-4 py-3">
             <Text className="font-pretendard text-heading-3 text-neutral-black1">
               카카오 로그인
@@ -353,7 +375,7 @@ export default function TutorialScreen({ navigation }: Props) {
             javaScriptEnabled
             domStorageEnabled
           />
-        </SafeAreaView>
+        </View>
       </RNModal>
 
       {/* 안내 모달 */}

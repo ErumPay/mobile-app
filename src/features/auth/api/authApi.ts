@@ -36,10 +36,18 @@ export type AuthRequestOptions = {
   useExistingDevUser?: boolean;
 };
 
-let authSession: { accessToken: string; refreshToken?: string } | null = null;
+let authSession: { accessToken: string; refreshToken?: string; userId?: number } | null = null;
 
-export function setAuthSession(accessToken: string, refreshToken?: string) {
-  authSession = { accessToken, refreshToken };
+export function setAuthSession(accessToken: string, refreshToken?: string, userId?: number) {
+  authSession = { accessToken, refreshToken, userId };
+}
+
+export function getAuthSessionUserId(): number | null {
+  return authSession?.userId ?? null;
+}
+
+export function getAuthSessionAccessToken(): string | null {
+  return authSession?.accessToken ?? null;
 }
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -200,6 +208,10 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
 }
 
 export async function getAccessTokenForAuthRequest(phoneNumber?: string, options?: AuthRequestOptions) {
+  if (authSession?.accessToken) {
+    return authSession.accessToken;
+  }
+
   const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;
 
   if (__DEV__ && configuredToken) {
@@ -207,11 +219,12 @@ export async function getAccessTokenForAuthRequest(phoneNumber?: string, options
   }
 
   if (__DEV__ && options?.useExistingDevUser) {
-    authSession = await issueDevToken(getAuthDevUserId());
-    return authSession.accessToken;
-  }
-
-  if (authSession?.accessToken) {
+    const devSession = await issueDevToken(getAuthDevUserId());
+    authSession = {
+      accessToken: devSession.accessToken,
+      refreshToken: devSession.refreshToken,
+      userId: Number(devSession.userId),
+    };
     return authSession.accessToken;
   }
 
@@ -220,7 +233,12 @@ export async function getAccessTokenForAuthRequest(phoneNumber?: string, options
   }
 
   const devUser = await createDevUser(phoneNumber);
-  authSession = await issueDevToken(devUser.userId);
+  const devSession = await issueDevToken(devUser.userId);
+  authSession = {
+    accessToken: devSession.accessToken,
+    refreshToken: devSession.refreshToken,
+    userId: Number(devSession.userId),
+  };
   return authSession.accessToken;
 }
 

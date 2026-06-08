@@ -8,6 +8,7 @@ import type {
   PaymentStatus,
   UserProfile,
 } from '../types/mypage';
+import { getAuthSessionAccessToken } from '../../auth/api/authApi';
 import {
   getMypageUserId,
   MYPAGE_API_TIMEOUT_MS,
@@ -322,8 +323,13 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
 }
 
 async function getMypageAccessToken() {
+  const sessionAccessToken = getAuthSessionAccessToken();
+  if (sessionAccessToken) {
+    return sessionAccessToken;
+  }
+
   if (!__DEV__) {
-    throw new Error('Mypage development access token is unavailable.');
+    throw new Error('로그인 후 다시 시도해주세요.');
   }
 
   const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;

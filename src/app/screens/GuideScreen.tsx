@@ -810,7 +810,7 @@ export default function GuideScreen({ navigation }: Props) {
                               }
 
                               if (page.route === "TermsAgreement") {
-                                navigation.navigate("TermsAgreement");
+                                navigation.navigate("TermsAgreement", { accessToken: "" });
                                 return;
                               }
 
