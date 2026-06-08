@@ -8,6 +8,7 @@ import type {
   PaymentStatus,
   UserProfile,
 } from '../types/mypage';
+import { getAuthSessionAccessToken } from '../../auth/api/authApi';
 import {
   getMypageUserId,
   MYPAGE_API_TIMEOUT_MS,
@@ -31,8 +32,12 @@ function getMypageUserHeaders() {
 }
 
 export async function fetchUserProfile(): Promise<UserProfile> {
+  return fetchUserProfileById(getMypageUserId());
+}
+
+export async function fetchUserProfileById(userId: number): Promise<UserProfile> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_AUTH_API_BASE_URL}/internal/v1/users/${getMypageUserId()}`,
+    `${MYPAGE_AUTH_API_BASE_URL}/internal/v1/users/${userId}`,
   );
 
   if (!response.ok) {
@@ -292,7 +297,7 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   const requestUrl = typeof input === 'string' ? input : input.url;
   const timeoutId = setTimeout(() => {
     if (__DEV__) {
-      console.error('Mypage API request timed out.', {
+      console.warn('Mypage API request timed out.', {
         url: requestUrl,
         timeoutMs: MYPAGE_API_TIMEOUT_MS,
       });
@@ -318,8 +323,13 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
 }
 
 async function getMypageAccessToken() {
+  const sessionAccessToken = getAuthSessionAccessToken();
+  if (sessionAccessToken) {
+    return sessionAccessToken;
+  }
+
   if (!__DEV__) {
-    throw new Error('Mypage development access token is unavailable.');
+    throw new Error('로그인 후 다시 시도해주세요.');
   }
 
   const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;

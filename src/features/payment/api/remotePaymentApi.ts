@@ -18,6 +18,7 @@ type RemotePayBackendResponse = {
   amount: number;
   description?: string | null;
   status: 'DRAFT' | 'PENDING' | 'COMPLETED' | 'REJECTED_BY_PAYER' | 'CANCELLED_BY_REQUESTER' | 'EXPIRED';
+  expires_at?: string | null;
 };
 
 type PrepareRemoteResponse = {
@@ -32,7 +33,9 @@ type PaymentApiErrorResponse = {
 };
 
 const REMOTE_PAY_REQUESTS_URL = `${PAYMENT_API_BASE_URL}/api/v1/remote-pay/requests`;
+const REMOTE_PAY_EXPIRE_BATCH_URL = `${PAYMENT_API_BASE_URL}/internal/v1/remote-pay/expire-batch`;
 const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
+const REMOTE_PAY_API_TIMEOUT_MS = 8000;
 
 function toRemoteStatus(status: RemotePayBackendResponse['status']): RemotePaymentRequestStatus {
   if (status === 'COMPLETED') {
@@ -54,6 +57,20 @@ async function parsePaymentApiError(response: Response): Promise<PaymentApiError
   }
 }
 
+async function fetchRemotePay(input: RequestInfo, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REMOTE_PAY_API_TIMEOUT_MS);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function toRemotePaymentResponse(
   response: RemotePayBackendResponse,
   fallback?: Partial<RemotePaymentRequestResponse>,
@@ -70,13 +87,14 @@ function toRemotePaymentResponse(
     recipientName: fallback?.recipientName ?? (response.target_user_id ? `사용자 ${response.target_user_id}` : '대리자'),
     recipientPhoneSuffix: fallback?.recipientPhoneSuffix ?? '',
     status: toRemoteStatus(response.status),
+    expiresAt: response.expires_at ?? undefined,
   };
 }
 
 async function prepareRemoteDraft(
   payload: RemotePaymentRequestPayload,
 ): Promise<PrepareRemoteResponse> {
-  const response = await fetch(PAYMENT_PREPARE_URL, {
+  const response = await fetchRemotePay(PAYMENT_PREPARE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -113,7 +131,7 @@ export async function requestRemotePayment(
     throw new Error('원격결제 요청 ID가 없습니다.');
   }
 
-  const response = await fetch(
+  const response = await fetchRemotePay(
     `${REMOTE_PAY_REQUESTS_URL}/${prepareResponse.remoteRequestId}/target`,
     {
       method: 'POST',
@@ -147,7 +165,7 @@ export async function requestRemotePayment(
 export async function getRemotePaymentRequest(
   remoteRequestId: number | string,
 ): Promise<RemotePaymentRequestResponse> {
-  const response = await fetch(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}`, {
+  const response = await fetchRemotePay(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}`, {
     headers: {
       'X-User-Id': getPaymentUserId(),
     },
@@ -162,7 +180,9 @@ export async function getRemotePaymentRequest(
 }
 
 export async function getActiveRemotePaymentRequests(): Promise<RemotePaymentRequestResponse[]> {
-  const response = await fetch(`${REMOTE_PAY_REQUESTS_URL}/active`, {
+  await expireRemotePaymentRequests().catch(() => undefined);
+
+  const response = await fetchRemotePay(`${REMOTE_PAY_REQUESTS_URL}/active`, {
     headers: {
       'X-User-Id': getPaymentUserId(),
     },
@@ -178,11 +198,24 @@ export async function getActiveRemotePaymentRequests(): Promise<RemotePaymentReq
   return requests.map((request) => toRemotePaymentResponse(request));
 }
 
+export async function expireRemotePaymentRequests(): Promise<void> {
+  const response = await fetchRemotePay(REMOTE_PAY_EXPIRE_BATCH_URL, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '원격결제 만료 처리에 실패했습니다.');
+  }
+
+  await response.json().catch(() => null);
+}
+
 export async function rejectRemotePaymentRequest(
   remoteRequestId: number | string,
   rejectReason?: string,
 ): Promise<RemotePaymentRequestResponse> {
-  const response = await fetch(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}/reject`, {
+  const response = await fetchRemotePay(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}/reject`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

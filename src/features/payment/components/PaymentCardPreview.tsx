@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
@@ -17,6 +18,24 @@ export default function PaymentCardPreview({
                                                showInfoOverlay = true,
 }: Props) {
     const hasImageUrl = card.imageUrl.length > 0;
+    const [isVerticalImage, setIsVerticalImage] = useState(false);
+
+    useEffect(() => {
+        if (!hasImageUrl) {
+            setIsVerticalImage(false);
+            return;
+        }
+
+        Image.getSize(
+            card.imageUrl,
+            (width, height) => {
+                setIsVerticalImage(height > width);
+            },
+            () => {
+                setIsVerticalImage(false);
+            },
+        );
+    }, [card.imageUrl, hasImageUrl]);
 
     const containerClassName =
         size === 'small'
@@ -27,18 +46,18 @@ export default function PaymentCardPreview({
             ? 'relative items-center'
             : 'relative w-full items-center';
 
-    const imageStyle =
-        size === 'small'
-            ? {
-                width: '100%' as const,
-                height: '100%' as const,
-                opacity: showInfoOverlay ? 0.8 : 1,
-            }
-            : {
-                width: '100%' as const,
-                height: '100%' as const,
-                opacity: showInfoOverlay ? 0.8 : 1,
-            };
+    const imageStyle = isVerticalImage
+        ? {
+            width: size === 'small' ? 48 : 176,
+            height: size === 'small' ? 80 : 300,
+            opacity: showInfoOverlay ? 0.8 : 1,
+            transform: [{ rotate: '90deg' }],
+        }
+        : {
+            width: '100%' as const,
+            height: '100%' as const,
+            opacity: showInfoOverlay ? 0.8 : 1,
+        };
     const companyTextClassName =
         size === 'small'
             ? 'text-center font-pretendard text-caption-bold text-neutral-black1'
@@ -55,7 +74,11 @@ export default function PaymentCardPreview({
             >
                 {hasImageUrl ? (
                     <>
-                        <Image source={{ uri: card.imageUrl }} resizeMode="contain" style={imageStyle} />
+                        <Image
+                            source={{ uri: card.imageUrl }}
+                            resizeMode={isVerticalImage ? 'cover' : 'contain'}
+                            style={imageStyle}
+                        />
                         {showInfoOverlay && (
                             <View className="absolute inset-0 items-center justify-center px-2">
                                 <View

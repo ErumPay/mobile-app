@@ -10,6 +10,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -810,7 +811,10 @@ export default function GuideScreen({ navigation }: Props) {
                               }
 
                               if (page.route === "TermsAgreement") {
-                                navigation.navigate("TermsAgreement");
+                                Alert.alert(
+                                  "안내",
+                                  "약관 동의 화면은 카카오 로그인 후 진입해주세요.",
+                                );
                                 return;
                               }
 

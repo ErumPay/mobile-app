@@ -31,6 +31,7 @@ import {
 import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
 import { getCancelledDutchPaySessionIdSet } from "../../payment/utils/cancelledDutchPaySessions";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
+import { useDutchPayProgressUserStore } from "../../payment/stores/useDutchPayProgressUserStore";
 import {
   fetchPaymentHistories,
   fetchUserProfile,
@@ -59,7 +60,34 @@ type QuickMenu = {
 const hasNotification = false;
 const isNotificationLoading = false;
 
-export default function MainScreen({ navigation }: Props) {
+function resolvePaymentProgressUserId(
+  routeUserId?: number | null,
+  storedUserId?: number | null,
+) {
+  if (routeUserId != null) {
+    return routeUserId;
+  }
+
+  if (storedUserId != null) {
+    return storedUserId;
+  }
+
+  try {
+    return toFiniteNumber(getPaymentUserId());
+  } catch {
+    return null;
+  }
+}
+
+export default function MainScreen({ navigation, route }: Props) {
+  const routeUserId = toFiniteNumber(route.params?.userId);
+  const storedDutchPayProgressUserId = useDutchPayProgressUserStore(
+    (state) => state.userId,
+  );
+  const paymentProgressUserId = resolvePaymentProgressUserId(
+    routeUserId,
+    storedDutchPayProgressUserId,
+  );
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [monthlyPayment, setMonthlyPayment] = useState(() =>
     createMonthlyPayment([]),
@@ -179,11 +207,19 @@ export default function MainScreen({ navigation }: Props) {
     useCallback(() => {
       let isActive = true;
 
-      const loadActivePaymentProgress = async () => {
-        setIsPaymentProgressLoading(true);
+      const loadActivePaymentProgress = async (showLoading = false) => {
+        if (showLoading) {
+          setIsPaymentProgressLoading(true);
+        }
 
         try {
-          const currentUserId = Number(getPaymentUserId()) || 1;
+          const currentUserId = paymentProgressUserId;
+          if (currentUserId == null) {
+            setDutchProgress(null);
+            clearRemoteProgress();
+            return;
+          }
+
           const [dutchSessions, requests, cancelledDutchSessionIds] =
             await Promise.allSettled([
             getActiveDutchPaySessions(currentUserId),
@@ -235,18 +271,27 @@ export default function MainScreen({ navigation }: Props) {
         } catch {
           // 메인 진입은 진행 결제 상태 조회 실패로 막지 않는다.
         } finally {
-          if (isActive) {
+          if (isActive && showLoading) {
             setIsPaymentProgressLoading(false);
           }
         }
       };
 
-      void loadActivePaymentProgress();
+      void loadActivePaymentProgress(true);
+      const intervalId = setInterval(() => {
+        void loadActivePaymentProgress();
+      }, 30_000);
 
       return () => {
         isActive = false;
+        clearInterval(intervalId);
       };
-    }, [clearRemoteProgress, setRecipientProgress, setRequesterProgress]),
+    }, [
+      clearRemoteProgress,
+      paymentProgressUserId,
+      setRecipientProgress,
+      setRequesterProgress,
+    ]),
   );
 
   const quickMenus: QuickMenu[] = [
@@ -255,6 +300,7 @@ export default function MainScreen({ navigation }: Props) {
       icon: "friends",
       toneClassName: "bg-[#D8EAFF]",
       iconColor: "#1677FF",
+      onPress: () => navigation.navigate("FriendListScreen"),
     },
     {
       label: "카드관리",
@@ -314,7 +360,7 @@ export default function MainScreen({ navigation }: Props) {
         role: dutchProgress.role,
         scenario: getDutchPayRouteScenario(dutchProgress.variant),
         sessionId: dutchProgress.session.session_id,
-        userId: getPaymentUserId(),
+        userId: paymentProgressUserId ?? undefined,
       });
       return;
     }
@@ -550,6 +596,20 @@ function formatGreeting(profile: UserProfile | null) {
   return `${profile.name}${maskedId}님! 오늘도 좋은 하루 되세요 ✨`;
 }
 
+function toFiniteNumber(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsedValue = Number(value);
+
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+  }
+
+  return undefined;
+}
+
 function getActiveDutchPayProgress(
   sessions: DutchPaySessionDetailResponse[],
   currentUserId: number,
@@ -593,7 +653,10 @@ function toDutchPayProgressVariant(
   if (
     session.status === "COMPLETED" ||
     session.status === "FAILED" ||
-    session.session_progress_step === "COMPLETED"
+    session.status === "TIMEOUT_HANDLED" ||
+    session.session_progress_step === "COMPLETED" ||
+    session.session_progress_step === "FAILED" ||
+    session.session_progress_step === "TIMEOUT_HANDLED"
   ) {
     return null;
   }
@@ -603,7 +666,7 @@ function toDutchPayProgressVariant(
   );
 
   if (role === "OWNER" && isLocallyCancelled) {
-    return "DUTCHPAY_OWNER_GROUP_CREATE_READY";
+    return null;
   }
 
   if (
@@ -611,7 +674,7 @@ function toDutchPayProgressVariant(
     session.status === "CREATED" &&
     !hasParticipantBeyondOwner
   ) {
-    return "DUTCHPAY_OWNER_GROUP_CREATE_READY";
+    return null;
   }
 
   if (role === "OWNER") {
@@ -629,10 +692,9 @@ function toDutchPayProgressVariant(
       case "PAYMENT_IN_PROGRESS":
         return "DUTCHPAY_OWNER_WAITING_MEMBERS";
       case "FINAL_PAYMENT_REQUIRED":
-      case "TIMEOUT_HANDLED":
         return "DUTCHPAY_OWNER_FINAL_PAYMENT_READY";
       default:
-        return "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY";
+        return null;
     }
   }
 
@@ -640,7 +702,11 @@ function toDutchPayProgressVariant(
     (participant) => participant.user_id === currentUserId,
   );
 
-  if (!myParticipant || myParticipant.status === "REJECTED") {
+  if (
+    !myParticipant ||
+    myParticipant.status === "REJECTED" ||
+    myParticipant.status === "TIMEOUT"
+  ) {
     return null;
   }
 

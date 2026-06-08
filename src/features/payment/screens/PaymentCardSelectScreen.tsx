@@ -431,8 +431,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         );
         const selectedCombinationForCard = data?.cardCombinations.find((combination) =>
             combination.cards.length === 1 &&
-            combination.cards[0]?.id === selectedCard?.id &&
-            combination.cards[0]?.amount === selectedCard?.amount
+            combination.cards[0]?.id === selectedCard?.id
         );
 
         if (
@@ -441,6 +440,8 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             !selectedCombinationForCard ||
             !idempotencyKey
         ) {
+            setErrorMessage('선택한 카드로 결제를 진행할 수 없습니다.');
+            setIsBottomSheetVisible(false);
             return;
         }
 
