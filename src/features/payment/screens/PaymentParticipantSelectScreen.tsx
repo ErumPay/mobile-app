@@ -4,12 +4,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Modal as RNModal,
   Pressable,
   ScrollView,
   Text,
   TextInput,
-  type TextStyle,
   View,
 } from 'react-native';
 
@@ -18,6 +16,7 @@ import Button from '../../../shared/components/Button';
 import Checkbox from '../../../shared/components/Checkbox';
 import FriendListItem from '../../../shared/components/FriendListItem';
 import ConfirmModal from '../../../shared/components/Modal';
+import InviteLinkModal from '../../../shared/components/InviteLinkModal';
 import NoticeBox from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
@@ -26,6 +25,7 @@ import { fetchUserProfile } from '../../mypage/api/mypageApi';
 import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { requestRemotePayment } from '../api/remotePaymentApi';
+import { createDutchPayInviteLink } from '../api/dutchPayApi';
 import {
   getParticipantSelectMockState,
   mockAllFriends,
@@ -45,28 +45,7 @@ type Props = NativeStackScreenProps<
 
 type ShareStep = 'READY' | 'COPIED';
 
-const inviteUrl = 'https://erumpay.com/group/abc123';
-const MOCK_REMOTE_PAYMENT = {
-  amount: 45000,
-  merchantName: '롯데시네마 홍대입구점',
-  paymentId: 1,
-};
-const WORD_JOINER = '\u2060';
-
-function keepAllText(text: string) {
-  return text
-    .split(/(\s+)/)
-    .map((chunk) =>
-      /\s+/.test(chunk) ? chunk : Array.from(chunk).join(WORD_JOINER),
-    )
-    .join('');
-}
-
-const keepAllTextStyle = {
-  overflowWrap: 'normal',
-  wordBreak: 'keep-all',
-  wordWrap: 'normal',
-} as TextStyle;
+const DEV_DUTCH_INVITE_BASE_URL = 'http://localhost:19000/payment/dutch-pay-invite';
 
 function toDutchPayUserIds(friendIds: string[]) {
   return friendIds
@@ -289,118 +268,6 @@ function FriendSection({
   );
 }
 
-function ShareLinkModal({
-  visible,
-  mode,
-  shareStep,
-  countdown,
-  onClose,
-  onPressCopy,
-}: {
-  visible: boolean;
-  mode: ParticipantSelectMode;
-  shareStep: ShareStep;
-  countdown: number;
-  onClose: () => void;
-  onPressCopy: () => void;
-}) {
-  const content = getModeContent(mode);
-  const isCopied = shareStep === 'COPIED';
-  const copiedDescription =
-    mode === 'DUTCH_PAY'
-      ? '친구에게 공유하여 더치페이 그룹 생성을 진행해보세요.'
-      : '친구에게 공유하여 원격결제를 요청해보세요.';
-  const nextStepDescription =
-    mode === 'DUTCH_PAY'
-      ? `${countdown}초 뒤 그룹 생성 페이지로 이동합니다.`
-      : `${countdown}초 뒤 메인으로 이동합니다.`;
-
-  return (
-    <RNModal
-      animationType="fade"
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 items-center justify-center bg-neutral-black3 px-5">
-        <Pressable className="absolute inset-0" onPress={onClose} />
-        <View className="w-full max-w-[320px] rounded-2xl bg-neutral-white px-6 pb-6 pt-5">
-          <View className="mb-6 flex-row items-center justify-between">
-            <View className="min-w-0 flex-1 flex-row items-center">
-              <Feather
-                name={isCopied ? 'check-circle' : 'link'}
-                size={24}
-                color={colors.erum.main}
-              />
-              <Text
-                className="ml-2 min-w-0 flex-1 font-pretendard text-heading-3 text-neutral-black1"
-                style={keepAllTextStyle}
-              >
-                {keepAllText(
-                  isCopied ? 'URL이 복사되었습니다.' : content.shareTitle,
-                )}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-              className="ml-3 h-8 w-8 items-center justify-center"
-              onPress={onClose}
-            >
-              <Feather name="x" size={20} color={colors.neutral.black1} />
-            </Pressable>
-          </View>
-
-          <Text
-            className="font-pretendard text-large-regular text-neutral-black2"
-            style={keepAllTextStyle}
-          >
-            {keepAllText(
-              isCopied ? copiedDescription : content.shareDescription,
-            )}
-          </Text>
-
-          <View className="mt-5 rounded-xl border border-neutral-grey1 bg-neutral-grey2 px-4 py-4">
-            <Text className="font-pretendard text-large-regular text-neutral-black2">
-              {inviteUrl}
-            </Text>
-          </View>
-
-          {isCopied ? (
-            <View className="mt-5 rounded-xl bg-[#EDFFF8] px-4 py-4">
-              <Text
-                className="text-center font-pretendard text-large-bold text-erum-main"
-                style={keepAllTextStyle}
-              >
-                {keepAllText(nextStepDescription)}
-              </Text>
-            </View>
-          ) : (
-            <View className="mt-5 flex-row gap-3">
-              <View className="flex-1">
-                <Button label="닫기" variant="secondary" onPress={onClose} />
-              </View>
-              <View className="flex-1">
-                <Button
-                  label="링크 복사"
-                  leftIcon={
-                    <Feather
-                      name="copy"
-                      size={16}
-                      color={colors.neutral.white}
-                    />
-                  }
-                  onPress={onPressCopy}
-                />
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
-    </RNModal>
-  );
-}
-
 function EmptyMessage({ message }: { message: string }) {
   return (
     <View className="items-center py-10">
@@ -434,6 +301,8 @@ export default function PaymentParticipantSelectScreen({
   );
   const [shareStep, setShareStep] = useState<ShareStep>('READY');
   const [shareCountdown, setShareCountdown] = useState(3);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
     useState(false);
@@ -626,11 +495,40 @@ export default function PaymentParticipantSelectScreen({
     clearShareCountdownTimer();
 
     try {
-      await Clipboard.setStringAsync(inviteUrl);
+      await Clipboard.setStringAsync(shareUrl);
       setShareStep('COPIED');
       setShareCountdown(3);
     } catch {
       Alert.alert('URL 공유', 'URL 복사에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleOpenShareModal = async () => {
+    if (!isDutchPay) {
+      Alert.alert('URL 공유', '원격결제 URL 공유는 아직 지원되지 않습니다. 친구 목록에서 요청 대상을 선택해주세요.');
+      return;
+    }
+
+    setShareStep('READY');
+    setShareCountdown(3);
+    setShareUrl('');
+    setShareModalVisible(true);
+
+    if (!route.params?.dutchSessionId) {
+      Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+      setShareModalVisible(false);
+      return;
+    }
+
+    try {
+      setIsShareLinkLoading(true);
+      const inviteLink = await createDutchPayInviteLink(route.params.dutchSessionId);
+      setShareUrl(`${DEV_DUTCH_INVITE_BASE_URL}/${inviteLink.invite_token}`);
+    } catch {
+      Alert.alert('URL 공유', '더치페이 초대 링크 생성에 실패했습니다.');
+      setShareModalVisible(false);
+    } finally {
+      setIsShareLinkLoading(false);
     }
   };
 
@@ -720,12 +618,15 @@ export default function PaymentParticipantSelectScreen({
         throw new Error('recipient user id is invalid');
       }
 
+      if (route.params?.paymentId == null || route.params?.amount == null) {
+        throw new Error('원격결제 요청 정보가 없습니다.');
+      }
+
       const response = await requestRemotePayment({
-        ...MOCK_REMOTE_PAYMENT,
-        paymentId: route.params?.paymentId ?? MOCK_REMOTE_PAYMENT.paymentId,
+        paymentId: route.params.paymentId,
         remoteRequestId: route.params?.remoteRequestId,
-        amount: route.params?.amount ?? MOCK_REMOTE_PAYMENT.amount,
-        merchantName: route.params?.orderName ?? MOCK_REMOTE_PAYMENT.merchantName,
+        amount: route.params.amount,
+        merchantName: route.params?.orderName ?? '원격결제',
         orderName: route.params?.orderName,
         merchantId: route.params?.merchantId,
         recipientName: selectedRemoteFriend.name,
@@ -793,11 +694,7 @@ export default function PaymentParticipantSelectScreen({
                 <Pressable
                   accessibilityRole="button"
                   className="flex-row items-center rounded-lg border border-neutral-grey1 bg-neutral-white px-4 py-2"
-                  onPress={() => {
-                    setShareStep('READY');
-                    setShareCountdown(3);
-                    setShareModalVisible(true);
-                  }}
+                  onPress={() => void handleOpenShareModal()}
                 >
                   <Feather name="link" size={18} color={colors.neutral.black1} />
                   <Text className="ml-2 font-pretendard text-large-bold text-neutral-black1">
@@ -809,11 +706,7 @@ export default function PaymentParticipantSelectScreen({
               <Pressable
                 accessibilityRole="button"
                 className="mb-5 flex-row items-center justify-center rounded-lg border border-neutral-grey1 bg-neutral-white px-4 py-3"
-                onPress={() => {
-                  setShareStep('READY');
-                  setShareCountdown(3);
-                  setShareModalVisible(true);
-                }}
+                onPress={() => void handleOpenShareModal()}
               >
                 <Feather name="link" size={18} color={colors.neutral.black1} />
                 <Text className="ml-2 font-pretendard text-large-bold text-neutral-black1">
@@ -911,11 +804,15 @@ export default function PaymentParticipantSelectScreen({
           />
         </View>
 
-        <ShareLinkModal
+        <InviteLinkModal
           visible={shareModalVisible}
-          mode={mode}
-          shareStep={shareStep}
-          countdown={shareCountdown}
+          title={content.shareTitle}
+          description={content.shareDescription}
+          linkText={shareUrl}
+          isLoading={isShareLinkLoading}
+          isCopied={shareStep === 'COPIED'}
+          copiedDescription="친구에게 공유하여 더치페이 그룹 생성을 진행해보세요."
+          copiedNotice={`${shareCountdown}초 뒤 그룹 생성 페이지로 이동합니다.`}
           onClose={resetShareModal}
           onPressCopy={handlePressCopyLink}
         />

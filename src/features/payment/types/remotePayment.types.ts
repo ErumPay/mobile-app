@@ -33,6 +33,7 @@ export type RemotePaymentRequestResponse = {
   recipientName: string;
   recipientPhoneSuffix: string;
   status: RemotePaymentRequestStatus;
+  expiresAt?: string;
 };
 
 export type RemotePaymentProgress = {

@@ -275,6 +275,7 @@ export default function MainScreen({ navigation, route }: Props) {
       icon: "friends",
       toneClassName: "bg-[#D8EAFF]",
       iconColor: "#1677FF",
+      onPress: () => navigation.navigate("FriendListScreen"),
     },
     {
       label: "카드관리",

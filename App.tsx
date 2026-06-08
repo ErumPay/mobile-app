@@ -28,6 +28,7 @@ import type { OfflinePaymentQrRouteParams } from './src/features/payment/types/o
 import type { PaymentRequestSummary } from './src/features/payment/types/paymentMethod.types';
 import DutchPayGroupScreen from './src/features/payment/screens/DutchPayGroupScreen';
 import type { DutchPayGroupRouteParams } from './src/features/payment/types/dutchPay.types';
+import DutchPayInviteAcceptScreen from './src/features/payment/screens/DutchPayInviteAcceptScreen';
 import PaymentParticipantSelectScreen from './src/features/payment/screens/PaymentParticipantSelectScreen';
 import type { ParticipantSelectRouteParams } from './src/features/payment/types/paymentParticipantSelect.types';
 import MypageHomeScreen from './src/features/mypage/screens/MypageHomeScreen';
@@ -74,6 +75,7 @@ export type RootStackParamList = {
   PaymentCancel: PaymentCancelRouteParams | undefined;
   OfflinePaymentQr: OfflinePaymentQrRouteParams | undefined;
   DutchPayGroup: DutchPayGroupRouteParams | undefined;
+  DutchPayInviteAccept: { inviteToken: string };
   PaymentParticipantSelect: ParticipantSelectRouteParams | undefined;
   MypageHomeScreen: undefined;
   ProfileConfirmScreen: undefined;
@@ -104,6 +106,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentCancel: 'payment/cancel',
       OfflinePaymentQr: 'payment/offline-qr',
       DutchPayGroup: 'payment/dutch-pay-group',
+      DutchPayInviteAccept: 'payment/dutch-pay-invite/:inviteToken',
       PaymentParticipantSelect: 'payment/participant-select',
       MypageHomeScreen: 'mypage',
       ProfileConfirmScreen: 'mypage/profile',
@@ -158,6 +161,7 @@ export default function App() {
             <Stack.Screen name="PaymentCancel" component={PaymentCancelScreen} />
             <Stack.Screen name="OfflinePaymentQr" component={OfflinePaymentQrScreen} />
             <Stack.Screen name="DutchPayGroup" component={DutchPayGroupScreen} />
+            <Stack.Screen name="DutchPayInviteAccept" component={DutchPayInviteAcceptScreen} />
             <Stack.Screen name="PaymentParticipantSelect" component={PaymentParticipantSelectScreen} />
             <Stack.Screen name="MypageHomeScreen" component={MypageHomeScreen} />
             <Stack.Screen name="ProfileConfirmScreen" component={ProfileConfirmScreen} />

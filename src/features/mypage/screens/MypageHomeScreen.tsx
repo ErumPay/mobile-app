@@ -200,10 +200,20 @@ export function MypageHomeScreen({ navigation }: Props) {
 
           <View className="flex-row gap-3">
             <View className="flex-1">
-              <ShortcutCard title="친구관리" iconName="users" iconTone="blue" />
+              <ShortcutCard
+                title="친구관리"
+                iconName="users"
+                iconTone="blue"
+                onPress={() => navigation.navigate('FriendListScreen')}
+              />
             </View>
             <View className="flex-1">
-              <ShortcutCard title="알림" iconName="bell" iconTone="orange" />
+              <ShortcutCard
+                title="알림"
+                iconName="bell"
+                iconTone="orange"
+                onPress={() => navigation.navigate('NotificationScreen')}
+              />
             </View>
           </View>
 
@@ -370,20 +380,26 @@ function ShortcutCard({
   title,
   iconName,
   iconTone,
+  onPress,
 }: {
   title: string;
   iconName: FeatherIconName;
   iconTone: MypageIconTone;
+  onPress?: () => void;
 }) {
   return (
-    <View className="rounded-xl border border-neutral-grey1 bg-neutral-white px-3 py-3">
+    <Pressable
+      accessibilityRole="button"
+      className="rounded-xl border border-neutral-grey1 bg-neutral-white px-3 py-3"
+      onPress={onPress}
+    >
       <View className="min-h-[40px] flex-row items-center">
         <MenuIcon name={iconName} tone={iconTone} size="large" />
         <Text className="ml-2 font-pretendard text-large-bold text-neutral-black1">
           {title}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

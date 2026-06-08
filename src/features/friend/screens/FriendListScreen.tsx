@@ -1,4 +1,5 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Image, Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,8 +8,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 import {
   deleteAuthFriend,
+  acceptFriendRequest,
+  createFriendInviteLink,
   fetchAuthFriends,
+  fetchReceivedFriendRequests,
+  rejectFriendRequest,
   type AuthFriendResponse,
+  type AuthFriendRequestResponse,
   updateAuthFriendFavorite,
 } from '../api/friendApi';
 import ActionMenu from '../../../shared/components/ActionMenu';
@@ -16,6 +22,7 @@ import { Button } from '../../../shared/components/Button';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { FloatingButton } from '../../../shared/components/FloatingButton';
 import Header from '../../../shared/components/Header';
+import InviteLinkModal from '../../../shared/components/InviteLinkModal';
 import PageWrap from '../../../shared/components/PageWrap';
 import FriendListItem from '../../../shared/components/FriendListItem';
 import { colors } from '../../../shared/styles/designTokens';
@@ -23,6 +30,11 @@ import { colors } from '../../../shared/styles/designTokens';
 type Props = NativeStackScreenProps<RootStackParamList, 'FriendListScreen'>;
 
 type FriendListEntry = AuthFriendResponse & {
+  avatarColorClassName: string;
+  phoneNumber: string;
+};
+
+type FriendRequestEntry = AuthFriendRequestResponse & {
   avatarColorClassName: string;
   phoneNumber: string;
 };
@@ -39,14 +51,28 @@ function toDisplayFriend(friend: AuthFriendResponse, index: number): FriendListE
   };
 }
 
+function toDisplayFriendRequest(request: AuthFriendRequestResponse, index: number): FriendRequestEntry {
+  return {
+    ...request,
+    phoneNumber: `010-****-${request.phoneLastFour}`,
+    avatarColorClassName: avatarColorClasses[index % avatarColorClasses.length],
+  };
+}
+
 export default function FriendListScreen({ navigation }: Props) {
   const [friends, setFriends] = useState<FriendListEntry[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequestEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [openedMenuRelationId, setOpenedMenuRelationId] = useState<number | null>(null);
   const [pendingDeleteFriend, setPendingDeleteFriend] = useState<FriendListEntry | null>(null);
   const [isDeletingFriend, setIsDeletingFriend] = useState(false);
   const [favoriteUpdatingRelationId, setFavoriteUpdatingRelationId] = useState<number | null>(null);
+  const [friendAddModalVisible, setFriendAddModalVisible] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [isInviteLinkLoading, setIsInviteLinkLoading] = useState(false);
+  const [isInviteLinkCopied, setIsInviteLinkCopied] = useState(false);
+  const [processingRequestRelationId, setProcessingRequestRelationId] = useState<number | null>(null);
 
   const filteredFriends = useMemo(() => {
     const trimmedKeyword = searchKeyword.trim().toLowerCase();
@@ -67,26 +93,25 @@ export default function FriendListScreen({ navigation }: Props) {
       );
     });
   }, [friends, searchKeyword]);
+  const hasVisibleFriendContent = friendRequests.length > 0 || filteredFriends.length > 0;
+
+  const loadFriendData = useCallback(async () => {
+    const [nextFriends, nextRequests] = await Promise.all([
+      fetchAuthFriends(),
+      fetchReceivedFriendRequests(),
+    ]);
+
+    setFriends(nextFriends.map(toDisplayFriend));
+    setFriendRequests(nextRequests.map(toDisplayFriendRequest));
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
-      console.log('[FriendListScreen] focused, loading friends');
       setIsLoading(true);
 
-      fetchAuthFriends()
-        .then((nextFriends) => {
-          if (!isActive) {
-            return;
-          }
-
-          console.log('[FriendListScreen] fetched friends', {
-            count: nextFriends.length,
-            // relationIds: nextFriends.map((friend) => friend.relationId),
-          });
-          setFriends(nextFriends.map(toDisplayFriend));
-        })
+      loadFriendData()
         .catch((error) => {
           console.warn('[FriendListScreen] failed to fetch friends', error);
         })
@@ -98,9 +123,8 @@ export default function FriendListScreen({ navigation }: Props) {
 
       return () => {
         isActive = false;
-        console.log('[FriendListScreen] unfocused');
       };
-    }, []),
+    }, [loadFriendData]),
   );
 
   const handleToggleFavorite = async (friend: FriendListEntry) => {
@@ -168,6 +192,60 @@ export default function FriendListScreen({ navigation }: Props) {
     setPendingDeleteFriend(friend);
   };
 
+  const handleOpenFriendAddModal = async () => {
+    setFriendAddModalVisible(true);
+    setInviteLink('');
+    setIsInviteLinkCopied(false);
+
+    try {
+      setIsInviteLinkLoading(true);
+      const link = await createFriendInviteLink();
+      setInviteLink(link.inviteUrl);
+    } catch {
+      setInviteLink('');
+      Alert.alert('친구 초대', '초대 링크 생성에 실패했습니다.');
+      setFriendAddModalVisible(false);
+    } finally {
+      setIsInviteLinkLoading(false);
+    }
+  };
+
+  const handleCopyInviteLink = async () => {
+    if (!inviteLink) {
+      Alert.alert('초대 링크', '초대 링크를 생성하지 못했습니다. 다시 열어주세요.');
+      return;
+    }
+
+    await Clipboard.setStringAsync(inviteLink);
+    setIsInviteLinkCopied(true);
+  };
+
+  const handleAcceptFriendRequest = async (request: FriendRequestEntry) => {
+    try {
+      setProcessingRequestRelationId(request.relationId);
+      await acceptFriendRequest(request.relationId);
+      await loadFriendData();
+    } catch (error) {
+      Alert.alert('친구 요청 수락 실패', error instanceof Error ? error.message : '친구 요청 수락에 실패했습니다.');
+    } finally {
+      setProcessingRequestRelationId(null);
+    }
+  };
+
+  const handleRejectFriendRequest = async (request: FriendRequestEntry) => {
+    try {
+      setProcessingRequestRelationId(request.relationId);
+      await rejectFriendRequest(request.relationId);
+      setFriendRequests((prevRequests) =>
+        prevRequests.filter((item) => item.relationId !== request.relationId),
+      );
+    } catch (error) {
+      Alert.alert('친구 요청 거절 실패', error instanceof Error ? error.message : '친구 요청 거절에 실패했습니다.');
+    } finally {
+      setProcessingRequestRelationId(null);
+    }
+  };
+
   const handleChangeBottomNav = (value: string) => {
     if (value === 'home') {
       navigation.navigate('Main');
@@ -192,7 +270,14 @@ export default function FriendListScreen({ navigation }: Props) {
         scroll={false}
         header={<Header title="친구" type="back" onPressLeft={() => navigation.goBack()} />}
       >
-        <View className="flex-1 bg-neutral-white">
+        <Pressable
+          className="flex-1 bg-neutral-white"
+          onPress={() => {
+            if (openedMenuRelationId !== null) {
+              setOpenedMenuRelationId(null);
+            }
+          }}
+        >
           <View className="border-b border-neutral-grey1 px-6 py-4">
             <View className="flex-row items-center gap-4">
               <View className="flex-1 flex-row items-center rounded-2xl bg-neutral-grey2 px-5 py-4">
@@ -212,6 +297,7 @@ export default function FriendListScreen({ navigation }: Props) {
                 accessibilityLabel="친구 추가"
                 className="h-11 w-11 items-center justify-center"
                 hitSlop={8}
+                onPress={handleOpenFriendAddModal}
               >
                 <Image source={friendAddIcon} style={{ width: 40, height: 40 }} resizeMode="contain" />
               </Pressable>
@@ -228,76 +314,127 @@ export default function FriendListScreen({ navigation }: Props) {
                     친구 목록을 불러오는 중입니다.
                   </Text>
                 </View>
-              ) : friends.length === 0 ? (
+              ) : friends.length === 0 && friendRequests.length === 0 ? (
                 <EmptyState title="등록된 친구가 없습니다." />
-              ) : filteredFriends.length === 0 ? (
+              ) : !hasVisibleFriendContent ? (
                 <EmptyState title="검색 결과가 없습니다." description="이름 또는 전화번호를 다시 확인해주세요." />
               ) : (
-                filteredFriends.map((friend) => (
-                  <View
-                    key={friend.relationId}
-                    className={`relative ${openedMenuRelationId === friend.relationId ? 'z-20' : 'z-0'}`}
-                  >
-                    <FriendListItem
-                      name={friend.name}
-                      initial={friend.name.slice(0, 1)}
-                      phoneSuffix={friend.phoneLastFour}
-                      avatarColorClassName={friend.avatarColorClassName}
-                      containerClassName="flex-row items-center rounded-[24px] bg-neutral-grey2 px-5 py-6"
-                      avatarWrapperClassName="mr-4"
-                      contentClassName="min-w-0 flex-1"
-                      nameClassName="font-pretendard text-heading-3 text-neutral-black1"
-                      nameRight={
-                        friend.isFavorite ? (
-                          <View className="ml-2">
-                            <MaterialIcons name="star" size={22} color="#F3B300" />
-                          </View>
-                        ) : null
-                      }
-                      right={
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`${friend.name} 더보기`}
-                          className="ml-3 h-10 w-10 items-center justify-center"
-                          hitSlop={8}
-                          onPress={() => handleToggleMoreMenu(friend.relationId)}
-                        >
-                          <Feather name="more-vertical" size={22} color={colors.neutral.black2} />
-                        </Pressable>
-                      }
-                    />
+                <>
+                  {friendRequests.length > 0 ? (
+                    <View className="mb-2 rounded-[24px] border border-erum-main bg-[#EDFFF8] px-5 py-5">
+                      <Text className="mb-4 font-pretendard text-large-bold text-neutral-black1">
+                        받은 친구 요청 {friendRequests.length}
+                      </Text>
+                      <View className="gap-3">
+                        {friendRequests.map((request) => {
+                          const isProcessing = processingRequestRelationId === request.relationId;
 
-                    <ActionMenu
-                      visible={openedMenuRelationId === friend.relationId}
-                      className="absolute right-3 top-[74px] z-50 min-w-[220px] rounded-[20px] px-7 py-6"
-                      items={[
-                        {
-                          key: friend.isFavorite ? 'unfavorite' : 'favorite',
-                          label: friend.isFavorite ? '즐겨찾기 해제' : '즐겨찾기',
-                          iconName: 'star',
-                          onPress: () => {
-                            if (favoriteUpdatingRelationId === friend.relationId) {
-                              return;
-                            }
+                          return (
+                            <View key={request.relationId} className="rounded-2xl bg-neutral-white px-4 py-4">
+                              <FriendListItem
+                                name={request.name}
+                                initial={request.name.slice(0, 1)}
+                                phoneSuffix={request.phoneLastFour}
+                                avatarColorClassName={request.avatarColorClassName}
+                                containerClassName="flex-row items-center"
+                                avatarWrapperClassName="mr-4"
+                                contentClassName="min-w-0 flex-1"
+                              />
+                              <View className="mt-4 flex-row gap-2">
+                                <View className="flex-1">
+                                  <Button
+                                    label={isProcessing ? '처리 중' : '수락'}
+                                    size="medium"
+                                    disabled={isProcessing}
+                                    onPress={() => void handleAcceptFriendRequest(request)}
+                                  />
+                                </View>
+                                <View className="flex-1">
+                                  <Button
+                                    label="거절"
+                                    variant="secondary"
+                                    size="medium"
+                                    disabled={isProcessing}
+                                    onPress={() => void handleRejectFriendRequest(request)}
+                                  />
+                                </View>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ) : null}
 
-                            void handleToggleFavorite(friend);
+                  {filteredFriends.map((friend) => (
+                    <View
+                      key={friend.relationId}
+                      className="relative"
+                    >
+                      <FriendListItem
+                        name={friend.name}
+                        initial={friend.name.slice(0, 1)}
+                        phoneSuffix={friend.phoneLastFour}
+                        avatarColorClassName={friend.avatarColorClassName}
+                        containerClassName="flex-row items-center rounded-[24px] bg-neutral-grey2 px-5 py-6"
+                        avatarWrapperClassName="mr-4"
+                        contentClassName="min-w-0 flex-1"
+                        nameClassName="font-pretendard text-heading-3 text-neutral-black1"
+                        nameRight={
+                          friend.isFavorite ? (
+                            <View className="ml-2">
+                              <MaterialIcons name="star" size={22} color="#F3B300" />
+                            </View>
+                          ) : null
+                        }
+                        right={
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`${friend.name} 더보기`}
+                            className="ml-3 h-10 w-10 items-center justify-center"
+                            hitSlop={8}
+                            onPress={(event) => {
+                              event.stopPropagation();
+                              handleToggleMoreMenu(friend.relationId);
+                            }}
+                          >
+                            <Feather name="more-vertical" size={22} color={colors.neutral.black2} />
+                          </Pressable>
+                        }
+                      />
+
+                      <ActionMenu
+                        visible={openedMenuRelationId === friend.relationId}
+                        className="absolute right-3 top-[74px] z-50 min-w-[220px] rounded-[20px] px-7 py-6"
+                        items={[
+                          {
+                            key: friend.isFavorite ? 'unfavorite' : 'favorite',
+                            label: friend.isFavorite ? '즐겨찾기 해제' : '즐겨찾기',
+                            iconName: 'star',
+                            onPress: () => {
+                              if (favoriteUpdatingRelationId === friend.relationId) {
+                                return;
+                              }
+
+                              void handleToggleFavorite(friend);
+                            },
                           },
-                        },
-                        {
-                          key: 'delete',
-                          label: '친구 삭제',
-                          iconName: 'user-minus',
-                          tone: 'danger',
-                          onPress: () => handleOpenDeleteModal(friend),
-                        },
-                      ]}
-                    />
-                  </View>
-                ))
+                          {
+                            key: 'delete',
+                            label: '친구 삭제',
+                            iconName: 'user-minus',
+                            tone: 'danger',
+                            onPress: () => handleOpenDeleteModal(friend),
+                          },
+                        ]}
+                      />
+                    </View>
+                  ))}
+                </>
               )}
             </View>
           </View>
-        </View>
+        </Pressable>
       </PageWrap>
 
       <RNModal
@@ -341,7 +478,20 @@ export default function FriendListScreen({ navigation }: Props) {
         </View>
       </RNModal>
 
-      <FloatingButton value="payment" onChange={handleChangeBottomNav} />
+      <InviteLinkModal
+        visible={friendAddModalVisible}
+        title="URL로 친구 초대"
+        description="친구에게 링크를 공유해서 친구 추가를 진행해보세요."
+        linkText={inviteLink}
+        isLoading={isInviteLinkLoading}
+        isCopied={isInviteLinkCopied}
+        copiedDescription="친구에게 공유하여 친구 추가를 진행해보세요."
+        copiedNotice="Expo 환경에서는 복사한 링크를 개발용 route로 열어 테스트할 수 있어요."
+        onClose={() => setFriendAddModalVisible(false)}
+        onPressCopy={() => void handleCopyInviteLink()}
+      />
+
+      <FloatingButton value="my" onChange={handleChangeBottomNav} />
     </>
   );
 }

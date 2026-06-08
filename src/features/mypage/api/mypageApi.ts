@@ -296,7 +296,7 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   const requestUrl = typeof input === 'string' ? input : input.url;
   const timeoutId = setTimeout(() => {
     if (__DEV__) {
-      console.error('Mypage API request timed out.', {
+      console.warn('Mypage API request timed out.', {
         url: requestUrl,
         timeoutMs: MYPAGE_API_TIMEOUT_MS,
       });
