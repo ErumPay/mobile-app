@@ -90,6 +90,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failModalVisible, setFailModalVisible] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [weakPinModalVisible, setWeakPinModalVisible] = useState(false);
+  const [mismatchModalVisible, setMismatchModalVisible] = useState(false);
   const [resetCompleteModalVisible, setResetCompleteModalVisible] = useState(false);
   const [biometricSetupModalVisible, setBiometricSetupModalVisible] = useState(false);
   const [pendingBiometricPin, setPendingBiometricPin] = useState('');
@@ -210,12 +212,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (isPinResetFlow) {
-      setStopModalVisible(true);
-      return;
-    }
-
-    goBackOrMain();
+    // PIN_RESET or SIGNUP flow both show stop modal
+    setStopModalVisible(true);
   };
 
   const handleConfirmStopFlow = () => {
@@ -227,6 +225,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     if (isPinResetFlow) {
       navigateToMypage();
+      return;
+    }
+
+    if (setupFlow === 'SIGNUP') {
+      navigation?.navigate('Tutorial');
       return;
     }
 
@@ -351,6 +354,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setPin('');
         setHasError(true);
         setSetupErrorMessage(WEAK_PIN_ERROR_MESSAGE);
+        setWeakPinModalVisible(true);
         return;
       }
 
@@ -378,6 +382,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
       setPin('');
       setHasError(true);
       setSetupErrorMessage('비밀번호가 일치하지 않습니다.\n다시 입력해주세요.');
+      setMismatchModalVisible(true);
       return;
     }
 
@@ -395,28 +400,18 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setSetupErrorMessage('');
         await disableBiometricPayment();
 
-        if (canUseBiometric) {
-          setPendingBiometricPin(completedPin);
-          setBiometricSetupNextScreen('MYPAGE_RESET');
-          setBiometricSetupModalVisible(true);
-          return;
-        }
-
-        setResetCompleteModalVisible(true);
+        setPendingBiometricPin(completedPin);
+        setBiometricSetupNextScreen('MYPAGE_RESET');
+        setBiometricSetupModalVisible(true);
         return;
       }
 
       await setupPin(completedPin, firstPin);
       setSetupErrorMessage('');
 
-      if (canUseBiometric) {
-        setPendingBiometricPin(completedPin);
-        setBiometricSetupNextScreen('SIGNUP_COMPLETE');
-        setBiometricSetupModalVisible(true);
-        return;
-      }
-
-      navigation?.replace('SignupComplete');
+      setPendingBiometricPin(completedPin);
+      setBiometricSetupNextScreen('SIGNUP_COMPLETE');
+      setBiometricSetupModalVisible(true);
     } catch (error) {
       setPin('');
       setHasError(true);
@@ -440,29 +435,33 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
     navigation?.replace('SignupComplete');
   };
 
-  const handleConfirmBiometricSetup = async () => {
-    if (!pendingBiometricPin || isSubmitting) {
+  const handleConfirmBiometricSetup = () => {
+    if (!pendingBiometricPin) {
+      finishPinSetupAfterBiometric();
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      await enableBiometricPayment(pendingBiometricPin);
-      setBiometricEnabled(true);
-      finishPinSetupAfterBiometric();
-    } catch (error) {
-      setSetupErrorMessage(
-        error instanceof Error ? error.message : '생체 인증 등록에 실패했습니다.',
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    setIsSubmitting(true);
+    enableBiometricPayment(pendingBiometricPin)
+      .then(() => {
+        setBiometricEnabled(true);
+        finishPinSetupAfterBiometric();
+      })
+      .catch((error) => {
+        setSetupErrorMessage(
+          error instanceof Error ? error.message : '생체 인증 등록에 실패했습니다.',
+        );
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
-  const handleCancelBiometricSetup = async () => {
-    await disableBiometricPayment();
-    setBiometricEnabled(false);
-    finishPinSetupAfterBiometric();
+  const handleCancelBiometricSetup = () => {
+    disableBiometricPayment().then(() => {
+      setBiometricEnabled(false);
+      finishPinSetupAfterBiometric();
+    });
   };
 
   const handlePressBiometricPayment = async () => {
@@ -643,12 +642,29 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             visible={stopModalVisible}
             type="two"
             icon={
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-[#FF9500]">
                 <Feather name="alert-triangle" size={30} color="#FFFFFF" />
               </View>
             }
             title="간편비밀번호 재설정을 중지하시겠습니까?"
             description="중지하면 기존 간편비밀번호가 유지됩니다."
+            confirmLabel="예"
+            cancelLabel="아니오"
+            onConfirm={handleConfirmStopFlow}
+            onCancel={() => setStopModalVisible(false)}
+            onClose={() => setStopModalVisible(false)}
+          />
+        ) : setupFlow === 'SIGNUP' ? (
+          <Modal
+            visible={stopModalVisible}
+            type="two"
+            icon={
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-[#FF9500]">
+                <Feather name="alert-triangle" size={30} color="#FFFFFF" />
+              </View>
+            }
+            title="회원가입을 중지하시겠습니까?"
+            description="종료 시 카카오톡 인증부터 다시 시작합니다."
             confirmLabel="예"
             cancelLabel="아니오"
             onConfirm={handleConfirmStopFlow}
@@ -681,6 +697,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             }
           />
         ) : null}
+
       </View>
 
       <Modal
@@ -739,6 +756,37 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           setFailModalVisible(false);
           navigation?.replace('SmsVerification', { flow: 'PIN_RESET' });
         }}
+      />
+
+      {/* 쉬운 번호 경고 모달 */}
+      <Modal
+        visible={weakPinModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-[#FF9500]">
+            <Feather name="alert-triangle" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="안전한 사용을 위해 쉬운 번호는 피해 주세요."
+        confirmLabel="확인"
+        onConfirm={() => setWeakPinModalVisible(false)}
+        onClose={() => setWeakPinModalVisible(false)}
+      />
+
+      {/* 비밀번호 불일치 모달 */}
+      <Modal
+        visible={mismatchModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="비밀번호가 일치하지 않습니다."
+        description="다시 입력해주세요."
+        confirmLabel="확인"
+        onConfirm={() => setMismatchModalVisible(false)}
+        onClose={() => setMismatchModalVisible(false)}
       />
     </PageWrap>
   );
