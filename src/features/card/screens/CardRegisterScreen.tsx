@@ -3,11 +3,8 @@ import { useState } from 'react';
 
 import type { RootStackParamList } from '../../../../App';
 import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
-import { CardApiError, registerCard } from '../api/cardApi';
-import {
-  CARD_API_BASE_URL,
-  getCardRegisterUserId,
-} from '../api/cardApiConfig';
+import { registerCard } from '../api/cardApi';
+import { getCardRegisterUserId } from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
 import { CardOcrScreen } from './CardOcrScreen';
@@ -46,6 +43,7 @@ export function CardRegisterScreen({ navigation }: Props) {
       });
     } catch (error) {
       console.warn('Failed to sync registered card to local store.', error);
+      throw error;
     }
   };
 
@@ -67,31 +65,15 @@ export function CardRegisterScreen({ navigation }: Props) {
         isDefault: false,
       });
 
-      syncRegisteredCardToStore(nextCard, values);
-
       if (isRegisteredCardUnavailable(nextCard)) {
-        navigation.navigate('CardManagementScreen');
+        setMode('failure');
         return;
       }
 
+      syncRegisteredCardToStore(nextCard, values);
       setRegisteredCard(nextCard);
       setMode('success');
-    } catch (error) {
-      if (error instanceof CardApiError) {
-        console.error('Card registration failed.', {
-          url: `${CARD_API_BASE_URL}/api/v1/cards`,
-          status: error.status,
-          code: error.code,
-          message: error.message,
-        });
-      } else {
-        console.error('Card registration request failed.', {
-          url: `${CARD_API_BASE_URL}/api/v1/cards`,
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-
+    } catch {
       setMode('failure');
     } finally {
       setIsSubmitting(false);
@@ -189,7 +171,7 @@ function maskCardNumber(cardNumber: string) {
 function isRegisteredCardUnavailable(card: RegisteredCard) {
   const status = card.status.toUpperCase();
 
-  return status !== '' && status !== 'ACTIVE';
+  return status !== 'ACTIVE';
 }
 
 export default CardRegisterScreen;
