@@ -1,10 +1,16 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
-import { Image, Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Image, Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../../../App';
-import { fetchAuthFriends, type AuthFriendResponse } from '../../auth/api/authApi';
+import {
+  deleteAuthFriend,
+  fetchAuthFriends,
+  type AuthFriendResponse,
+  updateAuthFriendFavorite,
+} from '../api/friendApi';
 import ActionMenu from '../../../shared/components/ActionMenu';
 import { Button } from '../../../shared/components/Button';
 import { EmptyState } from '../../../shared/components/EmptyState';
@@ -23,36 +29,6 @@ type FriendListEntry = AuthFriendResponse & {
 
 const friendAddIcon = require('../../../assets/images/friend-add.png');
 
-const mockFriends: FriendListEntry[] = [
-  {
-    relationId: 10001,
-    userId: 20001,
-    name: '김민수',
-    phoneLastFour: '1111',
-    phoneNumber: '010-1111-1111',
-    isFavorite: false,
-    avatarColorClassName: 'bg-[#9E42F4]',
-  },
-  {
-    relationId: 10002,
-    userId: 20002,
-    name: '이지현',
-    phoneLastFour: '2222',
-    phoneNumber: '010-2222-2222',
-    isFavorite: false,
-    avatarColorClassName: 'bg-[#F02892]',
-  },
-  {
-    relationId: 10003,
-    userId: 20003,
-    name: '박서준',
-    phoneLastFour: '3333',
-    phoneNumber: '010-3333-3333',
-    isFavorite: true,
-    avatarColorClassName: 'bg-[#08C752]',
-  },
-];
-
 const avatarColorClasses = ['bg-[#9E42F4]', 'bg-[#F02892]', 'bg-[#08C752]', 'bg-[#2FAB84]'];
 
 function toDisplayFriend(friend: AuthFriendResponse, index: number): FriendListEntry {
@@ -64,11 +40,13 @@ function toDisplayFriend(friend: AuthFriendResponse, index: number): FriendListE
 }
 
 export default function FriendListScreen({ navigation }: Props) {
-  const [friends, setFriends] = useState<FriendListEntry[]>(mockFriends);
+  const [friends, setFriends] = useState<FriendListEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [openedMenuRelationId, setOpenedMenuRelationId] = useState<number | null>(null);
   const [pendingDeleteFriend, setPendingDeleteFriend] = useState<FriendListEntry | null>(null);
+  const [isDeletingFriend, setIsDeletingFriend] = useState(false);
+  const [favoriteUpdatingRelationId, setFavoriteUpdatingRelationId] = useState<number | null>(null);
 
   const filteredFriends = useMemo(() => {
     const trimmedKeyword = searchKeyword.trim().toLowerCase();
@@ -90,49 +68,99 @@ export default function FriendListScreen({ navigation }: Props) {
     });
   }, [friends, searchKeyword]);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    const loadFriends = async () => {
-      try {
-        const nextFriends = await fetchAuthFriends();
+      console.log('[FriendListScreen] focused, loading friends');
+      setIsLoading(true);
 
-        if (isMounted && nextFriends.length > 0) {
+      fetchAuthFriends()
+        .then((nextFriends) => {
+          if (!isActive) {
+            return;
+          }
+
+          console.log('[FriendListScreen] fetched friends', {
+            count: nextFriends.length,
+            // relationIds: nextFriends.map((friend) => friend.relationId),
+          });
           setFriends(nextFriends.map(toDisplayFriend));
-        }
-      } catch (error) {
-        console.warn('Failed to fetch friends.', error);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+        })
+        .catch((error) => {
+          console.warn('[FriendListScreen] failed to fetch friends', error);
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsLoading(false);
+          }
+        });
 
-    void loadFriends();
+      return () => {
+        isActive = false;
+        console.log('[FriendListScreen] unfocused');
+      };
+    }, []),
+  );
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const handleToggleFavorite = async (friend: FriendListEntry) => {
+    const nextIsFavorite = !friend.isFavorite;
 
-  const handleToggleFavorite = (relationId: number) => {
-    setFriends((prevFriends) =>
-      prevFriends.map((friend) =>
-        friend.relationId === relationId ? { ...friend, isFavorite: !friend.isFavorite } : friend,
-      ),
-    );
-    setOpenedMenuRelationId(null);
+    try {
+      setFavoriteUpdatingRelationId(friend.relationId);
+      console.log('[FriendListScreen] toggling favorite', {
+        isFavorite: nextIsFavorite,
+        // relationId: friend.relationId,
+        // userId: friend.userId,
+      });
+      await updateAuthFriendFavorite(friend.userId, nextIsFavorite);
+      setFriends((prevFriends) =>
+        prevFriends.map((item) =>
+          item.relationId === friend.relationId ? { ...item, isFavorite: nextIsFavorite } : item,
+        ),
+      );
+      setOpenedMenuRelationId(null);
+      console.log('[FriendListScreen] toggled favorite', {
+        isFavorite: nextIsFavorite,
+        // relationId: friend.relationId,
+        // userId: friend.userId,
+      });
+    } catch (error) {
+      console.warn('[FriendListScreen] failed to toggle favorite', error);
+      Alert.alert(
+        '즐겨찾기 변경 실패',
+        error instanceof Error ? error.message : '즐겨찾기 변경 중 문제가 발생했습니다.',
+      );
+    } finally {
+      setFavoriteUpdatingRelationId(null);
+    }
   };
 
   const handleToggleMoreMenu = (relationId: number) => {
     setOpenedMenuRelationId((prevRelationId) => (prevRelationId === relationId ? null : relationId));
   };
 
-  const handleDeleteFriend = (relationId: number) => {
-    setFriends((prevFriends) => prevFriends.filter((friend) => friend.relationId !== relationId));
-    setOpenedMenuRelationId(null);
-    setPendingDeleteFriend(null);
+  const handleDeleteFriend = async (friend: FriendListEntry) => {
+    try {
+      setIsDeletingFriend(true);
+      console.log('[FriendListScreen] deleting friend', {
+        // relationId: friend.relationId,
+        // userId: friend.userId,
+      });
+      await deleteAuthFriend(friend.userId);
+      setFriends((prevFriends) => prevFriends.filter((item) => item.relationId !== friend.relationId));
+      setOpenedMenuRelationId(null);
+      setPendingDeleteFriend(null);
+      console.log('[FriendListScreen] deleted friend', {
+        // relationId: friend.relationId,
+        // userId: friend.userId,
+      });
+    } catch (error) {
+      console.warn('[FriendListScreen] failed to delete friend', error);
+      Alert.alert('친구 삭제 실패', error instanceof Error ? error.message : '친구 삭제 중 문제가 발생했습니다.');
+    } finally {
+      setIsDeletingFriend(false);
+    }
   };
 
   const handleOpenDeleteModal = (friend: FriendListEntry) => {
@@ -190,10 +218,10 @@ export default function FriendListScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View className="flex-1 px-6 pt-5">
+          <View className="flex-1 px-6 pb-28 pt-5">
             <Text className="font-pretendard text-heading-3 text-neutral-black1">친구 {friends.length}</Text>
 
-            <View className="mt-4 gap-4 pb-36">
+            <View className="mt-4 gap-4">
               {isLoading ? (
                 <View className="rounded-[24px] bg-neutral-grey2 px-6 py-8">
                   <Text className="text-center font-pretendard text-large-regular text-neutral-black2">
@@ -213,13 +241,12 @@ export default function FriendListScreen({ navigation }: Props) {
                     <FriendListItem
                       name={friend.name}
                       initial={friend.name.slice(0, 1)}
-                      phoneNumber={friend.phoneNumber}
+                      phoneSuffix={friend.phoneLastFour}
                       avatarColorClassName={friend.avatarColorClassName}
                       containerClassName="flex-row items-center rounded-[24px] bg-neutral-grey2 px-5 py-6"
                       avatarWrapperClassName="mr-4"
                       contentClassName="min-w-0 flex-1"
                       nameClassName="font-pretendard text-heading-3 text-neutral-black1"
-                      phoneClassName="mt-2 font-pretendard text-large-regular text-neutral-black2"
                       nameRight={
                         friend.isFavorite ? (
                           <View className="ml-2">
@@ -248,7 +275,13 @@ export default function FriendListScreen({ navigation }: Props) {
                           key: friend.isFavorite ? 'unfavorite' : 'favorite',
                           label: friend.isFavorite ? '즐겨찾기 해제' : '즐겨찾기',
                           iconName: 'star',
-                          onPress: () => handleToggleFavorite(friend.relationId),
+                          onPress: () => {
+                            if (favoriteUpdatingRelationId === friend.relationId) {
+                              return;
+                            }
+
+                            void handleToggleFavorite(friend);
+                          },
                         },
                         {
                           key: 'delete',
@@ -274,10 +307,7 @@ export default function FriendListScreen({ navigation }: Props) {
         onRequestClose={() => setPendingDeleteFriend(null)}
       >
         <View className="flex-1 items-center justify-center bg-neutral-black3 px-8">
-          <Pressable
-            className="absolute inset-0"
-            onPress={() => setPendingDeleteFriend(null)}
-          />
+          <Pressable className="absolute inset-0" onPress={() => setPendingDeleteFriend(null)} />
 
           <View className="w-full max-w-[520px] rounded-[32px] bg-neutral-white px-8 pb-8 pt-10">
             <View className="items-center">
@@ -294,18 +324,16 @@ export default function FriendListScreen({ navigation }: Props) {
 
             <View className="mt-10 gap-4">
               <Button
-                label="삭제하기"
+                label={isDeletingFriend ? '삭제 중...' : '삭제하기'}
                 size="large"
-                onPress={() =>
-                  pendingDeleteFriend
-                    ? handleDeleteFriend(pendingDeleteFriend.relationId)
-                    : undefined
-                }
+                disabled={isDeletingFriend}
+                onPress={() => (pendingDeleteFriend ? void handleDeleteFriend(pendingDeleteFriend) : undefined)}
               />
               <Button
                 label="닫기"
                 variant="secondary"
                 size="large"
+                disabled={isDeletingFriend}
                 onPress={() => setPendingDeleteFriend(null)}
               />
             </View>
