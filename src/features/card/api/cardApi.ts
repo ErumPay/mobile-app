@@ -14,9 +14,9 @@ export class CardApiError extends Error {
   }
 }
 
-function getCardUserHeaders() {
+function getCardUserHeaders(userId: number) {
   return {
-    'X-User-Id': String(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2'),
+    'X-User-Id': String(userId),
   };
 }
 
@@ -28,7 +28,7 @@ export async function registerCard(
     {
       method: 'POST',
       headers: {
-        ...getCardUserHeaders(),
+        ...getCardUserHeaders(payload.userId),
         'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify(payload),

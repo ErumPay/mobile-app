@@ -7,9 +7,5 @@ export const CARD_OCR_BASE_URL =
 export const CARD_API_TIMEOUT_MS = 15000;
 
 export function getCardRegisterUserId(): number {
-  if (__DEV__) {
-    return Number(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2');
-  }
-
   throw new Error('카드 등록 사용자 정보 연동이 필요합니다.');
 }
