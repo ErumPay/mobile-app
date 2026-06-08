@@ -4,7 +4,7 @@ const KAKAO_REST_API_KEY = '3338ab0088875b9e2ba0e4a620d33ae0';
 const KAKAO_REDIRECT_URI = 'http://localhost:19000/auth/callback';
 
 /** WebView에서 열 카카오 인가 URL */
-export const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&scope=name,phone_number`;
+export const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&scope=name,phone_number,birthday,birthyear`;
 
 export { KAKAO_REDIRECT_URI };
 

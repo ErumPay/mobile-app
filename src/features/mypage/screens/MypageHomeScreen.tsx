@@ -17,6 +17,7 @@ import {
   logoutUser,
   withdrawUser,
 } from '../api/mypageApi';
+import { clearAuthSession } from '../../auth/api/authApi';
 import type { UserProfile } from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MypageHomeScreen'>;
@@ -111,6 +112,7 @@ export function MypageHomeScreen({ navigation }: Props) {
 
     try {
       await logoutUser();
+      await clearAuthSession();
       setIsLogoutVisible(false);
       navigation.reset({
         index: 0,
@@ -342,7 +344,8 @@ export function MypageHomeScreen({ navigation }: Props) {
         icon={<ModalIcon name="check" tone="success" />}
         title="회원 탈퇴가 완료되었습니다."
         confirmLabel="확인"
-        onConfirm={() => {
+        onConfirm={async () => {
+          await clearAuthSession();
           setIsWithdrawCompleteVisible(false);
           navigation.reset({
             index: 0,

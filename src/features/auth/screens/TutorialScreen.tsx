@@ -6,7 +6,8 @@
  * Note: 4페이지 캐러셀, 마지막 페이지에서 카카오 로그인 (WebView 방식)
  ******************************************************************************/
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import {
   Image,
   Modal as RNModal,
@@ -30,6 +31,7 @@ import {
   KAKAO_REDIRECT_URI,
   processKakaoAuthCode,
 } from '../api/kakaoAuth';
+import { useIsFocused } from '@react-navigation/native';
 import { setAuthSession } from '../api/authApi';
 
 type TutorialSlide = {
@@ -114,6 +116,15 @@ export default function TutorialScreen({ navigation }: Props) {
   const [showKakaoWebView, setShowKakaoWebView] = useState(false);
   const authFlowRef = useRef<'signup' | 'login'>('signup');
   const isProcessingRef = useRef(false);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      setIsLoggingIn(false);
+      setShowKakaoWebView(false);
+      isProcessingRef.current = false;
+    }
+  }, [isFocused]);
   const [alertModal, setAlertModal] = useState<{
     visible: boolean;
     title: string;
@@ -152,7 +163,7 @@ export default function TutorialScreen({ navigation }: Props) {
       }
 
       if (code) {
-        processLogin(code);
+        setTimeout(() => processLogin(code), 500);
       } else {
         isProcessingRef.current = false;
       }
@@ -175,7 +186,7 @@ export default function TutorialScreen({ navigation }: Props) {
         throw new Error('로그인 사용자 정보를 확인할 수 없습니다.');
       }
 
-      setAuthSession(result.accessToken, result.refreshToken, result.userId);
+      await setAuthSession(result.accessToken, result.refreshToken, result.userId);
       const flow = authFlowRef.current;
       const isSignupIncomplete = result.newUser || result.status === 'PENDING';
       if (flow === 'signup') {

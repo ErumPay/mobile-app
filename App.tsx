@@ -1,6 +1,6 @@
 import './global.css';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
@@ -39,6 +39,7 @@ import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistorySc
 import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
 import NotificationScreen from './src/features/notification/screens/NotificationScreen';
 import FriendListScreen from './src/features/friend/screens/FriendListScreen';
+import { loadAuthSession } from './src/features/auth/api/authApi';
 
 export type RootStackParamList = {
   Tutorial: undefined;
@@ -125,6 +126,17 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const { width } = useWindowDimensions();
   const hasShownMobileOnlyAlert = useRef(false);
+  const [isReady, setIsReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Tutorial');
+
+  useEffect(() => {
+    loadAuthSession().then((hasSession) => {
+      if (hasSession) {
+        setInitialRoute('Main');
+      }
+      setIsReady(true);
+    });
+  }, []);
 
   useEffect(() => {
     if (width < 768) {
@@ -141,11 +153,13 @@ export default function App() {
     Alert.alert('안내', '모바일로 이용해주세요.');
   }, [width]);
 
+  if (!isReady) return null;
+
   return (
     <SafeAreaProvider>
       <View className="flex-1 bg-neutral-white">
         <NavigationContainer linking={linking}>
-          <Stack.Navigator initialRouteName="Tutorial" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
