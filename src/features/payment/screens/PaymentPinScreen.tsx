@@ -447,10 +447,8 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         setBiometricEnabled(true);
         finishPinSetupAfterBiometric();
       })
-      .catch((error) => {
-        setSetupErrorMessage(
-          error instanceof Error ? error.message : '생체 인증 등록에 실패했습니다.',
-        );
+      .catch(() => {
+        finishPinSetupAfterBiometric();
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -458,10 +456,12 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   };
 
   const handleCancelBiometricSetup = () => {
-    disableBiometricPayment().then(() => {
-      setBiometricEnabled(false);
-      finishPinSetupAfterBiometric();
-    });
+    disableBiometricPayment()
+      .catch(() => {})
+      .finally(() => {
+        setBiometricEnabled(false);
+        finishPinSetupAfterBiometric();
+      });
   };
 
   const handlePressBiometricPayment = async () => {
