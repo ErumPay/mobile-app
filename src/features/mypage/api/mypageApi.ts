@@ -601,6 +601,10 @@ function toNumberValue(value: unknown) {
 }
 
 function toOptionalNumberValue(value: unknown) {
+  if (value == null || String(value).trim() === '') {
+    return undefined;
+  }
+
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : undefined;
 }
