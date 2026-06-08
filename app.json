@@ -17,11 +17,19 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "package": "com.choboreum.erumpay"
     },
     "extra": {
       "router": {
         "root": "app"
+      },
+      "eas": {
+        "projectId": "9d6a28d3-2dcd-43bf-ac06-bc735c6aa5db"
       }
     },
     "web": {
