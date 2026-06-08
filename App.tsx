@@ -44,7 +44,7 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Main: { userId?: number | string } | undefined;
   Guide: undefined;
-  TermsAgreement: undefined;
+  TermsAgreement: { accessToken: string };
   SmsVerification: { flow?: 'SIGNUP' | 'PIN_RESET' } | undefined;
   SignupComplete: undefined;
   QrScan: undefined;
