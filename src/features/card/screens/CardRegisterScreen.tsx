@@ -1,9 +1,8 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 
-import { CardOcrScreen } from './CardOcrScreen';
-import { CardRegisterFormScreen } from './CardRegisterFormScreen';
-import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
-import { CardRegisterResultScreen } from './CardRegisterResultScreen';
+import type { RootStackParamList } from '../../../../App';
+import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
 import { CardApiError, registerCard } from '../api/cardApi';
 import {
   CARD_API_BASE_URL,
@@ -11,11 +10,10 @@ import {
 } from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
-
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../../../App';
-
-import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
+import { CardOcrScreen } from './CardOcrScreen';
+import { CardRegisterFormScreen } from './CardRegisterFormScreen';
+import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
+import { CardRegisterResultScreen } from './CardRegisterResultScreen';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
@@ -23,13 +21,33 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
 export function CardRegisterScreen({ navigation }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
   const [ocrInitialValues, setOcrInitialValues] =
-  useState<Partial<CardRegisterFormValues> | null>(null);
+    useState<Partial<CardRegisterFormValues> | null>(null);
   const [registeredCard, setRegisteredCard] = useState<RegisteredCard | null>(
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addCard = useManagedCardsStore((state) => state.addCard);
+
+  const syncRegisteredCardToStore = (
+    nextCard: RegisteredCard,
+    values: CardRegisterFormValues,
+  ) => {
+    try {
+      addCard({
+        id: String(nextCard.cardId),
+        cardProductId: nextCard.cardProductId,
+        issuer: nextCard.cardCompany,
+        name: nextCard.cardName,
+        cardNumber: nextCard.maskedNumber || maskCardNumber(values.cardNumber),
+        alias: nextCard.cardAlias ?? undefined,
+        isDefault: nextCard.isDefault,
+        disabled: isRegisteredCardUnavailable(nextCard),
+      });
+    } catch (error) {
+      console.warn('Failed to sync registered card to local store.', error);
+    }
+  };
 
   const handleSubmitManualCard = async (values: CardRegisterFormValues) => {
     if (isSubmitting) {
@@ -39,7 +57,7 @@ export function CardRegisterScreen({ navigation }: Props) {
     setIsSubmitting(true);
 
     try {
-      const registeredCard = await registerCard({
+      const nextCard = await registerCard({
         userId: getCardRegisterUserId(),
         cardNumber: onlyDigits(values.cardNumber),
         expiryYm: toExpiryYm(values.expiry),
@@ -49,21 +67,14 @@ export function CardRegisterScreen({ navigation }: Props) {
         isDefault: false,
       });
 
-      try {
-        addCard({
-          id: String(registeredCard.cardId),
-          issuer: registeredCard.cardCompany,
-          name: registeredCard.cardName,
-          cardNumber:
-            registeredCard.maskedNumber || maskCardNumber(values.cardNumber),
-          alias: registeredCard.cardAlias ?? undefined,
-          isDefault: registeredCard.isDefault,
-        });
-      } catch (error) {
-        console.warn('Failed to sync registered card to local store.', error);
+      syncRegisteredCardToStore(nextCard, values);
+
+      if (isRegisteredCardUnavailable(nextCard)) {
+        navigation.navigate('CardManagementScreen');
+        return;
       }
 
-      setRegisteredCard(registeredCard);
+      setRegisteredCard(nextCard);
       setMode('success');
     } catch (error) {
       if (error instanceof CardApiError) {
@@ -80,6 +91,7 @@ export function CardRegisterScreen({ navigation }: Props) {
           message: error instanceof Error ? error.message : String(error),
         });
       }
+
       setMode('failure');
     } finally {
       setIsSubmitting(false);
@@ -100,10 +112,8 @@ export function CardRegisterScreen({ navigation }: Props) {
   };
 
   const handleGoCardManagement = () => {
-  navigation.navigate('CardManagementScreen');
-};
-
-  
+    navigation.navigate('CardManagementScreen');
+  };
 
   if (mode === 'ocr') {
     return (
@@ -174,6 +184,12 @@ function maskCardNumber(cardNumber: string) {
   const last4 = digits.slice(-4) || '****';
 
   return `${first4}-****-****-${last4}`;
+}
+
+function isRegisteredCardUnavailable(card: RegisteredCard) {
+  const status = card.status.toUpperCase();
+
+  return status !== '' && status !== 'ACTIVE';
 }
 
 export default CardRegisterScreen;
