@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { Image, Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -68,6 +68,7 @@ const NotificationScreen = ({ navigation }: Props) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [readingNotificationId, setReadingNotificationId] = useState<number | null>(null);
+  const readingNotificationIdsRef = useRef<Set<number>>(new Set());
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
 
   const filteredNotifications =
@@ -75,44 +76,44 @@ const NotificationScreen = ({ navigation }: Props) => {
       ? notifications
       : notifications.filter((item) => getNotificationCategory(item.type) === activeType);
 
+  const handleLoadNotifications = useCallback(async (isActive: () => boolean = () => true) => {
+    setIsLoading(true);
+    setHasLoadError(false);
+
+    try {
+      const response = await fetchNotifications({ page: 0, size: 20 });
+
+      if (!isActive()) {
+        return;
+      }
+
+      setNotifications(response.items);
+    } catch (error) {
+      console.warn('[NotificationScreen] failed to fetch notifications', error);
+
+      if (isActive()) {
+        setNotifications([]);
+        setHasLoadError(true);
+      }
+    } finally {
+      if (isActive()) {
+        setIsLoading(false);
+      }
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
       console.log('[NotificationScreen] focused, loading notifications');
-      setIsLoading(true);
-      setHasLoadError(false);
-
-      fetchNotifications({ page: 0, size: 20 })
-        .then((response) => {
-          if (!isActive) {
-            return;
-          }
-
-          console.log('[NotificationScreen] fetched notifications', {
-            count: response.items.length,
-            totalCount: response.totalCount,
-          });
-          setNotifications(response.items);
-        })
-        .catch((error) => {
-          console.warn('[NotificationScreen] failed to fetch notifications', error);
-          if (isActive) {
-            setNotifications([]);
-            setHasLoadError(true);
-          }
-        })
-        .finally(() => {
-          if (isActive) {
-            setIsLoading(false);
-          }
-        });
+      void handleLoadNotifications(() => isActive);
 
       return () => {
         isActive = false;
         console.log('[NotificationScreen] unfocused');
       };
-    }, []),
+    }, [handleLoadNotifications]),
   );
 
   const handleGoBack = () => {
@@ -141,17 +142,25 @@ const NotificationScreen = ({ navigation }: Props) => {
   };
 
   const handlePressNotification = async (notification: NotificationItem) => {
-    if (notification.isRead || readingNotificationId === notification.notificationId) {
+    if (notification.isRead) {
       return;
     }
 
+    const notificationId = notification.notificationId;
+
+    if (readingNotificationIdsRef.current.has(notificationId)) {
+      return;
+    }
+
+    readingNotificationIdsRef.current.add(notificationId);
+
     try {
-      setReadingNotificationId(notification.notificationId);
-      const result = await readNotification(notification.notificationId);
+      setReadingNotificationId(notificationId);
+      const result = await readNotification(notificationId);
 
       setNotifications((prevNotifications) =>
         prevNotifications.map((item) =>
-          item.notificationId === notification.notificationId
+          item.notificationId === notificationId
             ? { ...item, isRead: result.isRead, readAt: result.readAt }
             : item,
         ),
@@ -159,7 +168,10 @@ const NotificationScreen = ({ navigation }: Props) => {
     } catch (error) {
       console.warn('[NotificationScreen] failed to read notification', error);
     } finally {
-      setReadingNotificationId(null);
+      readingNotificationIdsRef.current.delete(notificationId);
+      setReadingNotificationId((prevNotificationId) =>
+        prevNotificationId === notificationId ? null : prevNotificationId,
+      );
     }
   };
 
@@ -218,6 +230,8 @@ const NotificationScreen = ({ navigation }: Props) => {
             <EmptyState
               title={hasLoadError ? '알림을 불러오지 못했습니다' : '알림이 없습니다'}
               description={hasLoadError ? '잠시 후 다시 시도해주세요.' : '새 알림이 오면 이곳에 표시됩니다.'}
+              actionLabel={hasLoadError ? '다시 시도' : undefined}
+              onPressAction={hasLoadError ? () => void handleLoadNotifications() : undefined}
             />
           )}
         </View>

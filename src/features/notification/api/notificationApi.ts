@@ -43,6 +43,8 @@ type NotificationPageResponse = {
   last: boolean;
 };
 
+const NOTIFICATION_SCHEMA_SAMPLE_SIZE = 10;
+
 function isNotificationReadResponse(value: unknown): value is NotificationReadResponse {
   if (!value || typeof value !== 'object') {
     return false;
@@ -83,6 +85,9 @@ function isNotificationPageResponse(value: unknown): value is NotificationPageRe
   }
 
   const record = value as Record<string, unknown>;
+  const contentSample = Array.isArray(record.content)
+    ? record.content.slice(0, NOTIFICATION_SCHEMA_SAMPLE_SIZE)
+    : null;
 
   return (
     typeof record.page === 'number' &&
@@ -92,11 +97,16 @@ function isNotificationPageResponse(value: unknown): value is NotificationPageRe
     typeof record.first === 'boolean' &&
     typeof record.last === 'boolean' &&
     Array.isArray(record.content) &&
-    record.content.every(isNotificationItem)
+    contentSample !== null &&
+    contentSample.every(isNotificationItem)
   );
 }
 
 export async function fetchNotifications(params: FetchNotificationsParams): Promise<NotificationResponse> {
+  if (params.page < 0 || params.size <= 0 || params.size > 100) {
+    throw new Error('Invalid pagination parameters');
+  }
+
   const accessToken = await getAccessTokenForAuthRequest(undefined, {
     useExistingDevUser: true,
   });
@@ -113,21 +123,11 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
 
   const requestUrl = `${NOTIFICATION_API_BASE_URL}/api/v1/notifications?${queryEntries.join('&')}`;
 
-  console.log('[fetchNotifications] request start', {
-    url: requestUrl,
-    hasAccessToken: Boolean(accessToken),
-  });
-
   const response = await fetchAuth(requestUrl, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'X-User-Id': userId,
     },
-  });
-
-  console.log('[fetchNotifications] response received', {
-    status: response.status,
-    ok: response.ok,
   });
 
   if (!response.ok) {
@@ -137,7 +137,6 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
   }
 
   const data: unknown = await response.json();
-  console.log('[fetchNotifications] response body', data);
 
   if (!isNotificationPageResponse(data)) {
     const summary =
@@ -156,23 +155,12 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
     items: data.content,
   };
 
-  console.log('[fetchNotifications] response body parsed', {
-    totalCount: normalizedResponse.totalCount,
-    itemCount: normalizedResponse.items.length,
-    page: normalizedResponse.page,
-    size: normalizedResponse.size,
-  });
-
   return normalizedResponse;
 }
 
 export async function readNotification(notificationId: number): Promise<NotificationReadResponse> {
   const userId = getAuthDevUserId();
   const requestUrl = `${NOTIFICATION_API_BASE_URL}/api/v1/notifications/${notificationId}/read`;
-
-  console.log('[readNotification] request start', {
-    url: requestUrl,
-  });
 
   const response = await fetchAuth(requestUrl, {
     method: 'PATCH',
@@ -182,11 +170,6 @@ export async function readNotification(notificationId: number): Promise<Notifica
     },
   });
 
-  console.log('[readNotification] response received', {
-    status: response.status,
-    ok: response.ok,
-  });
-
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     console.warn('[readNotification] request failed', error);
@@ -194,7 +177,6 @@ export async function readNotification(notificationId: number): Promise<Notifica
   }
 
   const data: unknown = await response.json();
-  console.log('[readNotification] response body', data);
 
   if (!isNotificationReadResponse(data)) {
     const summary =
