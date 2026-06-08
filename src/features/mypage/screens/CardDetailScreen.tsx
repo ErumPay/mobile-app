@@ -114,18 +114,24 @@ export function CardDetailScreen({ navigation, route }: Props) {
     }
 
     let isActive = true;
-
     setIsLoading(true);
     setHasLoadError(false);
-    Promise.all([
+
+    Promise.allSettled([
       fetchCardBenefits(card.id),
       fetchPaymentHistoriesByCard(card.id),
     ])
-      .then(([nextBenefits, nextPayments]) => {
-        if (isActive) {
-          setCardBenefits(nextBenefits);
-          setCardPayments(nextPayments);
+      .then(([benefitsResult, paymentsResult]) => {
+        if (!isActive) {
+          return;
         }
+
+        setCardBenefits(
+          benefitsResult.status === 'fulfilled' ? benefitsResult.value : [],
+        );
+        setCardPayments(
+          paymentsResult.status === 'fulfilled' ? paymentsResult.value : [],
+        );
       })
       .catch((error) => {
         console.warn('Failed to fetch card details.', error);

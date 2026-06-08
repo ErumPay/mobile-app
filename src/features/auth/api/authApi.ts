@@ -1,4 +1,4 @@
-import { AUTH_API_BASE_URL, AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
+import { AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
 
 export type SendSmsResponse = {
   verificationId: number;
@@ -19,14 +19,6 @@ export type ResetPinResponse = {
   message: string;
 };
 
-export type AuthFriendResponse = {
-  relationId: number;
-  userId: number;
-  name: string;
-  phoneLastFour: string;
-  isFavorite: boolean;
-};
-
 type DevUserResponse = {
   userId: string;
   kakaoOauthId: string;
@@ -40,7 +32,7 @@ type DevTokenResponse = {
   refreshToken: string;
 };
 
-type AuthRequestOptions = {
+export type AuthRequestOptions = {
   useExistingDevUser?: boolean;
 };
 
@@ -62,43 +54,41 @@ export class AuthApiError extends Error {
 }
 
 export type AgreeTermsResponse = {
-  message: string;
-};
+    message: string;                                                                          
+  };
+                                                                                              
+  export async function agreeTerms(
+    accessToken: string,                                                                    
+    serviceTermsAgreed: boolean,
+    privacyTermsAgreed: boolean,
+    marketingTermsAgreed: boolean,
+  ): Promise<AgreeTermsResponse> {                                                            
+    const response = await fetchAuth(`${AUTH_API_URL}/terms/agree`, {
+      method: 'POST',                                                                         
+      headers: {  
+        'Content-Type': 'application/json',                                                 
+        Authorization: `Bearer ${accessToken}`,
+      },                                                                                      
+      body: JSON.stringify({
+        serviceTermsAgreed,                                                                   
+        privacyTermsAgreed,
+        marketingTermsAgreed,                                                               
+      }),
+    });
 
-export async function agreeTerms(
-  accessToken: string,
-  serviceTermsAgreed: boolean,
-  privacyTermsAgreed: boolean,
-  marketingTermsAgreed: boolean,
-): Promise<AgreeTermsResponse> {
-  const response = await fetchAuth(`${AUTH_API_URL}/terms/agree`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      serviceTermsAgreed,
-      privacyTermsAgreed,
-      marketingTermsAgreed,
-    }),
-  });
+    if (!response.ok) {                                                                       
+      const error = await response.json().catch(() => null);
+      throw new AuthApiError(                                                                 
+        error?.message ?? '약관 동의에 실패했습니다.',
+        response.status,                                                                    
+      );
+    }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new AuthApiError(
-      error?.message ?? '약관 동의에 실패했습니다.',
-      response.status,
-    );
+    return response.json();                                                                   
   }
-
-  return response.json();
-}
-
-export async function sendSmsCode(
-  phoneNumber: string,
-  options?: AuthRequestOptions,
-): Promise<SendSmsResponse> {
+                                                                                              
+  export async function sendSmsCode(phoneNumber: string, options?: AuthRequestOptions):
+  Promise<SendSmsResponse> {
   const accessToken = await getAccessTokenForAuthRequest(phoneNumber, options);
   const response = await fetchAuth(`${AUTH_API_URL}/sms/send`, {
     method: 'POST',
@@ -111,19 +101,13 @@ export async function sendSmsCode(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new AuthApiError(
-      error?.message ?? 'SMS 인증번호 발송에 실패했습니다.',
-      response.status,
-    );
+    throw new AuthApiError(error?.message ?? 'SMS 인증번호 발송에 실패했습니다.', response.status);
   }
 
   return response.json();
 }
 
-export async function verifySmsCode(
-  verificationId: number,
-  code: string,
-): Promise<VerifySmsResponse> {
+export async function verifySmsCode(verificationId: number, code: string): Promise<VerifySmsResponse> {
   const response = await fetchAuth(`${AUTH_API_URL}/sms/verify`, {
     method: 'POST',
     headers: {
@@ -134,19 +118,13 @@ export async function verifySmsCode(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new AuthApiError(
-      error?.message ?? '인증번호 확인에 실패했습니다.',
-      response.status,
-    );
+    throw new AuthApiError(error?.message ?? '인증번호 확인에 실패했습니다.', response.status);
   }
 
   return response.json();
 }
 
-export async function setupPin(
-  pin: string,
-  pinConfirm: string,
-): Promise<SetupPinResponse> {
+export async function setupPin(pin: string, pinConfirm: string): Promise<SetupPinResponse> {
   const accessToken = await getAccessTokenForAuthRequest();
   const response = await fetchAuth(`${AUTH_API_URL}/pin/setup`, {
     method: 'POST',
@@ -159,10 +137,7 @@ export async function setupPin(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new AuthApiError(
-      error?.message ?? 'PIN 설정에 실패했습니다.',
-      response.status,
-    );
+    throw new AuthApiError(error?.message ?? 'PIN 설정에 실패했습니다.', response.status);
   }
 
   return response.json();
@@ -187,38 +162,13 @@ export async function resetPin(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new AuthApiError(
-      error?.message ?? 'PIN 재설정에 실패했습니다.',
-      response.status,
-    );
+    throw new AuthApiError(error?.message ?? 'PIN 재설정에 실패했습니다.', response.status);
   }
 
   return response.json();
 }
 
-export async function fetchAuthFriends(): Promise<AuthFriendResponse[]> {
-  const accessToken = await getAccessTokenForAuthRequest(undefined, {
-    useExistingDevUser: true,
-  });
-  const response = await fetchAuth(`${AUTH_API_BASE_URL}/api/v1/friends`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new AuthApiError(
-      error?.message ?? '친구 목록을 불러오지 못했습니다.',
-      response.status,
-    );
-  }
-
-  const data = await response.json();
-  return Array.isArray(data.friends) ? data.friends : [];
-}
-
-async function fetchAuth(input: RequestInfo, init?: RequestInit) {
+export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -249,10 +199,13 @@ async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   }
 }
 
-async function getAccessTokenForAuthRequest(
-  phoneNumber?: string,
-  options?: AuthRequestOptions,
-) {
+export async function getAccessTokenForAuthRequest(phoneNumber?: string, options?: AuthRequestOptions) {
+  const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;
+
+  if (__DEV__ && configuredToken) {
+    return configuredToken;
+  }
+
   if (__DEV__ && options?.useExistingDevUser) {
     authSession = await issueDevToken(getAuthDevUserId());
     return authSession.accessToken;

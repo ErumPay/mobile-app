@@ -37,6 +37,7 @@ import PaymentDetailScreen from './src/features/mypage/screens/PaymentDetailScre
 import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistoryScreen';
 import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
 import NotificationScreen from './src/features/notification/screens/NotificationScreen';
+import FriendListScreen from './src/features/friend/screens/FriendListScreen';
 
 export type RootStackParamList = {
   Tutorial: undefined;
@@ -81,6 +82,7 @@ export type RootStackParamList = {
   PaymentHistoryScreen: undefined;
   PaymentDetailScreen: { paymentId: string };
   NotificationScreen: undefined;
+  FriendListScreen: undefined;
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
@@ -110,6 +112,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentHistoryScreen: 'mypage/payments',
       PaymentDetailScreen: 'mypage/payments/:paymentId',
       NotificationScreen: 'notification',
+      FriendListScreen: 'friend/list',
     },
   },
 };
@@ -139,10 +142,7 @@ export default function App() {
     <SafeAreaProvider>
       <View className="flex-1 bg-neutral-white">
         <NavigationContainer linking={linking}>
-          <Stack.Navigator
-            initialRouteName="Tutorial"
-            screenOptions={{ headerShown: false }}
-          >
+          <Stack.Navigator initialRouteName="Tutorial" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Tutorial" component={TutorialScreen} />
             <Stack.Screen name="Main" component={MainScreen} />
             <Stack.Screen name="Guide" component={GuideScreen} />
@@ -167,6 +167,7 @@ export default function App() {
             <Stack.Screen name="CardDetailScreen" component={CardDetailScreen} />
 
             <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
+            <Stack.Screen name="FriendListScreen" component={FriendListScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

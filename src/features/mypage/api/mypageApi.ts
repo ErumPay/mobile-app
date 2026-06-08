@@ -117,7 +117,7 @@ export async function checkWithdrawPendingTransactions(): Promise<{
 
 export async function fetchManagedCards(): Promise<ManagedCard[]> {
   const response = await fetchWithTimeout(
-    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards`,
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards?userId=${getMypageUserId()}`,
     {
       headers: getMypageUserHeaders(),
     },
@@ -384,6 +384,9 @@ function normalizeManagedCard(
 
   return {
     id,
+    cardProductId: toNumberValue(
+      response.cardProductId ?? response.card_product_id,
+    ),
     issuer,
     title: `${issuer || '카드'} (${last4 || '****'})`,
     name: name || '등록 카드',
