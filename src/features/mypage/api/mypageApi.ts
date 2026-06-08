@@ -194,7 +194,7 @@ export async function fetchCardBenefits(cardId: string): Promise<CardBenefit[]> 
   const data = await response.json();
   const items = Array.isArray(data) ? data : [];
 
-  return items.map(normalizeCardBenefit);
+  return dedupeCardBenefits(items.map(normalizeCardBenefit));
 }
 
 type FetchPaymentHistoriesParams = {
@@ -384,7 +384,7 @@ function normalizeManagedCard(
 
   return {
     id,
-    cardProductId: toNumberValue(
+    cardProductId: toOptionalNumberValue(
       response.cardProductId ?? response.card_product_id,
     ),
     issuer,
@@ -396,7 +396,7 @@ function normalizeManagedCard(
     registeredAt: formatDateTimeToDate(registeredAt),
     colorClassName: CARD_COLORS[index % CARD_COLORS.length],
     isDefault: Boolean(response.isDefault ?? response.is_default),
-    disabled: status !== '' && status !== 'ACTIVE',
+    disabled: status !== 'ACTIVE',
     hasPayments: false,
   };
 }
@@ -411,7 +411,10 @@ function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
   const brandNames = Array.isArray(response.brandNames)
     ? response.brandNames.map(String).join(', ')
     : '';
-  const descriptionBody = removeFirstBenefitSentence(benefitDesc, title);
+  const descriptionBody = removeDuplicateBenefitLines(
+    removeFirstBenefitSentence(benefitDesc, title),
+    title,
+  );
   const description = [descriptionBody, brandNames ? `대상 ${brandNames}` : '']
     .filter(Boolean)
     .join('\n');
@@ -420,6 +423,25 @@ function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
     title,
     description: description || '혜택 정보가 없습니다.',
   };
+}
+
+function dedupeCardBenefits(benefits: CardBenefit[]) {
+  const seen = new Set<string>();
+
+  return benefits.filter((benefit) => {
+    const key = normalizeBenefitKey(benefit.title);
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeBenefitKey(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 function getFirstBenefitSentence(description: string) {
@@ -445,6 +467,23 @@ function removeFirstBenefitSentence(description: string, title: string) {
   return normalized.startsWith(title)
     ? normalized.slice(title.length).trim()
     : normalized;
+}
+
+function removeDuplicateBenefitLines(description: string, title: string) {
+  const seen = new Set<string>();
+
+  return description
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line || line === title || seen.has(line)) {
+        return false;
+      }
+
+      seen.add(line);
+      return true;
+    })
+    .join('\n');
 }
 
 function normalizePaymentHistoryItem(
@@ -559,6 +598,11 @@ function toStringValue(value: unknown) {
 function toNumberValue(value: unknown) {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function toOptionalNumberValue(value: unknown) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
 function formatCurrency(value: number) {
