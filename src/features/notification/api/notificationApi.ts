@@ -1,5 +1,9 @@
-import { getAuthDevUserId } from '../../auth/api/authApiConfig';
-import { AuthApiError, fetchAuth, getAccessTokenForAuthRequest } from '../../auth/api/authApi';
+import {
+  AuthApiError,
+  fetchAuth,
+  getAccessTokenForAuthRequest,
+  getAuthSessionUserId,
+} from '../../auth/api/authApi';
 import { NOTIFICATION_API_BASE_URL } from './notificationApiConfig';
 
 export type NotificationItem = {
@@ -44,6 +48,16 @@ type NotificationPageResponse = {
 };
 
 const NOTIFICATION_SCHEMA_SAMPLE_SIZE = 10;
+
+function getNotificationUserId() {
+  const sessionUserId = getAuthSessionUserId();
+
+  if (sessionUserId == null) {
+    throw new Error('로그인 사용자 정보가 없습니다.');
+  }
+
+  return String(sessionUserId);
+}
 
 function isNotificationReadResponse(value: unknown): value is NotificationReadResponse {
   if (!value || typeof value !== 'object') {
@@ -107,10 +121,8 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
     throw new Error('Invalid pagination parameters');
   }
 
-  const accessToken = await getAccessTokenForAuthRequest(undefined, {
-    useExistingDevUser: true,
-  });
-  const userId = getAuthDevUserId();
+  const accessToken = await getAccessTokenForAuthRequest();
+  const userId = getNotificationUserId();
 
   const queryEntries = [
     `page=${encodeURIComponent(String(params.page))}`,
@@ -122,6 +134,10 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
   }
 
   const requestUrl = `${NOTIFICATION_API_BASE_URL}/api/v1/notifications?${queryEntries.join('&')}`;
+
+  if (__DEV__) {
+    console.log('[Notification API] request', { method: 'GET', url: requestUrl, userId });
+  }
 
   const response = await fetchAuth(requestUrl, {
     headers: {
@@ -159,12 +175,18 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
 }
 
 export async function readNotification(notificationId: number): Promise<NotificationReadResponse> {
-  const userId = getAuthDevUserId();
+  const accessToken = await getAccessTokenForAuthRequest();
+  const userId = getNotificationUserId();
   const requestUrl = `${NOTIFICATION_API_BASE_URL}/api/v1/notifications/${notificationId}/read`;
+
+  if (__DEV__) {
+    console.log('[Notification API] request', { method: 'PATCH', url: requestUrl, userId });
+  }
 
   const response = await fetchAuth(requestUrl, {
     method: 'PATCH',
     headers: {
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'X-User-Id': userId,
     },

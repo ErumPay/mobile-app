@@ -7,11 +7,13 @@ import { colors } from "../../../shared/styles";
 type MainHeaderProps = {
   hasNotification?: boolean;
   isNotificationLoading?: boolean;
+  onPressNotification?: () => void;
 };
 
 export function MainHeader({
   hasNotification = false,
   isNotificationLoading = false,
+  onPressNotification,
 }: MainHeaderProps) {
   return (
     <View className="z-10 flex-row items-center justify-between border-b border-neutral-grey1 bg-neutral-white px-5 py-3">
@@ -27,6 +29,7 @@ export function MainHeader({
           accessibilityLabel={hasNotification ? "새 알림이 있는 알림" : "알림"}
           accessibilityRole="button"
           className="relative h-10 w-10 items-center justify-center rounded-full"
+          onPress={onPressNotification}
         >
           <BellIcon />
           {hasNotification ? (

@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackParamList } from '../../../../App';
 import { Header } from '../../../shared/components/Header';
 import Modal from '../../../shared/components/Modal';
-import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import PaymentActionOptionList from '../components/PaymentActionOptionList';
 import PaymentRequestSummary from '../components/PaymentRequestSummary';
@@ -307,14 +306,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                     ) : null}
 
                     {summary ? (
-                        <>
-                            {routeSummary ? (
-                                <View className="px-4 pt-4">
-                                    <PaymentMockBadge />
-                                </View>
-                            ) : null}
-                            <PaymentRequestSummary summary={summary} />
-                        </>
+                        <PaymentRequestSummary summary={summary} />
                     ) : null}
 
                     {summary ? (
