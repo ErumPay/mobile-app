@@ -1,0 +1,120 @@
+===============================================================================
+ ErumPay Mobile App - 프론트엔드 이슈사항 정리
+ 브랜치: KAN-1363_feat/kakao-sdk-login
+ 작성일: 2026-06-08
+ 작성자: [FE] 고민균
+===============================================================================
+
+[ 1. 카카오 로그인 - WebView stale closure 문제 ]
+────────────────────────────────────────────────
+증상: "카카오톡으로 로그인" 버튼을 눌렀는데 회원가입 흐름으로 진입
+원인: authFlow를 useState로 관리하여 WebView 콜백에서 이전 값('signup')을 참조
+해결: useState → useRef로 변경하여 항상 최신 값 참조
+
+[ 2. 카카오 로그인 - WebView 콜백 중복 실행 ]
+────────────────────────────────────────────────
+증상: 버튼이 간헐적으로 안 눌리거나, 로그인 처리가 중복 실행
+원인: onLoadStart, onNavigationStateChange, onShouldStartLoadWithRequest 3개가
+      동일 redirect URL에 대해 모두 handleWebViewNavigation을 호출
+해결: - onLoadStart 제거
+      - onNavigationStateChange는 !loading일 때만 처리
+      - isProcessingRef 가드 추가하여 중복 호출 방지
+      - 버튼 클릭 시 isProcessingRef 초기화
+
+[ 3. PENDING 상태 사용자가 메인 화면 진입 ]
+────────────────────────────────────────────────
+증상: 신규회원이 카카오 인증만 하고(약관/SMS/PIN 미완료) 다시 로그인하면 메인으로 이동
+원인: 백엔드에서 newUser:false 반환 → 기존회원으로 판단하여 Main 네비게이션
+해결: newUser뿐 아니라 status === 'PENDING' 조건 추가
+      → const isSignupIncomplete = result.newUser || result.status === 'PENDING'
+
+[ 4. Jackson boolean 직렬화 ]
+────────────────────────────────────────────────
+증상: 프론트에서 isNewUser 필드를 읽으면 undefined
+원인: Java의 isNewUser → Jackson이 JSON에서 "newUser"로 직렬화
+해결: 프론트에서 result.newUser로 접근
+
+[ 5. 카카오 약관 취소 시 무반응 ]
+────────────────────────────────────────────────
+증상: 카카오 약관동의 화면에서 취소해도 아무 알림 없음
+원인: error 파라미터 감지 후 그냥 return 처리
+해결: 조용히 WebView 닫기 유지 (카카오 취소 시 사용자 식별 불가하므로 알림 불필요)
+
+[ 6. 신규회원 로그인 시 회원가입 안내 후 흐름 연결 ]
+────────────────────────────────────────────────
+증상: 신규회원이 "카카오톡으로 로그인" → "가입되지 않은 계정" 알림 → 확인 눌러도 아무 일 없음
+원인: 모달 onConfirm에서 visible만 false로 변경하고 네비게이션 없음
+해결: alertModal state에 onConfirmAction 콜백 추가
+      → 확인 누르면 TermsAgreement 화면으로 이동
+
+[ 7. Alert.alert → 커스텀 Modal 교체 ]
+────────────────────────────────────────────────
+증상: 기본 Alert.alert가 앱 디자인과 불일치
+해결: 전체 회원가입 플로우 5개 화면에서 커스텀 Modal 컴포넌트로 교체
+      - TutorialScreen: 로그인 실패/이미 가입/미가입 안내
+      - TermsAgreementScreen: 회원가입 중지 확인, 에러 안내
+      - SmsVerificationScreen: 회원가입 중지, 인증 실패
+      - PaymentPinScreen: 회원가입 중지, 약한 PIN 경고, PIN 불일치, 생체인증
+      - SignupCompleteScreen: 메인으로 가기
+
+[ 8. SMS 인증 완료 - 모달 → 인라인 UI 변경 ]
+────────────────────────────────────────────────
+증상: 인증 완료 시 모달이 뜨고 확인 눌러야 다음 진행 (UX 불편)
+해결: 모달 제거, step='complete'일 때 화면 자체에 완료 UI 표시
+      - 녹색 원 + 체크 아이콘 + "본인 인증이 완료되었습니다"
+      - 하단 "간편 비밀번호 등록하기" 버튼으로 바로 이동
+      - successModalVisible 미사용 state 제거
+
+[ 9. 생체인증 모달 버튼 터치 불가 ]
+────────────────────────────────────────────────
+증상: PIN 검증 후 생체인증 모달은 뜨지만 "사용하기"/"나중에" 버튼이 안 눌림
+원인: 1) canUseBiometric이 false여서 모달 자체가 안 뜸 (Expo Go 환경)
+      2) biometricPaymentAuth import가 누락됨
+      3) isSubmitting 가드 조건이 모달 버튼을 차단
+해결: - canUseBiometric 체크 제거 (무조건 모달 표시)
+      - import 복원
+      - handleConfirmBiometricSetup에서 isSubmitting 가드 제거
+      - 핸들러를 동기 함수(.then 체이닝)로 변경
+
+[ 10. 튜토리얼 이미지 슬라이드 시 점프 현상 ]
+────────────────────────────────────────────────
+증상: 마지막 슬라이드(버튼 2개)로 넘어갈 때 이미지가 위로 튀어오름
+원인: 슬라이드 1-3은 버튼 1개, 슬라이드 4는 버튼 2개 → flex 레이아웃 높이 차이
+해결: 하단 패딩만 pb-8로 미세 조정, flex 레이아웃 유지
+
+[ 11. DB 테스트 유저 삭제 순서 ]
+────────────────────────────────────────────────
+증상: auth_users 직접 삭제 시 외래키 제약조건 에러
+해결: 삭제 순서 준수
+      DELETE FROM auth_pin WHERE user_id = ?;
+      DELETE FROM auth_sms_verifications WHERE user_id = ?;
+      DELETE FROM auth_refresh_tokens WHERE user_id = ?;
+      DELETE FROM auth_users WHERE user_id = ?;
+참고: auth_terms_agreement 테이블은 현재 DB에 존재하지 않음
+      MySQL 컨테이너 이름: erumpay-mysql (erum-mysql 아님)
+
+[ 12. 체크 아이콘 스타일 통일 ]
+────────────────────────────────────────────────
+증상: SmsVerificationScreen 완료 화면과 SignupCompleteScreen의 체크 아이콘 스타일 불일치
+해결: 통일 → 녹색 원 안에 흰색 테두리 원 + 체크 아이콘
+
+[ 13. 약관동의 화면 - 개인정보 처리방침 모달 조건 ]
+────────────────────────────────────────────────
+증상: 약관 상세 모달에서 개인정보 내용이 안 뜸
+원인: 조건문이 '개인정보 수집이용'으로 되어 있는데 라벨이 '개인정보 처리방침'으로 변경됨
+해결: 조건문 '개인정보 수집이용' → '개인정보 처리방침'으로 수정
+
+===============================================================================
+ 프론트-백엔드 연결 상태 (최종 확인)
+===============================================================================
+
+ 화면                  | API 호출                        | 상태
+ ─────────────────────|────────────────────────────────|──────
+ Tutorial (카카오)     | POST /kakao/login              | ✅ 정상
+ TermsAgreement       | POST /terms/agree              | ✅ 정상
+ SmsVerification      | POST /sms/send, /sms/verify    | ✅ 정상
+ PaymentPin (등록)     | POST /pin/setup                | ✅ 정상
+ PaymentPin (결제)     | POST /payment/request          | ✅ 정상
+ PaymentPin (리셋)     | POST /pin/reset                | ✅ 정상
+
+===============================================================================

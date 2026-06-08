@@ -3,7 +3,7 @@
  * Description: 회원가입 약관동의 화면 (JOIN_002)
  * Worker: [FE] 고민균
  * Created: 2026-06-02
- * Note: 필수 약관 3개 + 만 14세 확인 체크 시 다음 버튼 활성화
+ * Note: 서비스 이용약관(필수) + 개인정보 처리방침(필수) + 마케팅 수신 동의(선택), 필수 체크 시 다음 버튼 활성화
  ******************************************************************************/
 
 import { useState } from 'react';
@@ -15,7 +15,9 @@ import type { RootStackParamList } from '../../../../App';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { Header } from '../../../shared/components/Header';
 import { Button } from '../../../shared/components/Button';
+import { Modal } from '../../../shared/components/Modal';
 import { colors } from '../../../shared/styles/designTokens';
+import { agreeTerms } from '../api/authApi';
 
 type TermItem = {
   id: string;
@@ -26,12 +28,10 @@ type TermItem = {
 
 const terms: TermItem[] = [
   { id: 'service', label: '서비스 이용약관', required: true, hasDetail: true },
-  { id: 'finance', label: '금융 서비스 이용약관', required: true, hasDetail: true },
-  { id: 'privacy', label: '개인정보 수집이용', required: true, hasDetail: true },
-  { id: 'age', label: '본인은 만 14세 이상입니다.', required: true, hasDetail: false },
+  { id: 'privacy', label: '개인정보 처리방침', required: true, hasDetail: true },
   {
     id: 'marketing',
-    label: '마케팅 활용 및 SMS 및 이메일 수신동의',
+    label: '마케팅 수신 동의',
     required: false,
     hasDetail: true,
   },
@@ -41,11 +41,16 @@ const requiredIds = terms.filter((t) => t.required).map((t) => t.id);
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TermsAgreement'>;
 
-export default function TermsAgreementScreen({ navigation }: Props) {
+export default function TermsAgreementScreen({ navigation, route }: Props) {
+  const { accessToken } = route.params;
   const insets = useSafeAreaInsets();
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [termsModalTitle, setTermsModalTitle] = useState('');
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const allRequiredChecked = requiredIds.every((id) => checked[id]);
   const allChecked = terms.every((t) => checked[t.id]);
@@ -71,8 +76,32 @@ export default function TermsAgreementScreen({ navigation }: Props) {
     setTermsModalVisible(true);
   };
 
-  const handleNext = () => {
-    navigation.navigate('SmsVerification');
+  const handleNext = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await agreeTerms(
+        accessToken,
+        !!checked['service'],
+        !!checked['privacy'],
+        !!checked['marketing'],
+      );
+      navigation.navigate('SmsVerification');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : '약관 동의에 실패했습니다.');
+      setErrorModalVisible(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setCancelModalVisible(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setCancelModalVisible(false);
+    navigation.navigate('Tutorial');
   };
 
   return (
@@ -83,76 +112,79 @@ export default function TermsAgreementScreen({ navigation }: Props) {
       header={
         <Header
           title="회원가입"
-          type="back"
-          onPressLeft={() => navigation.goBack()}
+          type="close"
+          onPressRight={handleClose}
         />
       }
     >
       <View className="flex-1 px-5 pt-6">
         {/* 타이틀 */}
-        <Text className="mb-8 font-pretendard text-heading-2 text-neutral-black1">
-          회원가입을 위해{'\n'}약관에 동의해 주세요
+        <Text className="mb-2 font-pretendard text-heading-2 text-neutral-black1">
+          환영합니다
+        </Text>
+        <Text className="mb-8 font-pretendard text-large-regular text-neutral-black2">
+          서비스 이용을 위해 약관에 동의해주세요
         </Text>
 
-        {/* 전체동의 */}
+        {/* 전체 동의 카드 */}
         <Pressable
-          className="mb-4 flex-row items-center gap-3 rounded-lg border border-neutral-grey1 px-4 py-4"
+          className="mb-4 flex-row items-center gap-3 rounded-xl border border-neutral-grey1 px-5 py-5"
           onPress={toggleAll}
         >
           <View
-            className={`h-6 w-6 items-center justify-center rounded-full ${
-              allChecked ? 'bg-erum-main' : 'bg-neutral-disabled'
+            className={`h-7 w-7 items-center justify-center rounded-full ${
+              allChecked
+                ? 'bg-erum-main'
+                : 'border-2 border-neutral-disabled bg-neutral-white'
             }`}
           >
-            <Feather name="check" size={16} color="#FFFFFF" />
+            {allChecked && <Feather name="check" size={16} color="#FFFFFF" />}
           </View>
           <Text className="font-pretendard text-large-bold text-neutral-black1">
-            전체동의
+            전체 동의
           </Text>
         </Pressable>
 
-        {/* 구분선 */}
-        <View className="mb-4 h-px bg-neutral-grey1" />
-
-        {/* 약관 목록 */}
-        <View className="gap-1">
-          {terms.map((term) => (
-            <View key={term.id} className="flex-row items-center justify-between py-3">
-              <Pressable
-                className="flex-1 flex-row items-center gap-3"
-                onPress={() => toggleItem(term.id)}
-              >
-                <View
-                  className={`h-6 w-6 items-center justify-center rounded-md border ${
-                    checked[term.id]
-                      ? 'border-erum-main bg-erum-main'
-                      : 'border-neutral-grey1 bg-neutral-white'
-                  }`}
-                >
-                  {checked[term.id] && (
-                    <Text className="font-pretendard text-normal-bold text-neutral-white">
-                      ✓
-                    </Text>
-                  )}
-                </View>
-                <Text className="flex-1 font-pretendard text-large-regular text-neutral-black1">
-                  <Text className={term.required ? 'text-erum-main' : 'text-neutral-disabled'}>
-                    {term.required ? '[필수] ' : '[선택] '}
-                  </Text>
-                  {term.label}
-                </Text>
-              </Pressable>
-
-              {term.hasDetail && (
+        {/* 약관 목록 카드 */}
+        <View className="rounded-xl border border-neutral-grey1">
+          {terms.map((term, index) => (
+            <View key={term.id}>
+              {index > 0 && <View className="mx-5 h-px bg-neutral-grey1" />}
+              <View className="flex-row items-center justify-between px-5 py-4">
                 <Pressable
-                  className="ml-2 px-2 py-1"
-                  onPress={() => openTermsDetail(term.label)}
+                  className="flex-1 flex-row items-center gap-3"
+                  onPress={() => toggleItem(term.id)}
                 >
-                  <Text className="font-pretendard text-normal-regular text-neutral-disabled underline">
-                    보기
+                  <View
+                    className={`h-7 w-7 items-center justify-center rounded-full ${
+                      checked[term.id]
+                        ? 'bg-erum-main'
+                        : 'border-2 border-neutral-disabled bg-neutral-white'
+                    }`}
+                  >
+                    {checked[term.id] && (
+                      <View className="h-2.5 w-2.5 rounded-full bg-neutral-white" />
+                    )}
+                  </View>
+                  <Text className="flex-1 font-pretendard text-large-regular text-neutral-black1">
+                    {term.label}{' '}
+                    <Text className={term.required ? 'text-state-error' : 'text-neutral-disabled'}>
+                      {term.required ? '(필수)' : '(선택)'}
+                    </Text>
                   </Text>
                 </Pressable>
-              )}
+
+                {term.hasDetail && (
+                  <Pressable
+                    className="ml-2 px-2 py-1"
+                    onPress={() => openTermsDetail(term.label)}
+                  >
+                    <Text className="font-pretendard text-normal-regular text-neutral-disabled">
+                      보기
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
           ))}
         </View>
@@ -161,13 +193,47 @@ export default function TermsAgreementScreen({ navigation }: Props) {
       {/* 하단 버튼 */}
       <View className="px-5 pb-8 pt-4">
         <Button
-          label="동의하고 계속하기"
+          label={isSubmitting ? '처리 중...' : '다음'}
           variant="primary"
           size="large"
-          disabled={!allRequiredChecked}
+          disabled={!allRequiredChecked || isSubmitting}
           onPress={handleNext}
         />
       </View>
+
+      {/* 회원가입 중지 확인 모달 */}
+      <Modal
+        visible={cancelModalVisible}
+        type="two"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-[#FF9500]">
+            <Feather name="alert-triangle" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="회원가입을 중지하시겠습니까?"
+        description="종료 시 카카오톡 인증부터 다시 시작합니다."
+        confirmLabel="예"
+        cancelLabel="아니오"
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setCancelModalVisible(false)}
+        onClose={() => setCancelModalVisible(false)}
+      />
+
+      {/* 에러 모달 */}
+      <Modal
+        visible={errorModalVisible}
+        type="one"
+        icon={
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-state-error">
+            <Feather name="x" size={30} color="#FFFFFF" />
+          </View>
+        }
+        title="약관 동의에 실패했습니다."
+        description={errorMessage}
+        confirmLabel="확인"
+        onConfirm={() => setErrorModalVisible(false)}
+        onClose={() => setErrorModalVisible(false)}
+      />
 
       {/* 약관 상세 모달 */}
       <RNModal
@@ -197,7 +263,7 @@ export default function TermsAgreementScreen({ navigation }: Props) {
             className="flex-1 px-5 py-6"
             contentContainerClassName="pb-8"
           >
-            {termsModalTitle === '개인정보 수집이용' ? (
+            {termsModalTitle === '개인정보 처리방침' ? (
               <View className="gap-4">
                 <Text className="font-pretendard text-large-bold text-neutral-black1">
                   개인정보 수집 및 이용 동의
