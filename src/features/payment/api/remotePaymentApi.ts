@@ -27,9 +27,33 @@ type PrepareRemoteResponse = {
   amount: number;
 };
 
+type RemotePaySsePayload = {
+  event_type?: string;
+  request_id?: number;
+  request?: RemotePayBackendResponse;
+};
+
 type PaymentApiErrorResponse = {
   reason?: string;
   message?: string;
+};
+
+type SseEvent = {
+  eventName: string;
+  data: string;
+};
+
+export type RemotePaymentRequestStreamEvent = {
+  eventName: 'connected' | 'request-updated' | string;
+  eventType: string;
+  requestId: string;
+  request: RemotePaymentRequestResponse;
+};
+
+export type RemotePaymentRequestStreamHandlers = {
+  onConnected?: (event: RemotePaymentRequestStreamEvent) => void;
+  onRequestUpdated?: (event: RemotePaymentRequestStreamEvent) => void;
+  onError?: (error: Error) => void;
 };
 
 const REMOTE_PAY_REQUESTS_URL = `${PAYMENT_API_BASE_URL}/api/v1/remote-pay/requests`;
@@ -91,6 +115,44 @@ function toRemotePaymentResponse(
   };
 }
 
+function parseSseEvent(rawEvent: string): SseEvent | null {
+  const lines = rawEvent.split(/\r?\n/);
+  const eventName =
+    lines
+      .find((line) => line.startsWith('event:'))
+      ?.replace('event:', '')
+      .trim() ?? '';
+  const data = lines
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.replace('data:', '').trim())
+    .join('\n');
+
+  if (!eventName || !data) {
+    return null;
+  }
+
+  return {
+    eventName,
+    data,
+  };
+}
+
+function toRemotePaymentStreamEvent(
+  eventName: string,
+  payload: RemotePaySsePayload,
+): RemotePaymentRequestStreamEvent | null {
+  if (!payload.request) {
+    return null;
+  }
+
+  return {
+    eventName,
+    eventType: payload.event_type ?? '',
+    requestId: String(payload.request_id ?? payload.request.request_id),
+    request: toRemotePaymentResponse(payload.request),
+  };
+}
+
 async function prepareRemoteDraft(
   payload: RemotePaymentRequestPayload,
 ): Promise<PrepareRemoteResponse> {
@@ -114,6 +176,96 @@ async function prepareRemoteDraft(
   }
 
   return response.json();
+}
+
+export function subscribeRemotePaymentRequestStream(
+  remoteRequestId: number | string,
+  handlers: RemotePaymentRequestStreamHandlers,
+): () => void {
+  const xhr = new XMLHttpRequest();
+  let lastReadIndex = 0;
+  let buffer = '';
+  let closed = false;
+  let errorEmitted = false;
+
+  const emitError = (error: Error) => {
+    if (closed || errorEmitted) {
+      return;
+    }
+
+    errorEmitted = true;
+    handlers.onError?.(error);
+  };
+
+  const cleanup = () => {
+    xhr.onreadystatechange = null;
+    xhr.onprogress = null;
+    xhr.onerror = null;
+    xhr.onloadend = null;
+  };
+
+  const processRawEvent = (rawEvent: string) => {
+    const event = parseSseEvent(rawEvent);
+
+    if (!event) {
+      return;
+    }
+
+    try {
+      const payload = JSON.parse(event.data) as RemotePaySsePayload;
+      const streamEvent = toRemotePaymentStreamEvent(event.eventName, payload);
+
+      if (!streamEvent) {
+        return;
+      }
+
+      if (event.eventName === 'connected') {
+        handlers.onConnected?.(streamEvent);
+        return;
+      }
+
+      handlers.onRequestUpdated?.(streamEvent);
+    } catch {
+      emitError(new Error('원격결제 상태 이벤트를 해석하지 못했습니다.'));
+    }
+  };
+
+  const readAvailableEvents = () => {
+    const nextChunk = xhr.responseText.slice(lastReadIndex);
+    lastReadIndex = xhr.responseText.length;
+    buffer += nextChunk;
+
+    const rawEvents = buffer.split(/\r?\n\r?\n/);
+    buffer = rawEvents.pop() ?? '';
+    rawEvents.forEach(processRawEvent);
+  };
+
+  xhr.open('GET', `${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}/stream`);
+  xhr.setRequestHeader('Accept', 'text/event-stream');
+  xhr.setRequestHeader('X-User-Id', getPaymentUserId());
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === XMLHttpRequest.HEADERS_RECEIVED && xhr.status >= 400) {
+      emitError(new Error('원격결제 상태 스트림 연결에 실패했습니다.'));
+      cleanup();
+      xhr.abort();
+    }
+  };
+  xhr.onprogress = readAvailableEvents;
+  xhr.onerror = () => {
+    emitError(new Error('원격결제 상태 스트림 연결이 끊겼습니다.'));
+  };
+  xhr.onloadend = () => {
+    if (!closed && !errorEmitted && xhr.status >= 400) {
+      emitError(new Error('원격결제 상태 스트림 연결이 종료되었습니다.'));
+    }
+  };
+  xhr.send();
+
+  return () => {
+    closed = true;
+    cleanup();
+    xhr.abort();
+  };
 }
 
 export async function requestRemotePayment(
@@ -195,7 +347,9 @@ export async function getActiveRemotePaymentRequests(): Promise<RemotePaymentReq
 
   const requests: RemotePayBackendResponse[] = await response.json();
 
-  return requests.map((request) => toRemotePaymentResponse(request));
+  return requests
+    .map((request) => toRemotePaymentResponse(request))
+    .filter((request) => request.recipientUserId);
 }
 
 export async function expireRemotePaymentRequests(): Promise<void> {

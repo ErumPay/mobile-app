@@ -306,6 +306,17 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 setIsLoading(true);
                 setErrorMessage('');
 
+                const paymentRegisteredCards = (await fetchRegisteredCards()).map(
+                    (card) => ({
+                        ...toPaymentRegisteredCard(card),
+                        amount: amount ?? 0,
+                    }),
+                );
+
+                if (!paymentRegisteredCards.length) {
+                    throw new Error('등록된 카드가 없습니다.');
+                }
+
                 const prepareResponse = await preparePayment({
                     paymentId,
                     remoteRequestId: isRemotePaymentRoute ? remoteRequestId : undefined,
@@ -337,12 +348,13 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                         : isRemotePaymentRoute
                             ? 'REMOTE_PAYMENT'
                             : 'NORMAL';
-                const paymentRegisteredCards = (await fetchRegisteredCards()).map(
-                    toPaymentRegisteredCard,
-                );
                 const nextData = applyPaymentCardFlowUi(
                     {
-                        ...toPaymentCardSelectData(response),
+                        ...toPaymentCardSelectData(
+                            response,
+                            paymentRegisteredCards,
+                            amount ?? 0,
+                        ),
                         registeredCards: paymentRegisteredCards,
                     },
                     nextFlowType,

@@ -309,7 +309,6 @@ export default function PaymentParticipantSelectScreen({
   const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
   const [serverFriends, setServerFriends] = useState<ParticipantFriend[] | null>(null);
   const [owner, setOwner] = useState<ParticipantFriend>(initialState.owner);
-  const [friendsErrorMessage, setFriendsErrorMessage] = useState('');
   const shouldUseMockFriends = scenario !== 'DEFAULT';
   const setRequesterProgress = useRemotePaymentProgressStore(
     (state) => state.setRequesterProgress,
@@ -396,7 +395,6 @@ export default function PaymentParticipantSelectScreen({
 
     const loadParticipantData = async () => {
       try {
-        setFriendsErrorMessage('');
         const [profile, friends] = await Promise.all([
           fetchUserProfile(),
           fetchAuthFriends(),
@@ -408,12 +406,8 @@ export default function PaymentParticipantSelectScreen({
         }
       } catch (error) {
         if (isMounted) {
+          console.warn('[PaymentParticipantSelectScreen] failed to fetch participant data', error);
           setServerFriends([]);
-          setFriendsErrorMessage(
-            error instanceof Error
-              ? error.message
-              : '친구 목록을 불러오지 못했습니다.',
-          );
         }
       }
     };
@@ -728,12 +722,6 @@ export default function PaymentParticipantSelectScreen({
                 onChangeText={setSearchKeyword}
               />
             </View>
-
-            {friendsErrorMessage ? (
-              <Text className="mb-4 text-center font-pretendard text-normal-regular text-state-error">
-                {friendsErrorMessage}
-              </Text>
-            ) : null}
 
             {!hasVisibleFriends ? (
               <EmptyMessage
