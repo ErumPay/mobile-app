@@ -44,7 +44,8 @@
           "faceIDPermission": "결제 시 간편비밀번호 입력을 생체 인증으로 대체하기 위해 사용합니다."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ]
   }
 }
