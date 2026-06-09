@@ -84,6 +84,13 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
     };
   }, []);
 
+  // 타이머 만료 시 자동 재발송
+  useEffect(() => {
+    if (remainSeconds === 0 && step === 'verify') {
+      handleResendSms();
+    }
+  }, [remainSeconds, step]);
+
   const formatTime = (seconds: number) => {
     const min = Math.floor(seconds / 60);
     const sec = seconds % 60;
@@ -442,7 +449,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
               label={isLoading ? '확인 중...' : '인증 확인'}
               variant="primary"
               size="large"
-              disabled={(code.length !== 6 && !verificationCode) || remainSeconds === 0 || isLoading}
+              disabled={(code.length !== 6 && !verificationCode) || isLoading}
               onPress={handleVerifyCode}
             />
           )}
@@ -502,6 +509,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
         onConfirm={() => setFailModalVisible(false)}
         onClose={() => setFailModalVisible(false)}
       />
+
     </PageWrap>
   );
 }
