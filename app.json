@@ -17,11 +17,19 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "package": "com.choboreum.erumpay"
     },
     "extra": {
       "router": {
         "root": "app"
+      },
+      "eas": {
+        "projectId": "9d6a28d3-2dcd-43bf-ac06-bc735c6aa5db"
       }
     },
     "web": {
@@ -36,7 +44,8 @@
           "faceIDPermission": "결제 시 간편비밀번호 입력을 생체 인증으로 대체하기 위해 사용합니다."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ]
   }
 }
