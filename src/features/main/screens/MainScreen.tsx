@@ -136,6 +136,11 @@ export default function MainScreen({ navigation, route }: Props) {
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
   const remoteFriendLookupRef = useRef(new Map<string, AuthFriendResponse>());
   const remoteUserProfileLookupRef = useRef(new Map<string, UserProfile>());
+  const remoteProgressRef = useRef(remoteProgress);
+
+  useEffect(() => {
+    remoteProgressRef.current = remoteProgress;
+  }, [remoteProgress]);
 
   useEffect(() => {
     let isMounted = true;
@@ -279,7 +284,9 @@ export default function MainScreen({ navigation, route }: Props) {
           }
 
           if (requests.status !== "fulfilled") {
-            clearRemoteProgress();
+            if (!shouldKeepStoredRemotePaymentProgress(remoteProgressRef.current)) {
+              clearRemoteProgress();
+            }
             return;
           }
 
@@ -323,7 +330,9 @@ export default function MainScreen({ navigation, route }: Props) {
             return;
           }
 
-          clearRemoteProgress();
+          if (!shouldKeepStoredRemotePaymentProgress(remoteProgressRef.current)) {
+            clearRemoteProgress();
+          }
         } catch {
           // 메인 진입은 진행 결제 상태 조회 실패로 막지 않는다.
         } finally {
@@ -945,6 +954,26 @@ function shouldKeepRemotePaymentProgress(request: RemotePaymentRequestResponse) 
   }
 
   const expiresAt = parseRemoteExpiresAt(request.expiresAt);
+
+  if (!Number.isFinite(expiresAt)) {
+    return true;
+  }
+
+  return expiresAt > Date.now();
+}
+
+function shouldKeepStoredRemotePaymentProgress(
+  progress: ReturnType<typeof useRemotePaymentProgressStore.getState>["progress"],
+) {
+  if (!progress || !isTerminalRemotePaymentStatus(progress.status)) {
+    return false;
+  }
+
+  if (!progress.expiresAt) {
+    return true;
+  }
+
+  const expiresAt = parseRemoteExpiresAt(progress.expiresAt);
 
   if (!Number.isFinite(expiresAt)) {
     return true;

@@ -41,5 +41,6 @@ export type RemotePaymentProgress = {
   role: RemotePaymentProgressRole;
   status: RemotePaymentRequestStatus;
   participantName: string;
+  expiresAt?: string;
   summary: PaymentRequestSummary;
 };
