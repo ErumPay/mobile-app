@@ -36,6 +36,7 @@ import {
   fetchPaymentHistories,
   fetchUserProfile,
 } from "../../mypage/api/mypageApi";
+import { fetchNotifications } from "../../notification/api/notificationApi";
 import type {
   PaymentHistoryItem,
   UserProfile,
@@ -56,9 +57,6 @@ type QuickMenu = {
   iconColor: string;
   onPress?: () => void;
 };
-
-const hasNotification = false;
-const isNotificationLoading = false;
 
 function resolvePaymentProgressUserId(
   routeUserId?: number | null,
@@ -93,8 +91,10 @@ export default function MainScreen({ navigation, route }: Props) {
     createMonthlyPayment([]),
   );
   const [paymentHistories, setPaymentHistories] = useState<PaymentHistory[]>([]);
+  const [hasNotification, setHasNotification] = useState(false);
   const [isMonthlyPaymentLoading, setIsMonthlyPaymentLoading] = useState(true);
   const [isPaymentHistoryLoading, setIsPaymentHistoryLoading] = useState(true);
+  const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [isPaymentProgressLoading, setIsPaymentProgressLoading] =
     useState(true);
   const remoteProgress = useRemotePaymentProgressStore((state) => state.progress);
@@ -202,6 +202,34 @@ export default function MainScreen({ navigation, route }: Props) {
       isMounted = false;
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      setIsNotificationLoading(true);
+      fetchNotifications({ page: 0, size: 1, isRead: false })
+        .then((response) => {
+          if (isActive) {
+            setHasNotification(response.totalCount > 0);
+          }
+        })
+        .catch(() => {
+          if (isActive) {
+            setHasNotification(false);
+          }
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsNotificationLoading(false);
+          }
+        });
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   useFocusEffect(
     useCallback(() => {
