@@ -84,6 +84,13 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
     };
   }, []);
 
+  // 타이머 만료 시 자동 재발송
+  useEffect(() => {
+    if (remainSeconds === 0 && step === 'verify') {
+      handleResendSms();
+    }
+  }, [remainSeconds, step]);
+
   const formatTime = (seconds: number) => {
     const min = Math.floor(seconds / 60);
     const sec = seconds % 60;
@@ -237,7 +244,20 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
       if (timerRef.current) clearInterval(timerRef.current);
       setStep('complete');
     } catch (err) {
-      setCodeError(err instanceof Error ? err.message : '인증번호 확인에 실패했습니다.');
+      const raw = err instanceof Error ? err.message : '';
+      let userMessage: string;
+      if (raw.includes('시간') || raw.includes('timeout') || raw.includes('Timeout')) {
+        userMessage = '인증 서버에 연결할 수 없습니다.\n잠시 후 다시 시도해주세요.';
+      } else if (raw.includes('Octomo') || raw.includes('octomo') || raw.includes('존재하지 않') || raw.includes('수신')) {
+        userMessage = '문자 인증이 확인되지 않았습니다.\n인증코드를 수신번호로 정확히 보냈는지 확인해주세요.';
+      } else if (raw.includes('만료') || raw.includes('expired')) {
+        userMessage = '인증 시간이 만료되었습니다.\n인증 요청을 다시 해주세요.';
+      } else if (raw.includes('일치하지') || raw.includes('불일치') || raw.includes('mismatch')) {
+        userMessage = '인증번호가 일치하지 않습니다.\n다시 확인해주세요.';
+      } else {
+        userMessage = '본인 인증에 실패했습니다.\n잠시 후 다시 시도해주세요.';
+      }
+      setCodeError(userMessage);
       setFailModalVisible(true);
     } finally {
       setIsLoading(false);
@@ -429,7 +449,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
               label={isLoading ? '확인 중...' : '인증 확인'}
               variant="primary"
               size="large"
-              disabled={(code.length !== 6 && !verificationCode) || remainSeconds === 0 || isLoading}
+              disabled={(code.length !== 6 && !verificationCode) || isLoading}
               onPress={handleVerifyCode}
             />
           )}
@@ -483,12 +503,13 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
             <Feather name="x" size={30} color="#FFFFFF" />
           </View>
         }
-        title="인증 오류"
-        description={codeError || '다시 인증해주세요.'}
+        title="인증에 실패했어요"
+        description={codeError || '잠시 후 다시 시도해주세요.'}
         confirmLabel="확인"
         onConfirm={() => setFailModalVisible(false)}
         onClose={() => setFailModalVisible(false)}
       />
+
     </PageWrap>
   );
 }
