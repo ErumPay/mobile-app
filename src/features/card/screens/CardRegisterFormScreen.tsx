@@ -7,7 +7,6 @@ import { Input } from '../../../shared/components/Input';
 import { Modal } from '../../../shared/components/Modal';
 import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
-import { initialCardRegisterFormValues } from '../mocks/cardMockData';
 import type { CardRegisterFormValues } from '../types/card';
 import { formatExpiry, isValidExpiry, onlyDigits } from '../types/cardFormat';
 
@@ -17,6 +16,15 @@ interface CardRegisterFormScreenProps {
   isSubmitting?: boolean;
   onSubmit: (values: CardRegisterFormValues) => void;
 }
+
+const initialCardRegisterFormValues: CardRegisterFormValues = {
+  cardNumber: '',
+  expiry: '',
+  cvc: '',
+  passwordFirstTwo: '',
+  birthDate: '',
+  cardNickname: '',
+};
 
 function isRequiredFilled(values: CardRegisterFormValues): boolean {
   return (
