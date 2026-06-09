@@ -5,7 +5,7 @@ import {
   getCardRegisterUserId,
 } from './cardApiConfig';
 
-const REGISTER_CARD_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
+const CARDS_URL = `${CARD_API_BASE_URL}/api/v1/cards`;
 
 export class CardApiError extends Error {
   constructor(
@@ -40,13 +40,13 @@ export async function registerCard(
   if (__DEV__) {
     console.log('Card API request.', {
       method: 'POST',
-      url: REGISTER_CARD_URL,
+      url: CARDS_URL,
       userId: currentUserId,
     });
   }
 
   const response = await fetchWithTimeout(
-    REGISTER_CARD_URL,
+    CARDS_URL,
     {
       method: 'POST',
       headers: {
@@ -68,6 +68,43 @@ export async function registerCard(
   }
 
   return normalizeRegisteredCard(await response.json());
+}
+
+export async function fetchRegisteredCards(): Promise<RegisteredCard[]> {
+  const currentUserId = getCardRegisterUserId();
+
+  if (__DEV__) {
+    console.log('Card API request.', {
+      method: 'GET',
+      url: CARDS_URL,
+      userId: currentUserId,
+    });
+  }
+
+  const response = await fetchWithTimeout(
+    CARDS_URL,
+    {
+      method: 'GET',
+      headers: getCardUserHeaders(currentUserId),
+    },
+    CARD_API_TIMEOUT_MS,
+  );
+
+  if (!response.ok) {
+    const errorBody = await parseErrorBody(response);
+    throw new CardApiError(
+      response.status,
+      errorBody.code,
+      errorBody.message,
+    );
+  }
+
+  const data = await response.json();
+  const items = Array.isArray(data) ? data : [];
+
+  return items.map((item) =>
+    normalizeRegisteredCard(item as Record<string, unknown>),
+  );
 }
 
 function normalizeRegisteredCard(response: Record<string, unknown>): RegisteredCard {

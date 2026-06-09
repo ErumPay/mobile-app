@@ -5,6 +5,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../../../shared/components/Header/Header';
 import type { RootStackParamList } from '../../../../App';
+import { fetchRegisteredCards } from '../../card/api/cardApi';
+import type { RegisteredCard } from '../../card/types/card';
 import RecommendedCardSection from '../components/RecommendedCardSection';
 import CardCombinationSection from '../components/CardCombinationSection';
 import RegisteredCardBottomSheet from '../components/RegisteredCardBottomSheet';
@@ -38,6 +40,20 @@ function toFiniteNumber(value: unknown) {
     }
 
     return undefined;
+}
+
+function toPaymentRegisteredCard(card: RegisteredCard): PaymentCard {
+    return {
+        id: String(card.cardId),
+        amount: 0,
+        cardName: card.cardName,
+        cardCompany: card.cardCompany,
+        maskedNumber: card.maskedNumber,
+        expiryDate: card.expiryYm,
+        theme: 'PURPLE',
+        imageUrl: '',
+        isPrimary: card.isDefault,
+    };
 }
 
 function PaymentCardSelectSkeleton() {
@@ -321,8 +337,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                         : isRemotePaymentRoute
                             ? 'REMOTE_PAYMENT'
                             : 'NORMAL';
+                const paymentRegisteredCards = (await fetchRegisteredCards()).map(
+                    toPaymentRegisteredCard,
+                );
                 const nextData = applyPaymentCardFlowUi(
-                    toPaymentCardSelectData(response),
+                    {
+                        ...toPaymentCardSelectData(response),
+                        registeredCards: paymentRegisteredCards,
+                    },
                     nextFlowType,
                 );
 

@@ -223,6 +223,11 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
     setStopModalVisible(false);
 
+    if (mode === 'PAYMENT_INPUT') {
+      goBackOrMain();
+      return;
+    }
+
     if (isPinResetFlow) {
       navigateToMypage();
       return;
@@ -637,7 +642,19 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           }
         />
 
-        {isPinResetFlow ? (
+        {mode === 'PAYMENT_INPUT' ? (
+          <PaymentStopConfirmModal
+            visible={stopModalVisible}
+            description={
+              paymentParams?.flow === 'DUTCH_PAY'
+              || paymentParams?.flow === 'REMOTE_PAYMENT'
+                ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
+                : undefined
+            }
+            onConfirm={handleConfirmStopFlow}
+            onCancel={() => setStopModalVisible(false)}
+          />
+        ) : isPinResetFlow ? (
           <Modal
             visible={stopModalVisible}
             type="two"
@@ -671,19 +688,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
             onCancel={() => setStopModalVisible(false)}
             onClose={() => setStopModalVisible(false)}
           />
-        ) : (
-          <PaymentStopConfirmModal
-            visible={stopModalVisible}
-            description={
-              paymentParams?.flow === 'DUTCH_PAY'
-              || paymentParams?.flow === 'REMOTE_PAYMENT'
-                ? '중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다.'
-                : undefined
-            }
-            onConfirm={handleConfirmStopFlow}
-            onCancel={() => setStopModalVisible(false)}
-          />
-        )}
+        ) : null}
 
         {isSubmitting ? (
           <Loading
