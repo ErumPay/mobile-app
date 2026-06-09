@@ -29,7 +29,7 @@ export const CARD_API_BASE_URL =
   process.env.EXPO_PUBLIC_CARD_API_BASE_URL ?? `http://${getDevHost()}:8082`;
 
 export const CARD_OCR_BASE_URL =
-  process.env.EXPO_PUBLIC_CARD_OCR_BASE_URL ?? 'http://localhost:8086';
+  process.env.EXPO_PUBLIC_CARD_OCR_BASE_URL ?? `http://${getDevHost()}:8086`;
 
 export const CARD_API_TIMEOUT_MS = 15000;
 
