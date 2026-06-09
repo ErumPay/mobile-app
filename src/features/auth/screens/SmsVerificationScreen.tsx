@@ -35,7 +35,17 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
   const flow = route.params?.flow ?? 'SIGNUP';
   const isPinResetFlow = flow === 'PIN_RESET';
   const [step, setStep] = useState<VerificationStep>('request');
-  const [phone, setPhone] = useState('010-1234-5678'); // TODO: 카카오에서 가져온 번호
+  const [phone, setPhone] = useState('');
+  const handlePhoneChange = (text: string) => {
+    const digits = text.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) {
+      setPhone(digits);
+    } else if (digits.length <= 7) {
+      setPhone(`${digits.slice(0, 3)}-${digits.slice(3)}`);
+    } else {
+      setPhone(`${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`);
+    }
+  };
   const [code, setCode] = useState('');
   const [remainSeconds, setRemainSeconds] = useState(TIMER_SECONDS);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -209,6 +219,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
 
     if (verificationId == null) {
       setCodeError('인증 요청을 먼저 진행해주세요.');
+      setFailModalVisible(true);
       return;
     }
 
@@ -216,6 +227,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
     const codeToVerify = verificationCode || code;
     if (codeToVerify.length !== 6) {
       setCodeError('인증번호 6자리를 입력해주세요.');
+      setFailModalVisible(true);
       return;
     }
 
@@ -309,7 +321,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
                 label="휴대폰 번호"
                 type="text"
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={handlePhoneChange}
                 placeholder="010-0000-0000"
                 readOnly={step === 'verify'}
               />
@@ -335,6 +347,18 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
             {/* 인증코드 안내 + 인증번호 입력 (발송 후 노출) */}
             {step === 'verify' && (
               <View className="mb-2">
+                {/* 타이머 (상단 왼쪽) */}
+                <View className="mb-3 flex-row items-center">
+                  <Feather name="clock" size={16} color={remainSeconds <= 30 ? colors.state.error : colors.erum.main} />
+                  <Text
+                    className={`ml-1 font-pretendard text-large-bold ${
+                      remainSeconds <= 30 ? 'text-state-error' : 'text-erum-main'
+                    }`}
+                  >
+                    {remainSeconds > 0 ? `남은 시간 ${formatTime(remainSeconds)}` : '시간 초과'}
+                  </Text>
+                </View>
+
                 {/* MO 인증: 인증코드 & 수신번호 안내 */}
                 <View className="mb-5 rounded-lg border border-erum-main bg-neutral-bg px-5 py-4">
                   <View className="mb-4 flex-row items-center gap-2">
@@ -378,19 +402,8 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
                   </View>
                 </View>
 
-                {/* 타이머 */}
-                <View className="mt-4 mb-6 items-center">
-                  <Text
-                    className={`font-pretendard text-large-bold ${
-                      remainSeconds <= 30 ? 'text-state-error' : 'text-erum-main'
-                    }`}
-                  >
-                    {remainSeconds > 0 ? formatTime(remainSeconds) : '시간 초과'}
-                  </Text>
-                </View>
-
-                {/* 에러 메시지 */}
-                {cooldownErrorMessage !== '' && (
+                {/* 쿨다운 안내 (모달 아닌 인라인) */}
+                {requestCooldownSeconds > 0 && (
                   <Text className="mt-2 font-pretendard text-normal-regular text-state-error">
                     {cooldownErrorMessage}
                   </Text>
@@ -470,8 +483,8 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
             <Feather name="x" size={30} color="#FFFFFF" />
           </View>
         }
-        title="본인 인증에 실패하였습니다."
-        description="다시 인증해주세요."
+        title="인증 오류"
+        description={codeError || '다시 인증해주세요.'}
         confirmLabel="확인"
         onConfirm={() => setFailModalVisible(false)}
         onClose={() => setFailModalVisible(false)}

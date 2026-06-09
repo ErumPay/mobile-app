@@ -66,6 +66,13 @@ export async function loadAuthSession(): Promise<boolean> {
     refreshToken: refreshToken ?? undefined,
     userId: userIdStr ? Number(userIdStr) : undefined,
   };
+
+  // 토큰 유효성 검증: refresh 실패 시 세션 무효 처리
+  const refreshed = await refreshAccessToken();
+  if (!refreshed) {
+    await clearAuthSession();
+    return false;
+  }
   return true;
 }
 
