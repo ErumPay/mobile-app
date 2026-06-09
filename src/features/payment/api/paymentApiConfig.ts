@@ -21,10 +21,5 @@ export function getPaymentUserId(): string {
     if (sessionUserId != null) {
         return String(sessionUserId);
     }
-
-    if (__DEV__) {
-        return process.env.EXPO_PUBLIC_DEV_USER_ID ?? '1';
-    }
-
     throw new Error('로그인 사용자 정보가 없습니다.');
 }

@@ -50,9 +50,13 @@ export async function setAuthSession(accessToken: string, refreshToken?: string,
   await SecureStore.setItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN, accessToken);
   if (refreshToken) {
     await SecureStore.setItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN, refreshToken);
+  } else {
+    await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
   }
   if (userId != null) {
     await SecureStore.setItemAsync(SECURE_STORE_KEYS.USER_ID, String(userId));
+  } else {
+    await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.USER_ID);
   }
 }
 
@@ -83,14 +87,30 @@ export async function clearAuthSession() {
   await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.USER_ID);
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
 export async function refreshAccessToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefresh();
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefresh(): Promise<boolean> {
   const rt = authSession?.refreshToken;
   if (!rt) return false;
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const response = await fetch(`${AUTH_API_URL}/token/refresh`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${rt}` },
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (!response.ok) return false;
     const data = await response.json();
     await setAuthSession(data.accessToken, data.refreshToken ?? rt, authSession?.userId);
@@ -263,7 +283,13 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
             Authorization: `Bearer ${authSession.accessToken}`,
           };
         }
-        return fetch(input, { ...retryInit, signal: controller.signal });
+        const retryController = new AbortController();
+        const retryTimeout = setTimeout(() => retryController.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          return await fetch(input, { ...retryInit, signal: retryController.signal });
+        } finally {
+          clearTimeout(retryTimeout);
+        }
       }
       await clearAuthSession();
     }

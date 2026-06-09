@@ -116,6 +116,7 @@ export default function TutorialScreen({ navigation }: Props) {
   const [showKakaoWebView, setShowKakaoWebView] = useState(false);
   const authFlowRef = useRef<'signup' | 'login'>('signup');
   const isProcessingRef = useRef(false);
+  const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFocused = useIsFocused();
 
   useEffect(() => {
@@ -123,6 +124,11 @@ export default function TutorialScreen({ navigation }: Props) {
       setIsLoggingIn(false);
       setShowKakaoWebView(false);
       isProcessingRef.current = false;
+    } else {
+      if (loginTimerRef.current) {
+        clearTimeout(loginTimerRef.current);
+        loginTimerRef.current = null;
+      }
     }
   }, [isFocused]);
   const [alertModal, setAlertModal] = useState<{
@@ -163,7 +169,7 @@ export default function TutorialScreen({ navigation }: Props) {
       }
 
       if (code) {
-        setTimeout(() => processLogin(code), 500);
+        loginTimerRef.current = setTimeout(() => processLogin(code), 500);
       } else {
         isProcessingRef.current = false;
       }
