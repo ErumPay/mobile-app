@@ -34,10 +34,5 @@ export function getMypageUserId(): number {
   if (sessionUserId != null) {
     return sessionUserId;
   }
-
-  if (__DEV__) {
-    return Number(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2');
-  }
-
   throw new Error('로그인 사용자 정보가 없습니다.');
 }

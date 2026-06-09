@@ -50,7 +50,7 @@ export async function registerCard(
     {
       method: 'POST',
       headers: {
-        ...getCardUserHeaders(currentUserId),
+        ...getCardUserHeaders(payload.userId),
         'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify(payload),

@@ -13,6 +13,7 @@ import { Modal } from '../../../shared/components/Modal';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles';
 import {
+  checkWithdrawPendingTransactions,
   fetchUserProfile,
   logoutUser,
   withdrawUser,
@@ -112,25 +113,37 @@ export function MypageHomeScreen({ navigation }: Props) {
 
     try {
       await logoutUser();
+    } catch (error) {
+      console.warn('Failed to logout on server.', error);
+    } finally {
       await clearAuthSession();
       setIsLogoutVisible(false);
+      setIsSubmittingAccountAction(false);
       navigation.reset({
         index: 0,
         routes: [{ name: 'Tutorial' }],
       });
-    } catch (error) {
-      console.warn('Failed to logout.', error);
-      setIsLogoutVisible(false);
-      setActionMessage('로그아웃에 실패했습니다.');
-    } finally {
-      setIsSubmittingAccountAction(false);
     }
   };
 
-  const handleRequestWithdraw = () => {
+  const handleRequestWithdraw = async () => {
     if (isSubmittingAccountAction) return;
 
+    setIsSubmittingAccountAction(true);
     setIsWithdrawVisible(false);
+
+    try {
+      const { hasPending } = await checkWithdrawPendingTransactions();
+      if (hasPending) {
+        setIsWithdrawPendingVisible(true);
+        return;
+      }
+    } catch {
+      // eligibility API 미구현 시 무시하고 진행
+    } finally {
+      setIsSubmittingAccountAction(false);
+    }
+
     setWithdrawPin('');
     setIsWithdrawPinVisible(true);
   };
