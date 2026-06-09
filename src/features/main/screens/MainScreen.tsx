@@ -215,9 +215,7 @@ export default function MainScreen({ navigation, route }: Props) {
           }
         })
         .catch(() => {
-          if (isActive) {
-            setHasNotification(false);
-          }
+          // Keep the previous badge state on transient notification API failures.
         })
         .finally(() => {
           if (isActive) {
