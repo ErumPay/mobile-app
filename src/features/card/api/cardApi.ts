@@ -37,14 +37,6 @@ export async function registerCard(
     );
   }
 
-  if (__DEV__) {
-    console.log('Card API request.', {
-      method: 'POST',
-      url: CARDS_URL,
-      userId: currentUserId,
-    });
-  }
-
   const response = await fetchWithTimeout(
     CARDS_URL,
     {
@@ -72,14 +64,6 @@ export async function registerCard(
 
 export async function fetchRegisteredCards(): Promise<RegisteredCard[]> {
   const currentUserId = getCardRegisterUserId();
-
-  if (__DEV__) {
-    console.log('Card API request.', {
-      method: 'GET',
-      url: CARDS_URL,
-      userId: currentUserId,
-    });
-  }
 
   const response = await fetchWithTimeout(
     CARDS_URL,
