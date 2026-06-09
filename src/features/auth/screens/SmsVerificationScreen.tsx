@@ -219,6 +219,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
 
     if (verificationId == null) {
       setCodeError('인증 요청을 먼저 진행해주세요.');
+      setFailModalVisible(true);
       return;
     }
 
@@ -226,6 +227,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
     const codeToVerify = verificationCode || code;
     if (codeToVerify.length !== 6) {
       setCodeError('인증번호 6자리를 입력해주세요.');
+      setFailModalVisible(true);
       return;
     }
 
@@ -400,8 +402,8 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
                   </View>
                 </View>
 
-                {/* 에러 메시지 */}
-                {cooldownErrorMessage !== '' && (
+                {/* 쿨다운 안내 (모달 아닌 인라인) */}
+                {requestCooldownSeconds > 0 && (
                   <Text className="mt-2 font-pretendard text-normal-regular text-state-error">
                     {cooldownErrorMessage}
                   </Text>
@@ -481,8 +483,8 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
             <Feather name="x" size={30} color="#FFFFFF" />
           </View>
         }
-        title="본인 인증에 실패하였습니다."
-        description="다시 인증해주세요."
+        title="인증 오류"
+        description={codeError || '다시 인증해주세요.'}
         confirmLabel="확인"
         onConfirm={() => setFailModalVisible(false)}
         onClose={() => setFailModalVisible(false)}
