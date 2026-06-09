@@ -135,10 +135,6 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
 
   const requestUrl = `${NOTIFICATION_API_BASE_URL}/api/v1/notifications?${queryEntries.join('&')}`;
 
-  if (__DEV__) {
-    console.log('[Notification API] request', { method: 'GET', url: requestUrl, userId });
-  }
-
   const response = await fetchAuth(requestUrl, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -148,19 +144,12 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    console.warn('[fetchNotifications] request failed', error);
     throw new AuthApiError(error?.message ?? '알림 목록을 불러오지 못했습니다.', response.status);
   }
 
   const data: unknown = await response.json();
 
   if (!isNotificationPageResponse(data)) {
-    const summary =
-      data && typeof data === 'object'
-        ? { keys: Object.keys(data as Record<string, unknown>) }
-        : { bodyType: typeof data };
-
-    console.warn('[fetchNotifications] invalid response schema', summary);
     throw new Error('Invalid notifications response schema.');
   }
 
@@ -179,10 +168,6 @@ export async function readNotification(notificationId: number): Promise<Notifica
   const userId = getNotificationUserId();
   const requestUrl = `${NOTIFICATION_API_BASE_URL}/api/v1/notifications/${notificationId}/read`;
 
-  if (__DEV__) {
-    console.log('[Notification API] request', { method: 'PATCH', url: requestUrl, userId });
-  }
-
   const response = await fetchAuth(requestUrl, {
     method: 'PATCH',
     headers: {
@@ -194,19 +179,12 @@ export async function readNotification(notificationId: number): Promise<Notifica
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    console.warn('[readNotification] request failed', error);
     throw new AuthApiError(error?.message ?? '알림 읽음 처리에 실패했습니다.', response.status);
   }
 
   const data: unknown = await response.json();
 
   if (!isNotificationReadResponse(data)) {
-    const summary =
-      data && typeof data === 'object'
-        ? { keys: Object.keys(data as Record<string, unknown>) }
-        : { bodyType: typeof data };
-
-    console.warn('[readNotification] invalid response schema', summary);
     throw new Error('Invalid read notification response schema.');
   }
 

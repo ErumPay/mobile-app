@@ -112,9 +112,7 @@ export default function FriendListScreen({ navigation }: Props) {
       setIsLoading(true);
 
       loadFriendData()
-        .catch((error) => {
-          console.warn('[FriendListScreen] failed to fetch friends', error);
-        })
+        .catch(() => {})
         .finally(() => {
           if (isActive) {
             setIsLoading(false);
@@ -132,11 +130,6 @@ export default function FriendListScreen({ navigation }: Props) {
 
     try {
       setFavoriteUpdatingRelationId(friend.relationId);
-      console.log('[FriendListScreen] toggling favorite', {
-        isFavorite: nextIsFavorite,
-        // relationId: friend.relationId,
-        // userId: friend.userId,
-      });
       await updateAuthFriendFavorite(friend.userId, nextIsFavorite);
       setFriends((prevFriends) =>
         prevFriends.map((item) =>
@@ -144,13 +137,7 @@ export default function FriendListScreen({ navigation }: Props) {
         ),
       );
       setOpenedMenuRelationId(null);
-      console.log('[FriendListScreen] toggled favorite', {
-        isFavorite: nextIsFavorite,
-        // relationId: friend.relationId,
-        // userId: friend.userId,
-      });
     } catch (error) {
-      console.warn('[FriendListScreen] failed to toggle favorite', error);
       Alert.alert(
         '즐겨찾기 변경 실패',
         error instanceof Error ? error.message : '즐겨찾기 변경 중 문제가 발생했습니다.',
@@ -167,20 +154,11 @@ export default function FriendListScreen({ navigation }: Props) {
   const handleDeleteFriend = async (friend: FriendListEntry) => {
     try {
       setIsDeletingFriend(true);
-      console.log('[FriendListScreen] deleting friend', {
-        // relationId: friend.relationId,
-        // userId: friend.userId,
-      });
       await deleteAuthFriend(friend.userId);
       setFriends((prevFriends) => prevFriends.filter((item) => item.relationId !== friend.relationId));
       setOpenedMenuRelationId(null);
       setPendingDeleteFriend(null);
-      console.log('[FriendListScreen] deleted friend', {
-        // relationId: friend.relationId,
-        // userId: friend.userId,
-      });
     } catch (error) {
-      console.warn('[FriendListScreen] failed to delete friend', error);
       Alert.alert('친구 삭제 실패', error instanceof Error ? error.message : '친구 삭제 중 문제가 발생했습니다.');
     } finally {
       setIsDeletingFriend(false);
