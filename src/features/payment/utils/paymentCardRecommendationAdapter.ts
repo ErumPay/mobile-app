@@ -80,20 +80,22 @@ const getSelectionDescription = (
 
     const performance = cards.reduce(
         (total, card) => ({
-            increasedAmount:
-                total.increasedAmount +
-                Math.max(card.expectedPerformanceAmount - card.currentPerformanceAmount, 0),
+            expectedAmount:
+                total.expectedAmount + Math.max(card.expectedPerformanceAmount, 0),
             targetAmount: total.targetAmount + Math.max(card.targetPerformanceAmount, 0),
         }),
-        { increasedAmount: 0, targetAmount: 0 },
+        { expectedAmount: 0, targetAmount: 0 },
     );
     const achievementRate =
         performance.targetAmount > 0
-            ? Math.min(
-                  Math.round(
-                      (performance.increasedAmount / performance.targetAmount) * 100,
+            ? Math.max(
+                  0,
+                  Math.min(
+                      Math.round(
+                          (performance.expectedAmount / performance.targetAmount) * 100,
+                      ),
+                      100,
                   ),
-                  100,
               )
             : 0;
 

@@ -52,10 +52,11 @@ export default function RecommendedCardSection({
                     </Pressable>
                 )}
             </View>
-            <Text className="mt-2 text-small-regular leading-5 text-neutral-grey4">
-                할인 혜택뿐만 아니라 캐시백 및 마일리지 적립 혜택까지 함께 고려하여 제공합니다!
-            </Text>
-
+            {showBenefitDescription && (
+                <Text className="mt-2 text-small-regular leading-5 text-neutral-grey4">
+                    할인 혜택뿐만 아니라 캐시백 및 마일리지 적립 혜택까지 함께 고려하여 제공합니다!
+                </Text>
+            )}
 
             {recommendedCard.card ? (
                 <Pressable
@@ -85,16 +86,6 @@ export default function RecommendedCardSection({
                     )}
 
                     <PaymentCardPreview card={recommendedCard.card} selected={selected} />
-
-                    {showBenefitDescription
-                    // && (
-                    //     <Text className="mt-3 text-small-regular leading-5 text-neutral-grey4">
-                    //         {
-                    //             '이룸페이 추천 카드는 할인 혜택뿐만 아니라 캐시백 및 마일리지 적립 혜택까지 함께 고려하여 제공합니다.'
-                    //         }
-                    //     </Text>
-                    // )
-                    }
                 </Pressable>
             ) : (
                 <View className="mt-5">

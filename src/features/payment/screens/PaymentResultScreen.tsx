@@ -20,17 +20,33 @@ import { getActiveDutchPaySessions } from '../api/dutchPayApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentResult'>;
 
+type PaymentResultButton =
+    | {
+        buttonLabel: string;
+        buttonAction: 'MAIN' | 'CREATE_GROUP';
+    }
+    | {
+        buttonLabel?: never;
+        buttonAction?: never;
+    };
+
+type PaymentResultLink =
+    | {
+        linkLabel: string;
+        linkAction: 'MAIN' | 'RECEIPT';
+    }
+    | {
+        linkLabel?: never;
+        linkAction?: never;
+    };
+
 type PaymentResultContent = {
     title: string;
     description: string;
-    buttonLabel?: string;
     iconType: PaymentResultStatus;
     notice?: string;
-    linkLabel?: string;
-    buttonAction?: 'MAIN' | 'CREATE_GROUP';
     noticeTone?: 'info' | 'success' | 'warning' | 'error';
-    linkAction?: 'MAIN' | 'RECEIPT';
-};
+} & PaymentResultButton & PaymentResultLink;
 
 function getPaymentResultContent({
                                      status,
@@ -40,13 +56,21 @@ function getPaymentResultContent({
     flow: PaymentResultFlow;
 }): PaymentResultContent {
     if (status === 'FAILURE') {
-        return {
+        const failureContent = {
             title: '결제에 실패했어요.',
             description: '카드 정보 또는 네트워크 상태를 확인한 뒤,\n다시 시도해주세요.',
-            iconType: 'FAILURE',
-            linkLabel: flow === 'NORMAL' ? '메인으로 가기' : undefined,
-            linkAction: flow === 'NORMAL' ? 'MAIN' : undefined,
+            iconType: 'FAILURE' as const,
         };
+
+        if (flow === 'NORMAL') {
+            return {
+                ...failureContent,
+                linkLabel: '메인으로 가기',
+                linkAction: 'MAIN',
+            };
+        }
+
+        return failureContent;
     }
 
     if (flow === 'DUTCH_PAY_PRE_AUTH') {
