@@ -1,5 +1,6 @@
 import type {
   CardBenefit,
+  CardPerformance,
   ManagedCard,
   PaymentBenefitType,
   PaymentDetail,
@@ -202,6 +203,29 @@ export async function fetchCardBenefits(cardId: string): Promise<CardBenefit[]> 
   return dedupeCardBenefits(items.map(normalizeCardBenefit));
 }
 
+export async function fetchCardPerformance(
+  cardId: string,
+  yearMonth = getCurrentYearMonth(),
+): Promise<CardPerformance> {
+  const response = await fetchWithTimeout(
+    `${MYPAGE_CARD_API_BASE_URL}/api/v1/cards/${cardId}/performance?yearMonth=${yearMonth}`,
+    {
+      headers: getMypageUserHeaders(),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_CARD_PERFORMANCE_REQUEST_FAILED:${response.status}`);
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+
+  return {
+    yearMonth: toStringValue(data.yearMonth ?? data.year_month) || yearMonth,
+    amount: formatCurrency(toNumberValue(data.amount)),
+  };
+}
+
 type FetchPaymentHistoriesParams = {
   status?: 'ALL' | 'PAID' | 'CANCELED';
   period?: 'WEEK' | 'MONTH' | 'YEAR';
@@ -260,35 +284,76 @@ export async function fetchPaymentDetail(
     throw new Error(`MYPAGE_PAYMENT_DETAIL_REQUEST_FAILED:${response.status}`);
   }
 
-  return normalizePaymentDetail(await response.json());
+  const data = (await response.json()) as Record<string, unknown>;
+  const detail = normalizePaymentDetail(data);
+
+  if (detail.method !== 'remote') {
+    return detail;
+  }
+
+  const requesterUserId = toOptionalNumberValue(
+    data.requesterUserId ?? data.requester_user_id,
+  );
+  const payerUserId = toOptionalNumberValue(
+    data.payerUserId ??
+      data.payer_user_id ??
+      data.targetUserId ??
+      data.target_user_id,
+  );
+
+  const [requesterProfile, payerProfile] = await Promise.all([
+    detail.requesterName || requesterUserId == null
+      ? null
+      : fetchUserProfileById(requesterUserId).catch(() => null),
+    detail.payerName || payerUserId == null
+      ? null
+      : fetchUserProfileById(payerUserId).catch(() => null),
+  ]);
+
+  return {
+    ...detail,
+    requesterName: detail.requesterName ?? requesterProfile?.name,
+    payerName: detail.payerName ?? payerProfile?.name,
+  };
 }
 
 export async function fetchPaymentHistoriesByCard(
   cardId: string,
 ): Promise<PaymentHistoryItem[]> {
-  const payments = await fetchPaymentHistories();
-  const paymentDetailResults = await Promise.allSettled(
-    payments.map((payment) => fetchPaymentDetail(payment.id)),
+  const response = await fetchWithTimeout(
+    `${MYPAGE_PAYMENT_API_BASE_URL}/api/v1/payment/cards/${cardId}`,
+    {
+      headers: {
+        'X-User-Id': String(getMypageUserId()),
+      },
+    },
   );
 
-  return paymentDetailResults
-    .filter(
-      (result): result is PromiseFulfilledResult<PaymentDetail> =>
-        result.status === 'fulfilled',
-    )
-    .map((result) => result.value)
-    .filter((payment) =>
-      (payment.cards ?? []).some((card) => card.id === cardId),
-    )
-    .map((payment) => ({
-      id: payment.id,
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (!response.ok) {
+    throw new Error(`MYPAGE_CARD_PAYMENTS_REQUEST_FAILED:${response.status}`);
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+  const payments = Array.isArray(data.payments)
+    ? (data.payments as Record<string, unknown>[])
+    : [];
+
+  return payments.map((payment, index) => ({
+      id: `card-${cardId}-${index}`,
       cardId,
-      method: payment.method,
-      benefitType: payment.benefitType,
-      status: payment.status,
-      title: payment.title,
-      date: payment.date,
-      amount: payment.amount,
+      method: 'solo',
+      benefitType: 'singleBenefit',
+      status: normalizePaymentStatus(payment.status),
+      title:
+        toStringValue(payment.merchantName ?? payment.merchant_name) || '결제',
+      date: formatDateTimeToDate(
+        toStringValue(payment.paidAt ?? payment.paid_at),
+      ),
+      amount: formatCurrency(toNumberValue(payment.amount)),
     }));
 }
 
@@ -539,6 +604,29 @@ function normalizePaymentDetail(response: Record<string, unknown>): PaymentDetai
   );
   const productAmount = toNumberValue(response.amount);
   const finalAmount = Math.max(productAmount - discountAmount, 0);
+  const requesterUserId = toStringValue(
+    response.requesterUserId ?? response.requester_user_id,
+  );
+  const payerUserId = toStringValue(
+    response.payerUserId ??
+      response.payer_user_id ??
+      response.targetUserId ??
+      response.target_user_id,
+  );
+  const explicitRemoteRole = toStringValue(
+    response.remoteRole ?? response.remote_role ?? response.viewerRole,
+  ).toUpperCase();
+  const currentUserId = String(getMypageUserId());
+  const remoteRole =
+    explicitRemoteRole === 'REQUESTER'
+      ? 'requester'
+      : explicitRemoteRole === 'PAYER' || explicitRemoteRole === 'TARGET'
+        ? 'payer'
+        : requesterUserId && requesterUserId === currentUserId
+          ? 'requester'
+          : payerUserId && payerUserId === currentUserId
+            ? 'payer'
+            : undefined;
 
   return {
     ...history,
@@ -547,16 +635,32 @@ function normalizePaymentDetail(response: Record<string, unknown>): PaymentDetai
     cards: cards.map(normalizePaymentDetailCard),
     paidAt: formatDateTime(paidAt),
     receiptId: toStringValue(response.orderNo ?? response.order_no) || history.id,
-    sellerName: history.title,
-    businessNumber: '-',
-    address: '-',
-    ownerName: '-',
-    phone: '-',
+    sellerName:
+      toStringValue(response.merchantName ?? response.merchant_name) ||
+      history.title,
+    businessNumber:
+      toStringValue(response.businessNumber ?? response.business_number) || '-',
+    address:
+      toStringValue(response.businessAddress ?? response.business_address) || '-',
+    ownerName: toStringValue(response.ownerName ?? response.owner_name) || '-',
+    phone:
+      toStringValue(response.contactPhone ?? response.contact_phone) || '-',
     productAmount: formatCurrency(productAmount),
     discountAmount: discountAmount > 0 ? `-${formatCurrency(discountAmount)}` : '0원',
     tax: '0원',
     finalAmount: formatCurrency(finalAmount),
     status: canceledAt ? 'canceled' : history.status,
+    remoteRole,
+    requesterName:
+      toStringValue(response.requesterName ?? response.requester_name) ||
+      undefined,
+    payerName:
+      toStringValue(
+        response.payerName ??
+          response.payer_name ??
+          response.targetName ??
+          response.target_name,
+      ) || undefined,
   };
 }
 
@@ -568,11 +672,15 @@ function normalizePaymentDetailCard(
   const maskedNumber = toStringValue(
     response.maskedNumber ?? response.masked_number,
   );
+  const paidAmount = toNumberValue(
+    response.paidAmount ?? response.paid_amount,
+  );
 
   return {
     id,
     name: name || '등록 카드',
     maskedNumber: maskedNumber || '-',
+    paidAmount: formatCurrency(paidAmount),
   };
 }
 
@@ -596,8 +704,17 @@ function normalizePaymentBenefit(value: unknown): PaymentBenefitType {
 function normalizePaymentStatus(value: unknown): PaymentStatus {
   const status = toStringValue(value).toUpperCase();
 
-  if (status === 'CANCELED' || status === 'VOIDED') return 'canceled';
-  if (status === 'CANCEL_REQUESTED') return 'cancelRequested';
+  if (
+    status === 'CANCELED' ||
+    status === 'CANCELLED' ||
+    status === 'VOIDED' ||
+    status === '결제취소'
+  ) {
+    return 'canceled';
+  }
+  if (status === 'CANCEL_REQUESTED' || status === '결제취소요청') {
+    return 'cancelRequested';
+  }
   return 'completed';
 }
 
@@ -652,4 +769,9 @@ function formatBirthDate(birthDate: string) {
   }
 
   return birthDate;
+}
+
+function getCurrentYearMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
 }

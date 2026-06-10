@@ -56,12 +56,16 @@ export type PaymentDetail = PaymentHistoryItem & {
   discountAmount: string;
   tax: string;
   finalAmount: string;
+  remoteRole?: 'requester' | 'payer';
+  requesterName?: string;
+  payerName?: string;
 };
 
 export type PaymentDetailCard = {
   id: string;
   name: string;
   maskedNumber: string;
+  paidAmount: string;
 };
 
 export type CardBenefit = {
@@ -69,3 +73,7 @@ export type CardBenefit = {
   description: string;
 };
 
+export type CardPerformance = {
+  yearMonth: string;
+  amount: string;
+};

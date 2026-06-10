@@ -18,13 +18,19 @@ import {
   deleteManagedCard,
   fetchManagedCards,
   fetchCardBenefits,
+  fetchCardPerformance,
   fetchPaymentHistoriesByCard,
   setManagedDefaultCard,
   updateManagedCardAlias,
 } from '../api/mypageApi';
 import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
-import type { CardBenefit, PaymentHistoryItem, PaymentStatus } from '../types/mypage';
+import type {
+  CardBenefit,
+  CardPerformance,
+  PaymentHistoryItem,
+  PaymentStatus,
+} from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
 type PaymentDetailTab = 'all' | 'completed' | 'canceled';
@@ -54,6 +60,8 @@ export function CardDetailScreen({ navigation, route }: Props) {
   >(null);
   const [aliasValue, setAliasValue] = useState('');
   const [cardBenefits, setCardBenefits] = useState<CardBenefit[]>([]);
+  const [cardPerformance, setCardPerformance] =
+    useState<CardPerformance | null>(null);
   const [cardPayments, setCardPayments] = useState<PaymentHistoryItem[]>([]);
   const [isResolvingCard, setIsResolvingCard] = useState(false);
   const [hasCardLookupFailed, setHasCardLookupFailed] = useState(false);
@@ -120,8 +128,9 @@ export function CardDetailScreen({ navigation, route }: Props) {
     Promise.allSettled([
       fetchCardBenefits(card.id),
       fetchPaymentHistoriesByCard(card.id),
+      fetchCardPerformance(card.id),
     ])
-      .then(([benefitsResult, paymentsResult]) => {
+      .then(([benefitsResult, paymentsResult, performanceResult]) => {
         if (!isActive) {
           return;
         }
@@ -132,12 +141,18 @@ export function CardDetailScreen({ navigation, route }: Props) {
         setCardPayments(
           paymentsResult.status === 'fulfilled' ? paymentsResult.value : [],
         );
+        setCardPerformance(
+          performanceResult.status === 'fulfilled'
+            ? performanceResult.value
+            : null,
+        );
       })
       .catch((error) => {
         console.warn('Failed to fetch card details.', error);
         if (isActive) {
           setCardBenefits([]);
           setCardPayments([]);
+          setCardPerformance(null);
           setHasLoadError(true);
         }
       })
@@ -224,6 +239,18 @@ export function CardDetailScreen({ navigation, route }: Props) {
                 <InfoRow label="카드명" value={card.name} />
                 <InfoRow label="카드번호" value={card.cardNumber} />
                 <InfoRow label="등록일" value={card.registeredAt || '-'} />
+              </Card>
+
+              <Card title="이번 달 실적">
+                <InfoRow
+                  label={
+                    cardPerformance
+                      ? `${Number(cardPerformance.yearMonth.slice(4, 6))}월 이용금액`
+                      : '이번 달 이용금액'
+                  }
+                  value={cardPerformance?.amount ?? '-'}
+                  valueClassName="text-erum-secondary"
+                />
               </Card>
 
               <Card title="혜택">
