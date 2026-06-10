@@ -92,6 +92,12 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
     };
   }, [route.params.paymentId]);
 
+  const isRemotePayment = payment?.method === 'remote';
+  const isRemoteRequester =
+    isRemotePayment && payment.remoteRole === 'requester';
+  const canShowPaymentControls =
+    !isRemotePayment || payment.remoteRole === 'payer';
+
   return (
     <>
       <PageWrap
@@ -143,11 +149,22 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
                 />
                 <InfoRow label="결제일시" value={payment.paidAt} />
                 <InfoRow label="영수증 ID" value={payment.receiptId} />
+                {payment.method === 'remote' && payment.remoteRole === 'payer' ? (
+                  <InfoRow
+                    label="결제 요청자"
+                    value={payment.requesterName ?? '-'}
+                  />
+                ) : null}
+                {isRemoteRequester ? (
+                  <InfoRow label="결제자" value={payment.payerName ?? '-'} />
+                ) : null}
               </Card>
 
-              <Card title="카드 정보">
-                <PaymentCardInfoRows payment={payment} />
-              </Card>
+              {canShowPaymentControls ? (
+                <Card title="카드 정보">
+                  <PaymentCardInfoRows payment={payment} />
+                </Card>
+              ) : null}
 
               <Card title="판매자 정보">
                 <InfoRow label="판매자상호" value={payment.sellerName} />
@@ -175,7 +192,7 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <Button label="전자영수증" onPress={() => setIsReceiptOpen(true)} />
-              {payment.status === 'completed' ? (
+              {payment.status === 'completed' && canShowPaymentControls ? (
                 <Button
                   label="결제취소"
                   variant="danger"
@@ -253,6 +270,11 @@ function PaymentCardInfoRows({ payment }: { payment: PaymentDetail }) {
         >
           <InfoRow label="카드명" value={card.name} />
           <InfoRow label="카드번호" value={card.maskedNumber} />
+          <InfoRow
+            label="카드 결제금액"
+            value={card.paidAmount}
+            valueClassName="text-erum-secondary"
+          />
         </View>
       ))}
     </View>

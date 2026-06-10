@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
@@ -14,17 +14,24 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import { Tab } from '../../../shared/components/Tab';
+import { formatCurrency } from '../../../shared/utils/currency';
 import {
   deleteManagedCard,
   fetchManagedCards,
   fetchCardBenefits,
+  fetchCardPerformance,
   fetchPaymentHistoriesByCard,
   setManagedDefaultCard,
   updateManagedCardAlias,
 } from '../api/mypageApi';
 import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import { useManagedCardsStore } from '../stores/useManagedCardsStore';
-import type { CardBenefit, PaymentHistoryItem, PaymentStatus } from '../types/mypage';
+import type {
+  CardBenefit,
+  CardPerformance,
+  PaymentHistoryItem,
+  PaymentStatus,
+} from '../types/mypage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CardDetailScreen'>;
 type PaymentDetailTab = 'all' | 'completed' | 'canceled';
@@ -54,6 +61,8 @@ export function CardDetailScreen({ navigation, route }: Props) {
   >(null);
   const [aliasValue, setAliasValue] = useState('');
   const [cardBenefits, setCardBenefits] = useState<CardBenefit[]>([]);
+  const [cardPerformance, setCardPerformance] =
+    useState<CardPerformance | null>(null);
   const [cardPayments, setCardPayments] = useState<PaymentHistoryItem[]>([]);
   const [isResolvingCard, setIsResolvingCard] = useState(false);
   const [hasCardLookupFailed, setHasCardLookupFailed] = useState(false);
@@ -120,8 +129,9 @@ export function CardDetailScreen({ navigation, route }: Props) {
     Promise.allSettled([
       fetchCardBenefits(card.id),
       fetchPaymentHistoriesByCard(card.id),
+      fetchCardPerformance(card.id),
     ])
-      .then(([benefitsResult, paymentsResult]) => {
+      .then(([benefitsResult, paymentsResult, performanceResult]) => {
         if (!isActive) {
           return;
         }
@@ -132,14 +142,19 @@ export function CardDetailScreen({ navigation, route }: Props) {
         setCardPayments(
           paymentsResult.status === 'fulfilled' ? paymentsResult.value : [],
         );
-      })
-      .catch((error) => {
-        console.warn('Failed to fetch card details.', error);
-        if (isActive) {
-          setCardBenefits([]);
-          setCardPayments([]);
-          setHasLoadError(true);
-        }
+        setCardPerformance(
+          performanceResult.status === 'fulfilled'
+            ? performanceResult.value
+            : null,
+        );
+
+        const results = [benefitsResult, paymentsResult, performanceResult];
+        results.forEach((result) => {
+          if (result.status === 'rejected') {
+            console.warn('Failed to fetch part of card details.', result.reason);
+          }
+        });
+        setHasLoadError(results.every((result) => result.status === 'rejected'));
       })
       .finally(() => {
         if (isActive) {
@@ -151,6 +166,13 @@ export function CardDetailScreen({ navigation, route }: Props) {
       isActive = false;
     };
   }, [card?.id]);
+
+  const performanceTarget = useMemo(
+    () =>
+      cardPerformance?.targetAmount ??
+      resolvePerformanceTarget(cardPerformance?.amount ?? 0, cardBenefits),
+    [cardBenefits, cardPerformance?.amount, cardPerformance?.targetAmount],
+  );
 
   if (!card) {
     return (
@@ -225,6 +247,11 @@ export function CardDetailScreen({ navigation, route }: Props) {
                 <InfoRow label="카드번호" value={card.cardNumber} />
                 <InfoRow label="등록일" value={card.registeredAt || '-'} />
               </Card>
+
+              <MonthlyPerformanceCard
+                performance={cardPerformance}
+                targetAmount={performanceTarget}
+              />
 
               <Card title="혜택">
                 <View className="gap-2">
@@ -511,6 +538,95 @@ function InfoRow({
 
 function Divider() {
   return <View className="my-2 h-px w-full bg-neutral-grey1" />;
+}
+
+function MonthlyPerformanceCard({
+  performance,
+  targetAmount,
+}: {
+  performance: CardPerformance | null;
+  targetAmount?: number;
+}) {
+  const amount = performance?.amount ?? 0;
+  const progress =
+    targetAmount && targetAmount > 0
+      ? Math.min(Math.max((amount / targetAmount) * 100, 0), 100)
+      : 0;
+
+  return (
+    <Card title="이번 달 실적">
+      <View className="gap-1">
+        <PerformanceRow
+          label="사용금액"
+          value={performance ? formatCurrency(amount) : '-'}
+          valueClassName="text-[#2F62A3]"
+        />
+        <PerformanceRow
+          label="할인받은 금액"
+          value={
+            performance?.discountAmount == null
+              ? '-'
+              : formatCurrency(performance.discountAmount)
+          }
+          valueClassName="text-erum-primary"
+        />
+
+        <View className="mt-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="font-pretendard text-normal-regular text-neutral-black2">
+              실적 달성률
+            </Text>
+            <Text className="font-pretendard text-normal-regular text-neutral-black2">
+              {targetAmount ? formatCurrency(targetAmount) : '-'}
+            </Text>
+          </View>
+          <View className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-grey1">
+            <View
+              className="h-full rounded-full bg-[#2F62A3]"
+              style={{ width: `${progress}%` }}
+            />
+          </View>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function PerformanceRow({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName: string;
+}) {
+  return (
+    <View className="flex-row items-center justify-between py-1.5">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <Text className={`font-pretendard text-large-bold ${valueClassName}`}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function resolvePerformanceTarget(
+  currentAmount: number,
+  benefits: CardBenefit[],
+) {
+  const thresholds = Array.from(
+    new Set(
+      benefits.flatMap((benefit) => benefit.performanceThresholds),
+    ),
+  ).sort((a, b) => a - b);
+
+  return (
+    thresholds.find((threshold) => threshold > currentAmount) ??
+    thresholds.at(-1)
+  );
 }
 
 function AliasEditModal({
