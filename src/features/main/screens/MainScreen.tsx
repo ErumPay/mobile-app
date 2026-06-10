@@ -284,9 +284,7 @@ export default function MainScreen({ navigation, route }: Props) {
           }
 
           if (requests.status !== "fulfilled") {
-            if (!shouldKeepStoredRemotePaymentProgress(remoteProgressRef.current)) {
-              clearRemoteProgress();
-            }
+            clearRemoteProgress();
             return;
           }
 
@@ -330,9 +328,7 @@ export default function MainScreen({ navigation, route }: Props) {
             return;
           }
 
-          if (!shouldKeepStoredRemotePaymentProgress(remoteProgressRef.current)) {
-            clearRemoteProgress();
-          }
+          clearRemoteProgress();
         } catch {
           // 메인 진입은 진행 결제 상태 조회 실패로 막지 않는다.
         } finally {
@@ -363,7 +359,11 @@ export default function MainScreen({ navigation, route }: Props) {
     const currentUserId = paymentProgressUserId;
     const remoteRequestId = remoteProgress?.requestId;
 
-    if (currentUserId == null || !remoteRequestId) {
+    if (
+      currentUserId == null ||
+      !remoteRequestId ||
+      isTerminalRemotePaymentStatus(remoteProgress.status)
+    ) {
       return;
     }
 
@@ -376,10 +376,8 @@ export default function MainScreen({ navigation, route }: Props) {
       );
 
       if (isTerminalRemotePaymentStatus(nextRequest.status)) {
-        if (!shouldKeepRemotePaymentProgress(nextRequest)) {
-          clearRemoteProgress();
-          return;
-        }
+        clearRemoteProgress();
+        return;
       }
 
       if (Number(nextRequest.recipientUserId) === currentUserId) {
@@ -944,55 +942,10 @@ function formatRemoteUserLabel(name: string, phoneSuffix?: string) {
   return `${name}(${phoneSuffix})`;
 }
 
-function shouldKeepRemotePaymentProgress(request: RemotePaymentRequestResponse) {
-  if (!isTerminalRemotePaymentStatus(request.status)) {
-    return false;
-  }
-
-  if (!request.expiresAt) {
-    return true;
-  }
-
-  const expiresAt = parseRemoteExpiresAt(request.expiresAt);
-
-  if (!Number.isFinite(expiresAt)) {
-    return true;
-  }
-
-  return expiresAt > Date.now();
-}
-
-function shouldKeepStoredRemotePaymentProgress(
-  progress: ReturnType<typeof useRemotePaymentProgressStore.getState>["progress"],
-) {
-  if (!progress || !isTerminalRemotePaymentStatus(progress.status)) {
-    return false;
-  }
-
-  if (!progress.expiresAt) {
-    return true;
-  }
-
-  const expiresAt = parseRemoteExpiresAt(progress.expiresAt);
-
-  if (!Number.isFinite(expiresAt)) {
-    return true;
-  }
-
-  return expiresAt > Date.now();
-}
-
 function isTerminalRemotePaymentStatus(
   status: RemotePaymentRequestResponse["status"],
 ) {
   return status === "REJECTED" || status === "COMPLETED";
-}
-
-function parseRemoteExpiresAt(value: string) {
-  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value);
-  const normalizedValue = hasTimezone ? value : `${value}Z`;
-
-  return new Date(normalizedValue).getTime();
 }
 
 function createMonthlyPayment(payments: PaymentHistoryItem[]) {
