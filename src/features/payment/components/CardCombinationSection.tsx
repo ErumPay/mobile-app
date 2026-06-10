@@ -3,6 +3,7 @@ import { Feather } from '@expo/vector-icons';
 
 import PaymentCardPreview from './PaymentCardPreview';
 import CardCombinationTabs from './CardCombinationTabs';
+import NoticeBox from '../../../shared/components/NoticeBox';
 import type { CardCombination, CardCombinationType } from '../types/paymentCard.types';
 
 type Props = {
@@ -84,10 +85,8 @@ export default function CardCombinationSection({
                     </View>
                 </>
             ) : (
-                <View className="mt-7 rounded-xl bg-neutral-grey0 px-4 py-6">
-                    <Text className="text-center text-normal-regular text-neutral-black2">
-                        추천되는 카드 조합이 없습니다.
-                    </Text>
+                <View className="mt-7">
+                    <NoticeBox description="추천하는 카드가 없습니다." />
                 </View>
             )}
         </View>

@@ -1,7 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -82,6 +82,7 @@ export default function FriendListScreen({ navigation }: Props) {
   const [isInviteLinkLoading, setIsInviteLinkLoading] = useState(false);
   const [isInviteLinkCopied, setIsInviteLinkCopied] = useState(false);
   const [processingRequestRelationId, setProcessingRequestRelationId] = useState<number | null>(null);
+  const isPollingFriendDataRef = useRef(false);
 
   const filteredFriends = useMemo(() => {
     const trimmedKeyword = searchKeyword.trim().toLowerCase();
@@ -128,8 +129,20 @@ export default function FriendListScreen({ navigation }: Props) {
           }
         });
 
+      const intervalId = setInterval(() => {
+        if (isPollingFriendDataRef.current) {
+          return;
+        }
+
+        isPollingFriendDataRef.current = true;
+        void loadFriendData().finally(() => {
+          isPollingFriendDataRef.current = false;
+        });
+      }, 5000);
+
       return () => {
         isActive = false;
+        clearInterval(intervalId);
       };
     }, [loadFriendData]),
   );

@@ -16,6 +16,7 @@ import type {
     PaymentResultFlow,
     PaymentResultStatus,
 } from '../types/paymentResult.types';
+import { getActiveDutchPaySessions } from '../api/dutchPayApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentResult'>;
 
@@ -87,6 +88,25 @@ function getPaymentResultContent({
     };
 }
 
+async function resolveActiveDutchSessionIdByPaymentId(
+    paymentId?: number | string,
+) {
+    const normalizedPaymentId = Number(paymentId);
+
+    if (!Number.isFinite(normalizedPaymentId)) {
+        return undefined;
+    }
+
+    try {
+        const sessions = await getActiveDutchPaySessions();
+        return sessions.find(
+            (session) => session.host_auth_payment_id === normalizedPaymentId,
+        )?.session_id;
+    } catch {
+        return undefined;
+    }
+}
+
 function ResultIcon({ type }: { type: PaymentResultStatus }) {
     const isSuccess = type === 'SUCCESS';
     const iconColor = isSuccess ? colors.state.success : colors.state.error;
@@ -119,7 +139,7 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
         navigation.navigate('Main');
     };
 
-    const handlePressButton = () => {
+    const handlePressButton = async () => {
         if (content.buttonAction === 'CARD_SELECT') {
             const retryPaymentId = route.params?.paymentId;
             const retryAmount = route.params?.amount;
@@ -145,7 +165,11 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
         }
 
         if (content.buttonAction === 'CREATE_GROUP') {
-            if (!route.params?.dutchSessionId) {
+            const nextDutchSessionId =
+                route.params?.dutchSessionId ??
+                await resolveActiveDutchSessionIdByPaymentId(route.params?.paymentId);
+
+            if (!nextDutchSessionId) {
                 Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
                 return;
             }
@@ -153,9 +177,9 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
             navigation.navigate('PaymentParticipantSelect', {
                 mode: 'DUTCH_PAY',
                 scenario: 'DEFAULT',
-                dutchSessionId: route.params.dutchSessionId,
-                orderName: route.params.orderName,
-                merchantId: route.params.merchantId,
+                dutchSessionId: nextDutchSessionId,
+                orderName: route.params?.orderName,
+                merchantId: route.params?.merchantId,
             });
             return;
         }

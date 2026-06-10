@@ -3,6 +3,7 @@ import type { PaymentCardRecommendationStrategyType } from './paymentCardRecomme
 export type PaymentCardFlowType =
     | 'NORMAL'
     | 'DUTCH_PAY'
+    | 'DUTCH_PAY_MEMBER'
     | 'DUTCH_PAY_FINAL'
     | 'REMOTE_PAYMENT';
 
@@ -34,7 +35,7 @@ export type RecommendedPaymentCard = {
     title: string;
     description?: string;
     badgeText?: string;
-    card: PaymentCard;
+    card?: PaymentCard;
 };
 
 export type CardCombination = {

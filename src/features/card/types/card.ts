@@ -37,6 +37,7 @@ export interface RegisteredCard {
   maskedNumber: string;
   cardAlias?: string | null;
   expiryYm: string;
+  imageUrl?: string;
   isDefault: boolean;
   status: string;
 }

@@ -15,7 +15,7 @@ import { CardRegisterResultScreen } from './CardRegisterResultScreen';
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
 
-export function CardRegisterScreen({ navigation }: Props) {
+export function CardRegisterScreen({ navigation, route }: Props) {
   const [mode, setMode] = useState<RegisterMode>('select');
   const [ocrInitialValues, setOcrInitialValues] =
     useState<Partial<CardRegisterFormValues> | null>(null);
@@ -25,6 +25,10 @@ export function CardRegisterScreen({ navigation }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addCard = useManagedCardsStore((state) => state.addCard);
+  const paymentCardSelectParams =
+    route.params?.returnTo === 'PaymentCardSelect'
+      ? route.params.paymentCardSelectParams
+      : undefined;
 
   const syncRegisteredCardToStore = (
     nextCard: RegisteredCard,
@@ -97,6 +101,15 @@ export function CardRegisterScreen({ navigation }: Props) {
     navigation.navigate('CardManagementScreen');
   };
 
+  const handleGoSuccessPrimary = () => {
+    if (paymentCardSelectParams) {
+      navigation.replace('PaymentCardSelect', paymentCardSelectParams);
+      return;
+    }
+
+    handleGoCardManagement();
+  };
+
   if (mode === 'ocr') {
     return (
       <CardOcrScreen
@@ -126,8 +139,9 @@ export function CardRegisterScreen({ navigation }: Props) {
         status="success"
         registeredCard={registeredCard}
         onClose={handleGoBack}
-        onGoCardManagement={handleGoCardManagement}
+        onGoCardManagement={handleGoSuccessPrimary}
         onGoHome={handleGoHome}
+        primaryButtonLabel={paymentCardSelectParams ? '결제 계속하기' : undefined}
       />
     );
   }

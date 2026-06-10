@@ -43,6 +43,23 @@ const combinationMeta: Record<
     },
 };
 
+const emptyCombinationStrategyTypeByType: Record<
+    CardCombinationType,
+    PaymentCardRecommendationStrategyType
+> = {
+    SINGLE_BENEFIT: 'BENEFIT_SINGLE',
+    SINGLE_PERFORMANCE: 'PERF_SINGLE',
+    SPLIT_BENEFIT: 'BENEFIT_SPLIT',
+    SPLIT_PERFORMANCE: 'PERF_SPLIT',
+};
+
+const allCombinationTypes: CardCombinationType[] = [
+    'SINGLE_BENEFIT',
+    'SINGLE_PERFORMANCE',
+    'SPLIT_BENEFIT',
+    'SPLIT_PERFORMANCE',
+];
+
 const getCardTheme = (cardCompany: string): PaymentCardTheme => {
     if (cardCompany.includes('삼성')) {
         return 'BLUE';
@@ -88,6 +105,44 @@ const getUniqueCards = (cards: PaymentCard[]): PaymentCard[] => {
     return Array.from(cardMap.values());
 };
 
+const mergeRegisteredCardFallback = (
+    card: PaymentCard,
+    fallbackCardMap: Map<string, PaymentCard>,
+): PaymentCard => {
+    const fallbackCard = fallbackCardMap.get(card.id);
+
+    if (!fallbackCard) {
+        return card;
+    }
+
+    return {
+        ...fallbackCard,
+        ...card,
+        imageUrl: card.imageUrl || fallbackCard.imageUrl,
+        expiryDate: card.expiryDate || fallbackCard.expiryDate,
+        isPrimary: card.isPrimary ?? fallbackCard.isPrimary,
+    };
+};
+
+const toFallbackRegisteredCards = (
+    fallbackRegisteredCards: PaymentCard[],
+    paymentAmount: number,
+) =>
+    fallbackRegisteredCards.map((card) => ({
+        ...card,
+        amount: paymentAmount,
+        benefitDescription: card.benefitDescription ?? '등록 카드로 결제합니다.',
+    }));
+
+const createEmptyCardCombinations = (): CardCombination[] =>
+    allCombinationTypes.map((type) => ({
+        type,
+        strategyType: emptyCombinationStrategyTypeByType[type],
+        label: combinationMeta[type].label,
+        description: combinationMeta[type].description,
+        cards: [],
+    }));
+
 export function toPaymentCardSelectData(
     response: PaymentCardRecommendationResponse,
     fallbackRegisteredCards: PaymentCard[] = [],
@@ -98,37 +153,35 @@ export function toPaymentCardSelectData(
             throw new Error('추천 카드 결과가 없습니다.');
         }
 
-        const registeredCards = fallbackRegisteredCards.map((card) => ({
-            ...card,
-            amount: paymentAmount,
-            benefitDescription: card.benefitDescription ?? '등록 카드로 결제',
-        }));
-        const cardCombinations = registeredCards.map((card) => ({
-            type: 'SINGLE_BENEFIT' as const,
-            strategyType: 'BENEFIT_SINGLE' as const,
-            label: '단일혜택',
-            description: '등록 카드 결제',
-            cards: [card],
-            benefitDescription: '추천 조합 없이 등록 카드로 결제합니다.',
-        }));
-        const recommendedCard = registeredCards[0];
+        const registeredCards = toFallbackRegisteredCards(
+            fallbackRegisteredCards,
+            paymentAmount,
+        );
+        const cardCombinations = createEmptyCardCombinations();
 
         return {
             flowType: 'NORMAL',
             recommendedCard: {
-                title: '등록 카드로 결제해요',
+                title: '이룸페이가 추천해요!',
                 badgeText: undefined,
-                card: recommendedCard,
+                card: registeredCards.find((card) => card.isPrimary) ?? registeredCards[0],
             },
             registeredCards,
             cardCombinations,
         };
     }
 
+    const fallbackCardMap = new Map(
+        fallbackRegisteredCards.map((card) => [card.id, card]),
+    );
     const combinations = response.results.map((result) => {
         const type = strategyTypeToCombinationType[result.strategyType];
         const meta = combinationMeta[type];
-        const cards = result.cards?.map(toPaymentCard) ?? [];
+        const cards =
+            result.cards
+                ?.map(toPaymentCard)
+                .map((card) => mergeRegisteredCardFallback(card, fallbackCardMap)) ??
+            [];
 
         return {
             type,
@@ -140,10 +193,17 @@ export function toPaymentCardSelectData(
         };
     });
 
-    const registeredCards = getUniqueCards(
+    const recommendedRegisteredCards = getUniqueCards(
         response.results.flatMap((result) => result.cards?.map(toPaymentCard) ?? []),
     );
-    const recommendedCard = combinations[0]?.cards[0] ?? registeredCards[0];
+    const registeredCards =
+        recommendedRegisteredCards.length > 0
+            ? recommendedRegisteredCards
+            : toFallbackRegisteredCards(fallbackRegisteredCards, paymentAmount);
+    const recommendedCard =
+        combinations.flatMap((combination) => combination.cards)[0] ??
+        registeredCards.find((card) => card.isPrimary) ??
+        registeredCards[0];
 
     if (!recommendedCard) {
         throw new Error('추천 카드 정보가 없습니다.');
