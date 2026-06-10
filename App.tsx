@@ -5,6 +5,7 @@ import { Alert, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 
 import GuideScreen from './src/app/screens/GuideScreen';
 import TutorialScreen from './src/features/auth/screens/TutorialScreen';
@@ -91,7 +92,7 @@ export type RootStackParamList = {
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['erumpay://', 'http://localhost:19000'],
+  prefixes: [Linking.createURL('/'), 'erumpay://', 'http://localhost:19000'],
   config: {
     screens: {
       Tutorial: 'tutorial',

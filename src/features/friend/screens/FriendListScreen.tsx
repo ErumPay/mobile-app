@@ -1,5 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Image, Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -57,6 +58,14 @@ function toDisplayFriendRequest(request: AuthFriendRequestResponse, index: numbe
     phoneNumber: `010-****-${request.phoneLastFour}`,
     avatarColorClassName: avatarColorClasses[index % avatarColorClasses.length],
   };
+}
+
+function toDisplayInviteUrl(inviteToken: string, fallbackUrl: string) {
+  if (!__DEV__) {
+    return fallbackUrl;
+  }
+
+  return Linking.createURL(`friends/invite/${inviteToken}`);
 }
 
 export default function FriendListScreen({ navigation }: Props) {
@@ -178,7 +187,7 @@ export default function FriendListScreen({ navigation }: Props) {
     try {
       setIsInviteLinkLoading(true);
       const link = await createFriendInviteLink();
-      setInviteLink(link.inviteUrl);
+      setInviteLink(toDisplayInviteUrl(link.inviteToken, link.inviteUrl));
     } catch {
       setInviteLink('');
       Alert.alert('친구 초대', '초대 링크 생성에 실패했습니다.');
