@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal as RNModal, Pressable, Text, TextInput, View } from 'react-native';
 
 import type { RootStackParamList } from '../../../../App';
@@ -14,6 +14,7 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { SkeletonCard } from '../../../shared/components/Skeleton';
 import { Tab } from '../../../shared/components/Tab';
+import { formatCurrency } from '../../../shared/utils/currency';
 import {
   deleteManagedCard,
   fetchManagedCards,
@@ -146,15 +147,14 @@ export function CardDetailScreen({ navigation, route }: Props) {
             ? performanceResult.value
             : null,
         );
-      })
-      .catch((error) => {
-        console.warn('Failed to fetch card details.', error);
-        if (isActive) {
-          setCardBenefits([]);
-          setCardPayments([]);
-          setCardPerformance(null);
-          setHasLoadError(true);
-        }
+
+        const results = [benefitsResult, paymentsResult, performanceResult];
+        results.forEach((result) => {
+          if (result.status === 'rejected') {
+            console.warn('Failed to fetch part of card details.', result.reason);
+          }
+        });
+        setHasLoadError(results.every((result) => result.status === 'rejected'));
       })
       .finally(() => {
         if (isActive) {
@@ -166,6 +166,13 @@ export function CardDetailScreen({ navigation, route }: Props) {
       isActive = false;
     };
   }, [card?.id]);
+
+  const performanceTarget = useMemo(
+    () =>
+      cardPerformance?.targetAmount ??
+      resolvePerformanceTarget(cardPerformance?.amount ?? 0, cardBenefits),
+    [cardBenefits, cardPerformance?.amount, cardPerformance?.targetAmount],
+  );
 
   if (!card) {
     return (
@@ -202,9 +209,6 @@ export function CardDetailScreen({ navigation, route }: Props) {
     if (activePaymentTab === 'completed') return payment.status === 'completed';
     return payment.status === 'canceled' || payment.status === 'cancelRequested';
   });
-  const performanceTarget =
-    cardPerformance?.targetAmount ??
-    resolvePerformanceTarget(cardPerformance?.amount ?? 0, cardBenefits);
 
   return (
     <>
@@ -623,10 +627,6 @@ function resolvePerformanceTarget(
     thresholds.find((threshold) => threshold > currentAmount) ??
     thresholds.at(-1)
   );
-}
-
-function formatCurrency(value: number) {
-  return `${Math.trunc(value).toLocaleString('ko-KR')}원`;
 }
 
 function AliasEditModal({

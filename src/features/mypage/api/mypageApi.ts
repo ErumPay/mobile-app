@@ -10,6 +10,7 @@ import type {
   UserProfile,
 } from '../types/mypage';
 import { getAuthSessionAccessToken } from '../../auth/api/authApi';
+import { formatCurrency } from '../../../shared/utils/currency';
 import {
   getMypageUserId,
   MYPAGE_API_TIMEOUT_MS,
@@ -355,18 +356,24 @@ export async function fetchPaymentHistoriesByCard(
     : [];
 
   return payments.map((payment, index) => ({
-      id: `card-${cardId}-${index}`,
-      cardId,
-      method: 'solo',
-      benefitType: 'singleBenefit',
-      status: normalizePaymentStatus(payment.status),
-      title:
-        toStringValue(payment.merchantName ?? payment.merchant_name) || '결제',
-      date: formatDateTimeToDate(
-        toStringValue(payment.paidAt ?? payment.paid_at),
-      ),
-      amount: formatCurrency(toNumberValue(payment.amount)),
-    }));
+    id:
+      toStringValue(payment.paymentId ?? payment.payment_id) ||
+      `card-${cardId}-${index}`,
+    cardId,
+    method: normalizePaymentMethod(
+      payment.paymentType ?? payment.payment_type,
+    ),
+    benefitType: normalizePaymentBenefit(
+      payment.strategyType ?? payment.strategy_type,
+    ),
+    status: normalizePaymentStatus(payment.status),
+    title:
+      toStringValue(payment.merchantName ?? payment.merchant_name) || '결제',
+    date: formatDateTimeToDate(
+      toStringValue(payment.paidAt ?? payment.paid_at),
+    ),
+    amount: formatCurrency(toNumberValue(payment.amount)),
+  }));
 }
 
 async function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
@@ -757,10 +764,6 @@ function toOptionalNumberValue(value: unknown) {
 
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : undefined;
-}
-
-function formatCurrency(value: number) {
-  return `${Math.trunc(value).toLocaleString('ko-KR')}원`;
 }
 
 function formatDateTimeToDate(value: string) {

@@ -92,8 +92,11 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
     };
   }, [route.params.paymentId]);
 
+  const isRemotePayment = payment?.method === 'remote';
   const isRemoteRequester =
-    payment?.method === 'remote' && payment.remoteRole === 'requester';
+    isRemotePayment && payment.remoteRole === 'requester';
+  const canShowPaymentControls =
+    !isRemotePayment || payment.remoteRole === 'payer';
 
   return (
     <>
@@ -157,7 +160,7 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
                 ) : null}
               </Card>
 
-              {!isRemoteRequester ? (
+              {canShowPaymentControls ? (
                 <Card title="카드 정보">
                   <PaymentCardInfoRows payment={payment} />
                 </Card>
@@ -189,7 +192,7 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <Button label="전자영수증" onPress={() => setIsReceiptOpen(true)} />
-              {payment.status === 'completed' && !isRemoteRequester ? (
+              {payment.status === 'completed' && canShowPaymentControls ? (
                 <Button
                   label="결제취소"
                   variant="danger"
