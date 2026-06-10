@@ -63,6 +63,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
   const [selectedBenefit, setSelectedBenefit] = useState<PaymentBenefitType | null>(null);
@@ -80,6 +81,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
     let isActive = true;
 
     setIsLoading(true);
+    setHasLoadError(false);
     fetchPaymentHistories({
       status: toPaymentStatusParam(activeTab),
       ...toPeriodParams(appliedPeriod, appliedStartDate, appliedEndDate),
@@ -95,6 +97,7 @@ export function PaymentHistoryScreen({ navigation }: Props) {
         console.warn('Failed to fetch payment histories.', error);
         if (isActive) {
           setPayments([]);
+          setHasLoadError(true);
         }
       })
       .finally(() => {
@@ -308,7 +311,20 @@ export function PaymentHistoryScreen({ navigation }: Props) {
               />
             ))
           ) : (
-            <EmptyState title="결제 내역이 없습니다." />
+            <EmptyState
+              title={
+                hasLoadError
+                  ? '결제내역을 불러오지 못했습니다.'
+                  : '결제 내역이 없습니다.'
+              }
+              description={
+                hasLoadError
+                  ? '잠시 후 다시 시도해주세요.'
+                  : undefined
+              }
+              actionLabel={hasLoadError ? '다시 시도' : undefined}
+              onPressAction={hasLoadError ? loadPayments : undefined}
+            />
           )}
         </View>
       </PageWrap>

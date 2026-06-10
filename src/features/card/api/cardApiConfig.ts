@@ -39,8 +39,9 @@ export function getCardRegisterUserId(): number {
     return sessionUserId;
   }
 
-  if (__DEV__) {
-    return Number(process.env.EXPO_PUBLIC_DEV_USER_ID ?? '2');
+  const devUserId = Number(process.env.EXPO_PUBLIC_DEV_USER_ID);
+  if (__DEV__ && Number.isFinite(devUserId)) {
+    return devUserId;
   }
 
   throw new Error('카드 등록 사용자 정보 연동이 필요합니다.');

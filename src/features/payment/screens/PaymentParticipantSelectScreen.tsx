@@ -22,15 +22,9 @@ import PageWrap from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
 import { fetchAuthFriends, type AuthFriendResponse } from '../../friend/api/friendApi';
 import { fetchUserProfile } from '../../mypage/api/mypageApi';
-import PaymentMockBadge from '../components/PaymentMockBadge';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { requestRemotePayment } from '../api/remotePaymentApi';
 import { createDutchPayInviteLink } from '../api/dutchPayApi';
-import {
-  getParticipantSelectMockState,
-  mockAllFriends,
-  mockFavoriteFriends,
-} from '../constants/paymentParticipantSelect.mock';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type {
   ParticipantFriend,
@@ -46,6 +40,15 @@ type Props = NativeStackScreenProps<
 type ShareStep = 'READY' | 'COPIED';
 
 const DEV_DUTCH_INVITE_BASE_URL = 'http://localhost:19000/payment/dutch-pay-invite';
+
+const defaultOwner: ParticipantFriend = {
+  id: 'owner',
+  name: '나',
+  phoneNumber: '',
+  phoneSuffix: '0000',
+  initial: '나',
+  colorClassName: 'bg-erum-main',
+};
 
 function toDutchPayUserIds(friendIds: string[]) {
   return friendIds
@@ -283,22 +286,11 @@ export default function PaymentParticipantSelectScreen({
   route,
 }: Props) {
   const mode = route.params?.mode ?? 'DUTCH_PAY';
-  const scenario = route.params?.scenario ?? 'DEFAULT';
   const content = getModeContent(mode);
-  const initialState = useMemo(
-    () => getParticipantSelectMockState({ mode, scenario }),
-    [mode, scenario],
-  );
-  const [searchKeyword, setSearchKeyword] = useState(initialState.searchKeyword);
-  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(
-    initialState.selectedFriendIds,
-  );
-  const [autoSplitChecked, setAutoSplitChecked] = useState(
-    initialState.autoSplitChecked,
-  );
-  const [shareModalVisible, setShareModalVisible] = useState(
-    initialState.shareModalVisible,
-  );
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
+  const [autoSplitChecked, setAutoSplitChecked] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareStep, setShareStep] = useState<ShareStep>('READY');
   const [shareCountdown, setShareCountdown] = useState(3);
   const [shareUrl, setShareUrl] = useState('');
@@ -307,10 +299,8 @@ export default function PaymentParticipantSelectScreen({
   const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
     useState(false);
   const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
-  const [serverFriends, setServerFriends] = useState<ParticipantFriend[] | null>(null);
-  const [owner, setOwner] = useState<ParticipantFriend>(initialState.owner);
-  const [friendsErrorMessage, setFriendsErrorMessage] = useState('');
-  const shouldUseMockFriends = scenario !== 'DEFAULT';
+  const [serverFriends, setServerFriends] = useState<ParticipantFriend[]>([]);
+  const [owner, setOwner] = useState<ParticipantFriend>(defaultOwner);
   const setRequesterProgress = useRemotePaymentProgressStore(
     (state) => state.setRequesterProgress,
   );
@@ -322,23 +312,12 @@ export default function PaymentParticipantSelectScreen({
   const isDutchPay = mode === 'DUTCH_PAY';
   const normalizedSearchKeyword = searchKeyword.trim().replace(/-/g, '');
   const baseFavoriteFriends = useMemo(
-    () =>
-      shouldUseMockFriends
-        ? initialState.favoriteFriends
-        : (serverFriends ?? []).filter((friend) => friend.favorite),
-    [initialState.favoriteFriends, serverFriends, shouldUseMockFriends],
+    () => serverFriends.filter((friend) => friend.favorite),
+    [serverFriends],
   );
   const baseAllFriends = useMemo(
-    () =>
-      shouldUseMockFriends
-        ? [...initialState.favoriteFriends, ...initialState.allFriends]
-        : (serverFriends ?? []),
-    [
-      initialState.allFriends,
-      initialState.favoriteFriends,
-      serverFriends,
-      shouldUseMockFriends,
-    ],
+    () => serverFriends,
+    [serverFriends],
   );
   const filterFriends = useCallback((friends: ParticipantFriend[]) => {
     if (!normalizedSearchKeyword) {
@@ -387,16 +366,10 @@ export default function PaymentParticipantSelectScreen({
   ]);
 
   useEffect(() => {
-    if (shouldUseMockFriends) {
-      setOwner(initialState.owner);
-      return;
-    }
-
     let isMounted = true;
 
     const loadParticipantData = async () => {
       try {
-        setFriendsErrorMessage('');
         const [profile, friends] = await Promise.all([
           fetchUserProfile(),
           fetchAuthFriends(),
@@ -406,14 +379,9 @@ export default function PaymentParticipantSelectScreen({
           setOwner(toOwnerParticipantFriend(profile));
           setServerFriends(friends.map(toParticipantFriend));
         }
-      } catch (error) {
+      } catch {
         if (isMounted) {
           setServerFriends([]);
-          setFriendsErrorMessage(
-            error instanceof Error
-              ? error.message
-              : '친구 목록을 불러오지 못했습니다.',
-          );
         }
       }
     };
@@ -423,7 +391,7 @@ export default function PaymentParticipantSelectScreen({
     return () => {
       isMounted = false;
     };
-  }, [initialState.owner, shouldUseMockFriends]);
+  }, []);
 
   const handlePressClose = () => {
     setStopModalVisible(true);
@@ -673,12 +641,6 @@ export default function PaymentParticipantSelectScreen({
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full self-center">
-            {shouldUseMockFriends ? (
-              <View className="mb-3">
-                <PaymentMockBadge />
-              </View>
-            ) : null}
-
             {isDutchPay ? (
               <View className="mb-3 flex-row items-center justify-between">
                 <View className="flex-row items-center">
@@ -728,12 +690,6 @@ export default function PaymentParticipantSelectScreen({
                 onChangeText={setSearchKeyword}
               />
             </View>
-
-            {friendsErrorMessage ? (
-              <Text className="mb-4 text-center font-pretendard text-normal-regular text-state-error">
-                {friendsErrorMessage}
-              </Text>
-            ) : null}
 
             {!hasVisibleFriends ? (
               <EmptyMessage

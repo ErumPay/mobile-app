@@ -482,11 +482,11 @@ function getPaymentProgressConfig({
 }
 
 function getRemoteOutgoingName(participantName?: string) {
-  return participantName ?? "나성희(3242)";
+  return participantName?.trim() || "요청 상대";
 }
 
 function getRemoteIncomingName(participantName?: string) {
-  return participantName ?? "김이름(6653)";
+  return participantName?.trim() || "요청자";
 }
 
 function buildSteps(

@@ -90,9 +90,39 @@ const getUniqueCards = (cards: PaymentCard[]): PaymentCard[] => {
 
 export function toPaymentCardSelectData(
     response: PaymentCardRecommendationResponse,
+    fallbackRegisteredCards: PaymentCard[] = [],
+    paymentAmount = 0,
 ): PaymentCardSelectData {
     if (!response.results?.length) {
-        throw new Error('추천 카드 결과가 없습니다.');
+        if (!fallbackRegisteredCards.length) {
+            throw new Error('추천 카드 결과가 없습니다.');
+        }
+
+        const registeredCards = fallbackRegisteredCards.map((card) => ({
+            ...card,
+            amount: paymentAmount,
+            benefitDescription: card.benefitDescription ?? '등록 카드로 결제',
+        }));
+        const cardCombinations = registeredCards.map((card) => ({
+            type: 'SINGLE_BENEFIT' as const,
+            strategyType: 'BENEFIT_SINGLE' as const,
+            label: '단일혜택',
+            description: '등록 카드 결제',
+            cards: [card],
+            benefitDescription: '추천 조합 없이 등록 카드로 결제합니다.',
+        }));
+        const recommendedCard = registeredCards[0];
+
+        return {
+            flowType: 'NORMAL',
+            recommendedCard: {
+                title: '등록 카드로 결제해요',
+                badgeText: undefined,
+                card: recommendedCard,
+            },
+            registeredCards,
+            cardCombinations,
+        };
     }
 
     const combinations = response.results.map((result) => {

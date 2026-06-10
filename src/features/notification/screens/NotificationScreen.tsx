@@ -88,9 +88,7 @@ const NotificationScreen = ({ navigation }: Props) => {
       }
 
       setNotifications(response.items);
-    } catch (error) {
-      console.warn('[NotificationScreen] failed to fetch notifications', error);
-
+    } catch {
       if (isActive()) {
         setNotifications([]);
         setHasLoadError(true);
@@ -106,12 +104,10 @@ const NotificationScreen = ({ navigation }: Props) => {
     useCallback(() => {
       let isActive = true;
 
-      console.log('[NotificationScreen] focused, loading notifications');
       void handleLoadNotifications(() => isActive);
 
       return () => {
         isActive = false;
-        console.log('[NotificationScreen] unfocused');
       };
     }, [handleLoadNotifications]),
   );
@@ -165,8 +161,8 @@ const NotificationScreen = ({ navigation }: Props) => {
             : item,
         ),
       );
-    } catch (error) {
-      console.warn('[NotificationScreen] failed to read notification', error);
+    } catch {
+      // 읽음 처리 실패 시 목록 화면은 그대로 유지합니다.
     } finally {
       readingNotificationIdsRef.current.delete(notificationId);
       setReadingNotificationId((prevNotificationId) =>

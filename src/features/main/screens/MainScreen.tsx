@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -27,7 +27,9 @@ import {
 import {
   getActiveRemotePaymentRequests,
   rejectRemotePaymentRequest,
+  subscribeRemotePaymentRequestStream,
 } from "../../payment/api/remotePaymentApi";
+import { fetchAuthFriends, type AuthFriendResponse } from "../../friend/api/friendApi";
 import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
 import { getCancelledDutchPaySessionIdSet } from "../../payment/utils/cancelledDutchPaySessions";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
@@ -35,12 +37,14 @@ import { useDutchPayProgressUserStore } from "../../payment/stores/useDutchPayPr
 import {
   fetchPaymentHistories,
   fetchUserProfile,
+  fetchUserProfileById,
 } from "../../mypage/api/mypageApi";
 import { fetchNotifications } from "../../notification/api/notificationApi";
 import type {
   PaymentHistoryItem,
   UserProfile,
 } from "../../mypage/types/mypage";
+import type { RemotePaymentRequestResponse } from "../../payment/types/remotePayment.types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
 
@@ -130,6 +134,13 @@ export default function MainScreen({ navigation, route }: Props) {
     remoteProgress?.role === "RECIPIENT" &&
     remoteProgress.status === "REQUESTED";
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
+  const remoteFriendLookupRef = useRef(new Map<string, AuthFriendResponse>());
+  const remoteUserProfileLookupRef = useRef(new Map<string, UserProfile>());
+  const remoteProgressRef = useRef(remoteProgress);
+
+  useEffect(() => {
+    remoteProgressRef.current = remoteProgress;
+  }, [remoteProgress]);
 
   useEffect(() => {
     let isMounted = true;
@@ -246,11 +257,12 @@ export default function MainScreen({ navigation, route }: Props) {
             return;
           }
 
-          const [dutchSessions, requests, cancelledDutchSessionIds] =
+          const [dutchSessions, requests, cancelledDutchSessionIds, friends] =
             await Promise.allSettled([
             getActiveDutchPaySessions(currentUserId),
             getActiveRemotePaymentRequests(),
             getCancelledDutchPaySessionIdSet(),
+            fetchAuthFriends(),
           ]);
 
           if (!isActive) {
@@ -276,10 +288,33 @@ export default function MainScreen({ navigation, route }: Props) {
             return;
           }
 
-          const incomingRequest = requests.value.find(
+          const friendLookup =
+            friends.status === "fulfilled"
+              ? createRemoteFriendLookup(friends.value)
+              : new Map<string, AuthFriendResponse>();
+          if (friends.status === "fulfilled") {
+            remoteFriendLookupRef.current = friendLookup;
+          }
+
+          const remoteUserProfileLookup = await createRemoteUserProfileLookup(
+            requests.value,
+          ).catch(() => new Map<string, UserProfile>());
+          if (remoteUserProfileLookup.size > 0) {
+            remoteUserProfileLookupRef.current = remoteUserProfileLookup;
+          }
+
+          const remoteRequests = requests.value.map((request) =>
+            enrichRemotePaymentRequestWithFriends(
+              request,
+              currentUserId,
+              friendLookup,
+              remoteUserProfileLookup,
+            ),
+          );
+          const incomingRequest = remoteRequests.find(
             (request) => Number(request.recipientUserId) === currentUserId,
           );
-          const outgoingRequest = requests.value.find(
+          const outgoingRequest = remoteRequests.find(
             (request) => Number(request.requesterUserId) === currentUserId,
           );
 
@@ -319,6 +354,56 @@ export default function MainScreen({ navigation, route }: Props) {
       setRequesterProgress,
     ]),
   );
+
+  useEffect(() => {
+    const currentUserId = paymentProgressUserId;
+    const remoteRequestId = remoteProgress?.requestId;
+
+    if (
+      currentUserId == null ||
+      !remoteRequestId ||
+      isTerminalRemotePaymentStatus(remoteProgress.status)
+    ) {
+      return;
+    }
+
+    const applyRemoteRequest = (request: RemotePaymentRequestResponse) => {
+      const nextRequest = enrichRemotePaymentRequestWithFriends(
+        request,
+        currentUserId,
+        remoteFriendLookupRef.current,
+        remoteUserProfileLookupRef.current,
+      );
+
+      if (isTerminalRemotePaymentStatus(nextRequest.status)) {
+        clearRemoteProgress();
+        return;
+      }
+
+      if (Number(nextRequest.recipientUserId) === currentUserId) {
+        setRecipientProgress(nextRequest);
+        return;
+      }
+
+      if (Number(nextRequest.requesterUserId) === currentUserId) {
+        setRequesterProgress(nextRequest);
+      }
+    };
+
+    return subscribeRemotePaymentRequestStream(remoteRequestId, {
+      onConnected: (event) => applyRemoteRequest(event.request),
+      onRequestUpdated: (event) => applyRemoteRequest(event.request),
+      onError: (error) => {
+        console.warn("[MainScreen] remote payment stream failed", error);
+      },
+    });
+  }, [
+    clearRemoteProgress,
+    paymentProgressUserId,
+    remoteProgress?.requestId,
+    setRecipientProgress,
+    setRequesterProgress,
+  ]);
 
   const quickMenus: QuickMenu[] = [
     {
@@ -423,24 +508,11 @@ export default function MainScreen({ navigation, route }: Props) {
           padded={false}
           backgroundClassName="bg-neutral-white"
           header={
-            <>
-              <View className="border-b border-neutral-grey1 bg-neutral-white px-5 py-3">
-                <Pressable
-                  accessibilityRole="button"
-                  className="self-start rounded-full border border-neutral-grey1 px-3 py-2"
-                  onPress={() => navigation.navigate("Guide")}
-                >
-                  <Text className="font-pretendard text-normal-bold text-erum-secondary">
-                    IA 가이드 보기
-                  </Text>
-                </Pressable>
-              </View>
-              <MainHeader
-                hasNotification={hasNotification || hasRemoteNotification}
-                isNotificationLoading={isNotificationLoading}
-                onPressNotification={() => navigation.navigate("NotificationScreen")}
-              />
-            </>
+            <MainHeader
+              hasNotification={hasNotification || hasRemoteNotification}
+              isNotificationLoading={isNotificationLoading}
+              onPressNotification={() => navigation.navigate("NotificationScreen")}
+            />
           }
         >
           <View className="bg-neutral-white px-5 pb-40">
@@ -779,6 +851,101 @@ function getDutchPayRouteScenario(variant: PaymentProgressVariant) {
     default:
       return undefined;
   }
+}
+
+function createRemoteFriendLookup(friends: AuthFriendResponse[]) {
+  return new Map(friends.map((friend) => [String(friend.userId), friend]));
+}
+
+async function createRemoteUserProfileLookup(
+  requests: RemotePaymentRequestResponse[],
+) {
+  const userIds = Array.from(
+    new Set(
+      requests
+        .flatMap((request) => [
+          request.requesterUserId,
+          request.recipientUserId,
+        ])
+        .map((userId) => toFiniteNumber(userId))
+        .filter((userId): userId is number => userId != null),
+    ),
+  );
+  const entries = await Promise.allSettled(
+    userIds.map(async (userId) => {
+      const profile = await fetchUserProfileById(userId);
+      return [String(userId), profile] as const;
+    }),
+  );
+
+  return new Map(
+    entries
+      .filter(
+        (entry): entry is PromiseFulfilledResult<readonly [string, UserProfile]> =>
+          entry.status === "fulfilled",
+      )
+      .map((entry) => entry.value),
+  );
+}
+
+function enrichRemotePaymentRequestWithFriends(
+  request: RemotePaymentRequestResponse,
+  currentUserId: number,
+  friendLookup: Map<string, AuthFriendResponse>,
+  userProfileLookup: Map<string, UserProfile>,
+): RemotePaymentRequestResponse {
+  const requesterFriend =
+    request.requesterUserId == null
+      ? undefined
+      : friendLookup.get(String(request.requesterUserId));
+  const requesterProfile =
+    request.requesterUserId == null
+      ? undefined
+      : userProfileLookup.get(String(request.requesterUserId));
+  const recipientFriend = friendLookup.get(String(request.recipientUserId));
+  const recipientProfile = userProfileLookup.get(String(request.recipientUserId));
+  const isRequesterMe = Number(request.requesterUserId) === currentUserId;
+  const isRecipientMe = Number(request.recipientUserId) === currentUserId;
+  const requesterPhoneSuffix =
+    requesterFriend?.phoneLastFour ?? getUserProfilePhoneSuffix(requesterProfile);
+  const recipientPhoneSuffix =
+    recipientFriend?.phoneLastFour ??
+    getUserProfilePhoneSuffix(recipientProfile) ??
+    request.recipientPhoneSuffix;
+
+  return {
+    ...request,
+    requesterName: isRequesterMe
+      ? "나"
+      : formatRemoteUserLabel(
+          requesterFriend?.name ?? requesterProfile?.name ?? request.requesterName,
+          requesterPhoneSuffix,
+        ),
+    recipientName: isRecipientMe
+      ? "나"
+      : recipientFriend?.name || recipientProfile?.name || request.recipientName,
+    recipientPhoneSuffix: isRecipientMe
+      ? request.recipientPhoneSuffix
+      : recipientPhoneSuffix,
+  };
+}
+
+function getUserProfilePhoneSuffix(profile?: UserProfile) {
+  return profile?.phone?.replace(/\D/g, "").slice(-4) || undefined;
+}
+
+function formatRemoteUserLabel(name: string, phoneSuffix?: string) {
+  if (!phoneSuffix || /\(\d{4}\)$/.test(name)) {
+    return name;
+  }
+
+  return `${name}(${phoneSuffix})`;
+}
+
+function isTerminalRemotePaymentStatus(
+  status: RemotePaymentRequestResponse["status"],
+) {
+  return status === "REJECTED" || status === "COMPLETED";
 }
 
 function createMonthlyPayment(payments: PaymentHistoryItem[]) {

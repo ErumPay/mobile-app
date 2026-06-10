@@ -33,10 +33,34 @@ export function toRemotePaymentProgress({
     status: response.status,
     participantName:
       role === 'REQUESTER'
-        ? `${response.recipientName}(${response.recipientPhoneSuffix})`
-        : response.requesterName,
+        ? formatRemoteParticipantName(
+            response.recipientName,
+            response.recipientPhoneSuffix,
+            '요청 상대',
+        )
+        : formatRemoteParticipantName(response.requesterName, undefined, '요청자'),
+    expiresAt: response.expiresAt,
     summary: toRemotePaymentRecipientSummary(response),
   };
+}
+
+function formatRemoteParticipantName(
+  name: string,
+  phoneSuffix: string | undefined,
+  fallbackName: string,
+) {
+  const trimmedName = name.trim();
+  const displayName =
+    !trimmedName || /^사용자\s*\d+$/.test(trimmedName) || trimmedName === '대리자'
+      ? fallbackName
+      : trimmedName;
+  const trimmedPhoneSuffix = phoneSuffix?.trim();
+
+  if (!trimmedPhoneSuffix || /\(\d{4}\)$/.test(displayName)) {
+    return displayName;
+  }
+
+  return `${displayName}(${trimmedPhoneSuffix})`;
 }
 
 export function toRemotePaymentProgressVariant({

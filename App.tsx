@@ -5,6 +5,7 @@ import { Alert, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 
 import GuideScreen from './src/app/screens/GuideScreen';
 import TutorialScreen from './src/features/auth/screens/TutorialScreen';
@@ -39,6 +40,7 @@ import PaymentHistoryScreen from './src/features/mypage/screens/PaymentHistorySc
 import ProfileConfirmScreen from './src/features/mypage/screens/ProfileConfirmScreen';
 import NotificationScreen from './src/features/notification/screens/NotificationScreen';
 import FriendListScreen from './src/features/friend/screens/FriendListScreen';
+import FriendInviteAcceptScreen from './src/features/friend/screens/FriendInviteAcceptScreen';
 import { loadAuthSession } from './src/features/auth/api/authApi';
 
 export type RootStackParamList = {
@@ -86,10 +88,11 @@ export type RootStackParamList = {
   PaymentDetailScreen: { paymentId: string };
   NotificationScreen: undefined;
   FriendListScreen: undefined;
+  FriendInviteAccept: { inviteToken: string };
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['http://localhost:19000'],
+  prefixes: [Linking.createURL('/'), 'erumpay://', 'http://localhost:19000'],
   config: {
     screens: {
       Tutorial: 'tutorial',
@@ -117,6 +120,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentDetailScreen: 'mypage/payments/:paymentId',
       NotificationScreen: 'notification',
       FriendListScreen: 'friend/list',
+      FriendInviteAccept: 'friends/invite/:inviteToken',
     },
   },
 };
@@ -188,6 +192,7 @@ export default function App() {
 
             <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
             <Stack.Screen name="FriendListScreen" component={FriendListScreen} />
+            <Stack.Screen name="FriendInviteAccept" component={FriendInviteAcceptScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>

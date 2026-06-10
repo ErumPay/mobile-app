@@ -5,6 +5,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Header from '../../../shared/components/Header/Header';
 import type { RootStackParamList } from '../../../../App';
+import { fetchRegisteredCards } from '../../card/api/cardApi';
+import type { RegisteredCard } from '../../card/types/card';
 import RecommendedCardSection from '../components/RecommendedCardSection';
 import CardCombinationSection from '../components/CardCombinationSection';
 import RegisteredCardBottomSheet from '../components/RegisteredCardBottomSheet';
@@ -38,6 +40,20 @@ function toFiniteNumber(value: unknown) {
     }
 
     return undefined;
+}
+
+function toPaymentRegisteredCard(card: RegisteredCard): PaymentCard {
+    return {
+        id: String(card.cardId),
+        amount: 0,
+        cardName: card.cardName,
+        cardCompany: card.cardCompany,
+        maskedNumber: card.maskedNumber,
+        expiryDate: card.expiryYm,
+        theme: 'PURPLE',
+        imageUrl: '',
+        isPrimary: card.isDefault,
+    };
 }
 
 function PaymentCardSelectSkeleton() {
@@ -290,6 +306,17 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 setIsLoading(true);
                 setErrorMessage('');
 
+                const paymentRegisteredCards = (await fetchRegisteredCards()).map(
+                    (card) => ({
+                        ...toPaymentRegisteredCard(card),
+                        amount: amount ?? 0,
+                    }),
+                );
+
+                if (!paymentRegisteredCards.length) {
+                    throw new Error('등록된 카드가 없습니다.');
+                }
+
                 const prepareResponse = await preparePayment({
                     paymentId,
                     remoteRequestId: isRemotePaymentRoute ? remoteRequestId : undefined,
@@ -322,7 +349,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                             ? 'REMOTE_PAYMENT'
                             : 'NORMAL';
                 const nextData = applyPaymentCardFlowUi(
-                    toPaymentCardSelectData(response),
+                    {
+                        ...toPaymentCardSelectData(
+                            response,
+                            paymentRegisteredCards,
+                            amount ?? 0,
+                        ),
+                        registeredCards: paymentRegisteredCards,
+                    },
                     nextFlowType,
                 );
 

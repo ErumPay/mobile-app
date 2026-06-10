@@ -16,6 +16,22 @@ export const PAYMENT_API_BASE_URL =
     process.env.EXPO_PUBLIC_API_BASE_URL ??
     `http://${getDevHost()}:8083`;
 
+
+// export function getPaymentUserId(): string {
+//     const overrideUserId = process.env.EXPO_PUBLIC_PAYMENT_USER_ID_OVERRIDE?.trim();
+//
+//     if (overrideUserId) {
+//         return overrideUserId;
+//     }
+//
+//     const sessionUserId = getAuthSessionUserId();
+//     if (sessionUserId != null) {
+//         return String(sessionUserId);
+//     }
+//
+//     throw new Error('로그인 사용자 정보가 없습니다.');
+// }
+
 export function getPaymentUserId(): string {
     const sessionUserId = getAuthSessionUserId();
     if (sessionUserId != null) {
