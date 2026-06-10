@@ -65,7 +65,7 @@ function toDisplayInviteUrl(inviteToken: string, fallbackUrl: string) {
     return fallbackUrl;
   }
 
-  return Linking.createURL(`friends/invite/${inviteToken}`);
+  return Linking.createURL(`friends/invite/${encodeURIComponent(inviteToken)}`);
 }
 
 export default function FriendListScreen({ navigation }: Props) {

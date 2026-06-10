@@ -83,12 +83,29 @@ export async function fetchRegisteredCards(): Promise<RegisteredCard[]> {
     );
   }
 
-  const data = await response.json();
-  const items = Array.isArray(data) ? data : [];
+  const data: unknown = await response.json();
 
-  return items.map((item) =>
-    normalizeRegisteredCard(item as Record<string, unknown>),
-  );
+  if (!Array.isArray(data)) {
+    throw new CardApiError(
+      response.status,
+      'CARD_RESPONSE_SCHEMA_INVALID',
+      '등록 카드 응답 형식이 올바르지 않습니다.',
+    );
+  }
+
+  return data.map((item) => normalizeRegisteredCard(toRecord(item)));
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new CardApiError(
+      0,
+      'CARD_ITEM_SCHEMA_INVALID',
+      '등록 카드 항목 형식이 올바르지 않습니다.',
+    );
+  }
+
+  return value as Record<string, unknown>;
 }
 
 function normalizeRegisteredCard(response: Record<string, unknown>): RegisteredCard {

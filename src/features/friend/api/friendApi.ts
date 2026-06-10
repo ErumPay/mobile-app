@@ -230,13 +230,8 @@ export async function createFriendInviteLink(): Promise<AuthFriendInviteLinkResp
 
 export async function acceptFriendInviteLink(inviteToken: string): Promise<void> {
   const accessToken = await getFriendAccessToken();
-  const requestUrl = `${AUTH_API_BASE_URL}/api/v1/friends/invite/${inviteToken}`;
-
-  console.log('[FriendInviteAPI] accept request', {
-    url: requestUrl,
-    inviteToken,
-    hasAccessToken: Boolean(accessToken),
-  });
+  const encodedInviteToken = encodeURIComponent(inviteToken);
+  const requestUrl = `${AUTH_API_BASE_URL}/api/v1/friends/invite/${encodedInviteToken}`;
 
   const response = await fetchAuth(requestUrl, {
     method: 'POST',
@@ -245,17 +240,10 @@ export async function acceptFriendInviteLink(inviteToken: string): Promise<void>
     },
   });
 
-  console.log('[FriendInviteAPI] accept response', {
-    status: response.status,
-    ok: response.ok,
-  });
-
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    console.log('[FriendInviteAPI] accept error body', error);
     throw new AuthApiError(error?.message ?? '친구 초대 링크 수락에 실패했습니다.', response.status);
   }
 
-  const data = await response.json().catch(() => null);
-  console.log('[FriendInviteAPI] accept success body', data);
+  await response.json().catch(() => null);
 }

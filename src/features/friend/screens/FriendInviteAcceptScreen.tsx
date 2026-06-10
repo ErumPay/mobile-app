@@ -21,19 +21,12 @@ export default function FriendInviteAcceptScreen({ navigation, route }: Props) {
 
     const acceptInvite = async () => {
       try {
-        console.log('[FriendInviteAccept] route entered', { inviteToken });
         await acceptFriendInviteLink(inviteToken);
-        console.log('[FriendInviteAccept] invite accepted', { inviteToken });
 
         if (isMounted) {
           setIsAccepted(true);
         }
       } catch (error) {
-        console.log('[FriendInviteAccept] invite accept failed', {
-          inviteToken,
-          message: error instanceof Error ? error.message : String(error),
-        });
-
         if (isMounted) {
           setErrorMessage(
             error instanceof Error ? error.message : '친구 초대 링크를 수락하지 못했습니다.',
