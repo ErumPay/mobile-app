@@ -705,12 +705,17 @@ function normalizePaymentDetailCard(
   const paidAmount = toNumberValue(
     response.paidAmount ?? response.paid_amount,
   );
+  const discountAmount = toNumberValue(
+    response.discountAmount ?? response.discount_amount,
+  );
 
   return {
     id,
     name: name || '등록 카드',
     maskedNumber: maskedNumber || '-',
     paidAmount: formatCurrency(paidAmount),
+    discountAmount:
+      discountAmount > 0 ? `-${formatCurrency(discountAmount)}` : '0원',
   };
 }
 

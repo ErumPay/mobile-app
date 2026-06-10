@@ -66,6 +66,7 @@ export type PaymentDetailCard = {
   name: string;
   maskedNumber: string;
   paidAmount: string;
+  discountAmount: string;
 };
 
 export type CardBenefit = {
