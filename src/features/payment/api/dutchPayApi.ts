@@ -56,6 +56,12 @@ export type DutchPaySessionDetailResponse = {
     status: DutchPaySessionStatus;
     session_progress_step: DutchPaySessionProgressStep;
     participants: DutchPayParticipantResponse[];
+    created_at?: string;
+    createdAt?: string;
+    timeout_at?: string | null;
+    timeoutAt?: string | null;
+    expires_at?: string;
+    expiresAt?: string;
 };
 
 export type DutchPayMyPaymentResponse = {
