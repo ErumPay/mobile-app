@@ -116,12 +116,6 @@ export default function PaymentCardPreview({
                         </Text>
                     </View>
                 )}
-
-                {selected && size === 'large' && (
-                    <View className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-erum-main">
-                        <Feather name="check" size={22} color="#FFFFFF" />
-                    </View>
-                )}
             </View>
         </View>
     );

@@ -38,6 +38,7 @@ export default function RecommendedCardSection({
                         </View>
                     )}
                 </View>
+                
 
                 {actionLabel && onPressAction && (
                     <Pressable
@@ -51,7 +52,11 @@ export default function RecommendedCardSection({
                     </Pressable>
                 )}
             </View>
-
+            {showBenefitDescription && (
+                <Text className="mt-2 text-small-regular leading-5 text-neutral-grey4">
+                    할인 혜택뿐만 아니라 캐시백 및 마일리지 적립 혜택까지 함께 고려하여 제공합니다!
+                </Text>
+            )}
 
             {recommendedCard.card ? (
                 <Pressable
@@ -60,13 +65,27 @@ export default function RecommendedCardSection({
                         selected ? 'border-erum-main' : 'border-[#BDF5DF]'
                     }`}
                 >
-                    <PaymentCardPreview card={recommendedCard.card} selected={selected} />
+                    {showBenefitDescription && (
+                        <View className="mb-5 flex-row items-center justify-center">
+                            <View
+                                className={`h-6 w-6 items-center justify-center rounded-full border ${
+                                    selected
+                                        ? 'border-erum-main bg-erum-main'
+                                        : 'border-neutral-grey1 bg-white'
+                                }`}
+                            >
+                                {selected && (
+                                    <Feather name="check" size={16} color="#FFFFFF" />
+                                )}
+                            </View>
 
-                    {showBenefitDescription && recommendedCard.card.benefitDescription && (
-                        <Text className="mt-3 text-small-regular text-neutral-grey4">
-                            · {recommendedCard.card.benefitDescription}
-                        </Text>
+                            <Text className="ml-2 text-normal-bold text-neutral-black1">
+                                추천 카드 선택하기
+                            </Text>
+                        </View>
                     )}
+
+                    <PaymentCardPreview card={recommendedCard.card} selected={selected} />
                 </Pressable>
             ) : (
                 <View className="mt-5">

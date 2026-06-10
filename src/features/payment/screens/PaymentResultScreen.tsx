@@ -20,17 +20,33 @@ import { getActiveDutchPaySessions } from '../api/dutchPayApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentResult'>;
 
+type PaymentResultButton =
+    | {
+        buttonLabel: string;
+        buttonAction: 'MAIN' | 'CREATE_GROUP';
+    }
+    | {
+        buttonLabel?: never;
+        buttonAction?: never;
+    };
+
+type PaymentResultLink =
+    | {
+        linkLabel: string;
+        linkAction: 'MAIN' | 'RECEIPT';
+    }
+    | {
+        linkLabel?: never;
+        linkAction?: never;
+    };
+
 type PaymentResultContent = {
     title: string;
     description: string;
-    buttonLabel: string;
     iconType: PaymentResultStatus;
     notice?: string;
-    linkLabel?: string;
-    buttonAction: 'MAIN' | 'CARD_SELECT' | 'CREATE_GROUP';
     noticeTone?: 'info' | 'success' | 'warning' | 'error';
-    linkAction?: 'MAIN' | 'RECEIPT';
-};
+} & PaymentResultButton & PaymentResultLink;
 
 function getPaymentResultContent({
                                      status,
@@ -40,15 +56,21 @@ function getPaymentResultContent({
     flow: PaymentResultFlow;
 }): PaymentResultContent {
     if (status === 'FAILURE') {
-        return {
+        const failureContent = {
             title: '결제에 실패했어요.',
             description: '카드 정보 또는 네트워크 상태를 확인한 뒤,\n다시 시도해주세요.',
-            buttonLabel: '카드 다시 선택하기',
-            iconType: 'FAILURE',
-            buttonAction: 'CARD_SELECT',
-            linkLabel: flow === 'NORMAL' ? '메인으로 가기' : undefined,
-            linkAction: flow === 'NORMAL' ? 'MAIN' : undefined,
+            iconType: 'FAILURE' as const,
         };
+
+        if (flow === 'NORMAL') {
+            return {
+                ...failureContent,
+                linkLabel: '메인으로 가기',
+                linkAction: 'MAIN',
+            };
+        }
+
+        return failureContent;
     }
 
     if (flow === 'DUTCH_PAY_PRE_AUTH') {
@@ -140,30 +162,6 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
     };
 
     const handlePressButton = async () => {
-        if (content.buttonAction === 'CARD_SELECT') {
-            const retryPaymentId = route.params?.paymentId;
-            const retryAmount = route.params?.amount;
-
-            if (retryPaymentId == null || retryAmount == null) {
-                Alert.alert('결제', '결제 정보를 찾을 수 없습니다. QR을 다시 스캔해주세요.');
-                return;
-            }
-
-            navigation.navigate('PaymentCardSelect', {
-                paymentId: retryPaymentId,
-                remoteRequestId: route.params?.remoteRequestId,
-                amount: retryAmount,
-                flow: route.params?.retryFlow ?? 'NORMAL',
-                idempotencyKey: route.params?.idempotencyKey,
-                dutchSessionId: route.params?.dutchSessionId,
-                selectedUserIds: route.params?.selectedUserIds,
-                splitMethod: route.params?.splitMethod,
-                orderName: route.params?.orderName,
-                merchantId: route.params?.merchantId,
-            });
-            return;
-        }
-
         if (content.buttonAction === 'CREATE_GROUP') {
             const nextDutchSessionId =
                 route.params?.dutchSessionId ??
@@ -268,13 +266,15 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                                 </Pressable>
                             ) : null}
 
-                            <View className="mt-4 w-full">
-                                <Button
-                                    label={content.buttonLabel}
-                                    size="large"
-                                    onPress={handlePressButton}
-                                />
-                            </View>
+                            {content.buttonLabel ? (
+                                <View className="mt-4 w-full">
+                                    <Button
+                                        label={content.buttonLabel}
+                                        size="large"
+                                        onPress={handlePressButton}
+                                    />
+                                </View>
+                            ) : null}
                         </View>
                     </View>
                 </View>

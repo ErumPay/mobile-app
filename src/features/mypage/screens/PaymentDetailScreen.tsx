@@ -275,6 +275,11 @@ function PaymentCardInfoRows({ payment }: { payment: PaymentDetail }) {
             value={card.paidAmount}
             valueClassName="text-erum-secondary"
           />
+          <InfoRow
+            label="카드 할인금액"
+            value={card.discountAmount}
+            valueClassName="text-state-error"
+          />
         </View>
       ))}
     </View>

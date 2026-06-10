@@ -26,6 +26,9 @@ export default function CardCombinationSection({
                                                    onOpenBottomSheet,
                                                }: Props) {
     const hasCards = selectedCombination.cards.length > 0;
+    const selectionDescription =
+        selectedCombination.selectionDescription ??
+        selectedCombination.benefitDescription;
 
     return (
         <View className="mt-7 border-t border-neutral-grey1 pt-7">
@@ -52,38 +55,49 @@ export default function CardCombinationSection({
             />
 
             {hasCards ? (
-                <>
-                    <Pressable
-                        onPress={onToggleSelect}
-                        className="mt-7 flex-row items-center justify-center"
-                    >
-                        <View
-                            className={`h-6 w-6 items-center justify-center rounded-full border ${
-                                selected ? 'border-erum-main bg-erum-main' : 'border-neutral-grey1 bg-white'
-                            }`}
-                        >
-                            {selected && <Feather name="check" size={16} color="#FFFFFF" />}
-                        </View>
-
-                        <Text className="ml-2 text-normal-bold text-neutral-black1">
-                            이 조합 선택하기
-                        </Text>
-                    </Pressable>
-
-                    <View className="mt-7">
-                        {selectedCombination.cards.map((card) => (
-                            <View key={`${selectedCombination.type}-${card.id}`} className="mb-6">
-                                <PaymentCardPreview card={card} />
-
-                                {selectedCombination.benefitDescription && (
-                                    <Text className="mt-2 text-small-regular text-neutral-grey4">
-                                        · {selectedCombination.benefitDescription}
-                                    </Text>
+                <Pressable
+                    onPress={onToggleSelect}
+                    className={`mt-7 rounded-2xl border px-4 pb-4 pt-5 ${
+                        selected
+                            ? 'border-erum-main bg-[#f9f9f9]'
+                            : 'border-[#C8F3E3] bg-[#f9f9f9]'
+                    }`}
+                >
+                    {selectionDescription && (
+                        <View className="flex-row items-center justify-center">
+                            <View
+                                className={`h-6 w-6 items-center justify-center rounded-full border ${
+                                    selected
+                                        ? 'border-erum-main bg-erum-main'
+                                        : 'border-neutral-grey1 bg-white'
+                                }`}
+                            >
+                                {selected && (
+                                    <Feather name="check" size={16} color="#FFFFFF" />
                                 )}
+                            </View>
+
+                            <Text className="ml-2 text-normal-bold text-erum-secondary">
+                                {selectionDescription}
+                            </Text>
+                        </View>
+                    )}
+
+                    <View className={selectionDescription ? 'mt-5' : undefined}>
+                        {selectedCombination.cards.map((card, index) => (
+                            <View
+                                key={`${selectedCombination.type}-${card.id}`}
+                                className={
+                                    index < selectedCombination.cards.length - 1
+                                        ? 'mb-6'
+                                        : undefined
+                                }
+                            >
+                                <PaymentCardPreview card={card} />
                             </View>
                         ))}
                     </View>
-                </>
+                </Pressable>
             ) : (
                 <View className="mt-7">
                     <NoticeBox description="추천하는 카드가 없습니다." />
