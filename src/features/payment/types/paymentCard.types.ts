@@ -45,6 +45,7 @@ export type CardCombination = {
     description: string;
     cards: PaymentCard[];
     benefitDescription?: string;
+    selectionDescription?: string;
 };
 
 export type PaymentCardSelectData = {
