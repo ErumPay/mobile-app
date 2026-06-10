@@ -174,7 +174,7 @@ const scenarioData: Record<
     footer: {
       type: 'notice',
       tone: 'info',
-      message: '대표자가 결제를 진행하고 있습니다.',
+      message: '그룹원들이 결제를 진행하고 있습니다.',
     },
   },
   PARTICIPANT_PAYMENT_REQUEST: {
@@ -200,7 +200,7 @@ const scenarioData: Record<
     footer: {
       type: 'notice',
       tone: 'info',
-      message: '그룹원들이 결제를 진행하고 있습니다.',
+      message: '대표자가 결제를 진행하고 있습니다.',
     },
   },
 };

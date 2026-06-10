@@ -121,6 +121,13 @@ function normalizeRegisteredCard(response: Record<string, unknown>): RegisteredC
       | string
       | null,
     expiryYm: String(response.expiryYm ?? response.expiry_ym ?? ''),
+    imageUrl: String(
+      response.imageUrl ??
+        response.image_url ??
+        response.cardImageUrl ??
+        response.card_image_url ??
+        '',
+    ),
     isDefault: Boolean(response.isDefault ?? response.is_default),
     status: String(response.status ?? ''),
   };

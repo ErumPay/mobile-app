@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
+import NoticeBox from '../../../shared/components/NoticeBox';
 import PaymentCardPreview from './PaymentCardPreview';
 import type { RecommendedPaymentCard } from '../types/paymentCard.types';
 
@@ -52,20 +53,26 @@ export default function RecommendedCardSection({
             </View>
 
 
-            <Pressable
-                onPress={onPress}
-                className={`mt-5 rounded-2xl border bg-[#EBFFF8] p-4 ${
-                    selected ? 'border-erum-main' : 'border-[#BDF5DF]'
-                }`}
-            >
-                <PaymentCardPreview card={recommendedCard.card} selected={selected} />
+            {recommendedCard.card ? (
+                <Pressable
+                    onPress={onPress}
+                    className={`mt-5 rounded-2xl border bg-[#EBFFF8] p-4 ${
+                        selected ? 'border-erum-main' : 'border-[#BDF5DF]'
+                    }`}
+                >
+                    <PaymentCardPreview card={recommendedCard.card} selected={selected} />
 
-                {showBenefitDescription && recommendedCard.card.benefitDescription && (
-                    <Text className="mt-3 text-small-regular text-neutral-grey4">
-                        · {recommendedCard.card.benefitDescription}
-                    </Text>
-                )}
-            </Pressable>
+                    {showBenefitDescription && recommendedCard.card.benefitDescription && (
+                        <Text className="mt-3 text-small-regular text-neutral-grey4">
+                            · {recommendedCard.card.benefitDescription}
+                        </Text>
+                    )}
+                </Pressable>
+            ) : (
+                <View className="mt-5">
+                    <NoticeBox description="추천하는 카드가 없습니다." />
+                </View>
+            )}
         </View>
     );
 }

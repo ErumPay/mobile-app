@@ -43,6 +43,28 @@ import FriendListScreen from './src/features/friend/screens/FriendListScreen';
 import FriendInviteAcceptScreen from './src/features/friend/screens/FriendInviteAcceptScreen';
 import { loadAuthSession } from './src/features/auth/api/authApi';
 
+export type PaymentCardSelectRouteParams =
+  | {
+      paymentId?: number | string;
+      remoteRequestId?: number | string;
+      amount?: number | string;
+      flow?: PaymentCardFlowType;
+      idempotencyKey?: string;
+      dutchSessionId?: number;
+      selectedUserIds?: number[];
+      splitMethod?: 'EQUAL' | 'CUSTOM';
+      orderName?: string;
+      merchantId?: number;
+    }
+  | undefined;
+
+export type CardRegisterRouteParams =
+  | {
+      returnTo?: 'PaymentCardSelect';
+      paymentCardSelectParams?: PaymentCardSelectRouteParams;
+    }
+  | undefined;
+
 export type RootStackParamList = {
   Tutorial: undefined;
   Main: { userId?: number | string } | undefined;
@@ -58,22 +80,9 @@ export type RootStackParamList = {
         token?: string;
       }
     | undefined;
-  PaymentCardSelect:
-    | {
-        paymentId?: number | string;
-        remoteRequestId?: number | string;
-        amount?: number | string;
-        flow?: PaymentCardFlowType;
-        idempotencyKey?: string;
-        dutchSessionId?: number;
-        selectedUserIds?: number[];
-        splitMethod?: 'EQUAL' | 'CUSTOM';
-        orderName?: string;
-        merchantId?: number;
-      }
-    | undefined;
+  PaymentCardSelect: PaymentCardSelectRouteParams;
   PaymentPin: PaymentPinRouteParams | undefined;
-  CardRegister: undefined;
+  CardRegister: CardRegisterRouteParams;
   PaymentResult: PaymentResultRouteParams | undefined;
   PaymentCancel: PaymentCancelRouteParams | undefined;
   OfflinePaymentQr: OfflinePaymentQrRouteParams | undefined;

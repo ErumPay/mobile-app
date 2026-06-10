@@ -193,7 +193,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                     summary.type === 'REMOTE_RECIPIENT'
                         ? 'REMOTE_PAYMENT'
                         : summary.type === 'DUTCH_PAY_PARTICIPANT'
-                          ? 'DUTCH_PAY'
+                          ? 'DUTCH_PAY_MEMBER'
                           : 'NORMAL',
                 idempotencyKey,
                 orderName: summary.merchantName,

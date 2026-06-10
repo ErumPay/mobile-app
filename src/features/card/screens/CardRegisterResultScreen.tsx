@@ -17,6 +17,7 @@ interface CardRegisterResultScreenProps {
   onGoCardManagement?: () => void;
   onGoHome?: () => void;
   registeredCard?: RegisteredCard | null;
+  primaryButtonLabel?: string;
 }
 
 export function CardRegisterResultScreen({
@@ -26,6 +27,7 @@ export function CardRegisterResultScreen({
   onGoCardManagement,
   onGoHome,
   registeredCard,
+  primaryButtonLabel,
 }: CardRegisterResultScreenProps) {
   return (
     <PageWrap
@@ -37,6 +39,7 @@ export function CardRegisterResultScreen({
           registeredCard={registeredCard}
           onGoCardManagement={onGoCardManagement}
           onGoHome={onGoHome}
+          primaryButtonLabel={primaryButtonLabel}
         />
       ) : (
         <CardRegisterFailureResult
@@ -52,10 +55,12 @@ function CardRegisterSuccessResult({
   registeredCard,
   onGoCardManagement,
   onGoHome,
+  primaryButtonLabel = '카드 관리로 이동',
 }: {
   registeredCard?: RegisteredCard | null;
   onGoCardManagement?: () => void;
   onGoHome?: () => void;
+  primaryButtonLabel?: string;
 }) {
   return (
     <View className="w-full flex-1 pt-12">
@@ -85,7 +90,7 @@ function CardRegisterSuccessResult({
         </View>
 
         <View className="mt-10 w-full gap-4">
-          <Button label="카드 관리로 이동" onPress={onGoCardManagement} />
+          <Button label={primaryButtonLabel} onPress={onGoCardManagement} />
 
           <Button
             label="홈으로 이동"

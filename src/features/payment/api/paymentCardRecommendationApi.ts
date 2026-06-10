@@ -3,6 +3,7 @@ import {
     getPaymentUserId,
     PAYMENT_API_BASE_URL,
 } from './paymentApiConfig';
+import { getActiveDutchPaySessions } from './dutchPayApi';
 
 const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
 const PAYMENT_SUBSCRIBE_URL = (paymentId: number) =>
@@ -37,6 +38,17 @@ export type PreparePaymentResponse = {
     remoteRequestId?: number;
     amount: number;
 };
+
+async function resolveActiveDutchSessionIdByPaymentId(paymentId: number) {
+    try {
+        const sessions = await getActiveDutchPaySessions();
+        return sessions.find(
+            (session) => session.host_auth_payment_id === paymentId,
+        )?.session_id;
+    } catch {
+        return undefined;
+    }
+}
 
 const parsePaymentApiError = async (
     response: Response,
@@ -106,6 +118,9 @@ export async function preparePayment({
             if (paymentId == null) {
                 throw new Error(error.message ?? '결제 요청이 처리 중입니다.');
             }
+            const activeDutchSessionId = paymentType === 'DUTCH'
+                ? await resolveActiveDutchSessionIdByPaymentId(paymentId)
+                : undefined;
 
             return {
                 paymentId,
@@ -114,7 +129,7 @@ export async function preparePayment({
                 paymentType,
                 paymentIntent: undefined,
                 dutchRole,
-                dutchSessionId: sessionId,
+                dutchSessionId: sessionId ?? activeDutchSessionId,
                 amount,
             };
         }

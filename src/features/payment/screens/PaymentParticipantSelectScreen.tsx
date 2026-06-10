@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -39,8 +40,6 @@ type Props = NativeStackScreenProps<
 
 type ShareStep = 'READY' | 'COPIED';
 
-const DEV_DUTCH_INVITE_BASE_URL = 'http://localhost:19000/payment/dutch-pay-invite';
-
 const defaultOwner: ParticipantFriend = {
   id: 'owner',
   name: '나',
@@ -50,16 +49,18 @@ const defaultOwner: ParticipantFriend = {
   colorClassName: 'bg-erum-main',
 };
 
-function toDutchPayUserIds(friendIds: string[]) {
-  return friendIds
-    .map((friendId) => Number(friendId))
-    .filter((userId) => Number.isFinite(userId) && userId > 1);
-}
-
 function toUserIdFromFriendId(friendId: string) {
   const userId = Number(friendId);
 
   return Number.isFinite(userId) && userId > 1 ? userId : undefined;
+}
+
+function toDisplayDutchInviteUrl(inviteToken: string, fallbackUrl: string) {
+  if (!__DEV__) {
+    return fallbackUrl;
+  }
+
+  return Linking.createURL(`payment/dutch-pay-invite/${encodeURIComponent(inviteToken)}`);
 }
 
 function toParticipantFriend(friend: AuthFriendResponse): ParticipantFriend {
@@ -345,7 +346,9 @@ export default function PaymentParticipantSelectScreen({
   const hasSearchKeyword = normalizedSearchKeyword.length > 0;
   const hasVisibleFriends = favoriteFriends.length > 0 || allFriends.length > 0;
   const selectedCount = selectedFriendIds.length;
-  const ctaDisabled = selectedCount === 0 || isRemoteRequesting;
+  const ctaDisabled = isDutchPay
+    ? isRemoteRequesting
+    : selectedCount === 0 || isRemoteRequesting;
   const selectedRemoteFriend = useMemo(() => {
     if (isDutchPay) {
       return null;
@@ -491,7 +494,7 @@ export default function PaymentParticipantSelectScreen({
     try {
       setIsShareLinkLoading(true);
       const inviteLink = await createDutchPayInviteLink(route.params.dutchSessionId);
-      setShareUrl(`${DEV_DUTCH_INVITE_BASE_URL}/${inviteLink.invite_token}`);
+      setShareUrl(toDisplayDutchInviteUrl(inviteLink.invite_token, inviteLink.invite_url));
     } catch {
       Alert.alert('URL 공유', '더치페이 초대 링크 생성에 실패했습니다.');
       setShareModalVisible(false);
@@ -518,7 +521,6 @@ export default function PaymentParticipantSelectScreen({
         navigation.navigate('DutchPayGroup', {
           role: 'OWNER',
           sessionId: route.params.dutchSessionId,
-          selectedUserIds: toDutchPayUserIds(selectedFriendIds),
           splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
           splitType: latestAutoSplitCheckedRef.current ? 'AUTO_SPLIT' : 'MANUAL',
           orderName: route.params?.orderName,
@@ -543,7 +545,6 @@ export default function PaymentParticipantSelectScreen({
     route.params?.dutchSessionId,
     route.params?.merchantId,
     route.params?.orderName,
-    selectedFriendIds,
     shareCountdown,
     shareModalVisible,
     shareStep,
@@ -564,7 +565,6 @@ export default function PaymentParticipantSelectScreen({
       navigation.navigate('DutchPayGroup', {
         role: 'OWNER',
         sessionId: route.params.dutchSessionId,
-        selectedUserIds: toDutchPayUserIds(selectedFriendIds),
         splitMethod: autoSplitChecked ? 'EQUAL' : 'CUSTOM',
         splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
         orderName: route.params?.orderName,
@@ -731,7 +731,7 @@ export default function PaymentParticipantSelectScreen({
               <NoticeBox
                 tone="info"
                 description={
-                  '참여자 초대 안내\n· 친구 목록에서 참여자를 선택하세요\n· URL 공유로 친구 목록에 없는 사람도 초대 가능해요\n· 즐겨찾기한 친구는 상단에 표시됩니다'
+                  '참여자 초대 안내\n· 그룹 생성 후 공유 링크로 참여자를 초대할 수 있어요\n· 링크를 받은 참여자가 입장하면 그룹에 추가됩니다\n· 즐겨찾기한 친구는 상단에 표시됩니다'
                 }
               />
             </View>
