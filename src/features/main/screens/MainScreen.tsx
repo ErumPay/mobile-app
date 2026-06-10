@@ -117,13 +117,6 @@ function resolvePaymentProgressUserId(
 export default function MainScreen({ navigation, route }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const progressViewportWidth = Math.max(screenWidth - 40, 1);
-  const progressCardGap = 12;
-  const progressCardSidePeek = 12;
-  const progressCardWidth = Math.max(
-    progressViewportWidth - progressCardSidePeek * 2,
-    1,
-  );
-  const progressCardInterval = progressCardWidth + progressCardGap;
   const progressScrollRef = useRef<ScrollView>(null);
   const routeUserId = toFiniteNumber(route.params?.userId);
   const storedDutchPayProgressUserId = useDutchPayProgressUserStore(
@@ -181,6 +174,14 @@ export default function MainScreen({ navigation, route }: Props) {
     ],
     [dutchProgressItems, remoteProgressItems],
   );
+  const hasMultipleProgressItems = progressItems.length > 1;
+  const progressCardGap = hasMultipleProgressItems ? 12 : 0;
+  const progressCardSidePeek = hasMultipleProgressItems ? 12 : 0;
+  const progressCardWidth = Math.max(
+    progressViewportWidth - progressCardSidePeek * 2,
+    1,
+  );
+  const progressCardInterval = progressCardWidth + progressCardGap;
   const [currentProgressIndex, setCurrentProgressIndex] = useState(0);
   const currentProgressItem = progressItems[currentProgressIndex] ?? null;
   const hasVisiblePaymentProgress = progressItems.length > 0;
@@ -580,7 +581,7 @@ export default function MainScreen({ navigation, route }: Props) {
   const handlePressPaymentProgressPrimary = () => {
     if (currentProgressItem?.type === "DUTCH") {
       if (currentProgressItem.variant === "DUTCHPAY_OWNER_GROUP_CREATE_READY") {
-        navigation.navigate("PaymentParticipantSelect", {
+        navigation.push("PaymentParticipantSelect", {
           mode: "DUTCH_PAY",
           dutchSessionId: currentProgressItem.session.session_id,
           amount: currentProgressItem.session.total_amount,

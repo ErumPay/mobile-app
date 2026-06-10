@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -25,7 +26,10 @@ import { fetchAuthFriends, type AuthFriendResponse } from '../../friend/api/frie
 import { fetchUserProfile } from '../../mypage/api/mypageApi';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
 import { requestRemotePayment } from '../api/remotePaymentApi';
-import { createDutchPayInviteLink } from '../api/dutchPayApi';
+import {
+  createDutchPayInviteLink,
+  sendDutchPayInviteNotifications,
+} from '../api/dutchPayApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type {
   ParticipantFriend,
@@ -297,6 +301,8 @@ export default function PaymentParticipantSelectScreen({
   const [shareUrl, setShareUrl] = useState('');
   const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [dutchInviteCompleteModalVisible, setDutchInviteCompleteModalVisible] =
+    useState(false);
   const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
     useState(false);
   const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
@@ -368,33 +374,35 @@ export default function PaymentParticipantSelectScreen({
     selectedFriendIds,
   ]);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    const loadParticipantData = async () => {
-      try {
-        const [profile, friends] = await Promise.all([
-          fetchUserProfile(),
-          fetchAuthFriends(),
-        ]);
+      const loadParticipantData = async () => {
+        try {
+          const [profile, friends] = await Promise.all([
+            fetchUserProfile(),
+            fetchAuthFriends(),
+          ]);
 
-        if (isMounted) {
-          setOwner(toOwnerParticipantFriend(profile));
-          setServerFriends(friends.map(toParticipantFriend));
+          if (isActive) {
+            setOwner(toOwnerParticipantFriend(profile));
+            setServerFriends(friends.map(toParticipantFriend));
+          }
+        } catch {
+          if (isActive) {
+            setServerFriends([]);
+          }
         }
-      } catch {
-        if (isMounted) {
-          setServerFriends([]);
-        }
-      }
-    };
+      };
 
-    void loadParticipantData();
+      void loadParticipantData();
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   const handlePressClose = () => {
     setStopModalVisible(true);
@@ -561,15 +569,28 @@ export default function PaymentParticipantSelectScreen({
         return;
       }
 
-      void removeCancelledDutchPaySession(route.params.dutchSessionId);
-      navigation.navigate('DutchPayGroup', {
-        role: 'OWNER',
-        sessionId: route.params.dutchSessionId,
-        splitMethod: autoSplitChecked ? 'EQUAL' : 'CUSTOM',
-        splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
-        orderName: route.params?.orderName,
-        merchantId: route.params?.merchantId,
-      });
+      const selectedUserIds = selectedFriendIds
+        .map(toUserIdFromFriendId)
+        .filter((userId): userId is number => userId != null);
+
+      if (selectedUserIds.length > 0) {
+        try {
+          setIsRemoteRequesting(true);
+          await sendDutchPayInviteNotifications({
+            sessionId: route.params.dutchSessionId,
+            userIds: selectedUserIds,
+          });
+          setDutchInviteCompleteModalVisible(true);
+        } catch {
+          Alert.alert('더치페이 초대', '참여자 초대 알림 발송에 실패했습니다.');
+        } finally {
+          setIsRemoteRequesting(false);
+        }
+
+        return;
+      }
+
+      navigateToDutchPayGroup();
       return;
     }
 
@@ -616,6 +637,33 @@ export default function PaymentParticipantSelectScreen({
   const handleConfirmRemoteRequestComplete = () => {
     setRemoteRequestCompleteModalVisible(false);
     navigation.navigate('Main');
+  };
+
+  const navigateToDutchPayGroup = useCallback(() => {
+    if (!route.params?.dutchSessionId) {
+      Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+      return;
+    }
+
+    void removeCancelledDutchPaySession(route.params.dutchSessionId);
+    navigation.navigate('DutchPayGroup', {
+      role: 'OWNER',
+      sessionId: route.params.dutchSessionId,
+      splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
+      splitType: latestAutoSplitCheckedRef.current ? 'AUTO_SPLIT' : 'MANUAL',
+      orderName: route.params?.orderName,
+      merchantId: route.params?.merchantId,
+    });
+  }, [
+    navigation,
+    route.params?.dutchSessionId,
+    route.params?.merchantId,
+    route.params?.orderName,
+  ]);
+
+  const handleConfirmDutchInviteComplete = () => {
+    setDutchInviteCompleteModalVisible(false);
+    navigateToDutchPayGroup();
   };
 
   return (
@@ -786,6 +834,15 @@ export default function PaymentParticipantSelectScreen({
           confirmLabel="확인"
           onConfirm={handleConfirmRemoteRequestComplete}
           onClose={handleConfirmRemoteRequestComplete}
+        />
+        <ConfirmModal
+          visible={dutchInviteCompleteModalVisible}
+          type="one"
+          title="더치페이 초대 알림을 보냈습니다."
+          description="참여자가 알림 또는 링크를 수락하면 그룹에 추가됩니다."
+          confirmLabel="그룹 확인하기"
+          onConfirm={handleConfirmDutchInviteComplete}
+          onClose={handleConfirmDutchInviteComplete}
         />
       </View>
     </PageWrap>

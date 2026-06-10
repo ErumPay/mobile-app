@@ -85,6 +85,13 @@ export type DutchPayInviteLinkResponse = {
     invite_url: string;
 };
 
+export type DutchPayInviteNotificationResponse = {
+    session_id: number;
+    invite_token: string;
+    invite_url: string;
+    notified_user_ids: number[];
+};
+
 async function requestJson<T>(
     url: string,
     options: RequestInit = {},
@@ -144,6 +151,27 @@ export function inviteDutchPayAppFriends({
 }): Promise<DutchPaySessionDetailResponse> {
     return requestJson(
         `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                user_ids: userIds,
+            }),
+        },
+        userId,
+    );
+}
+
+export function sendDutchPayInviteNotifications({
+    sessionId,
+    userIds,
+    userId,
+}: {
+    sessionId: number;
+    userIds: number[];
+    userId?: number | string;
+}): Promise<DutchPayInviteNotificationResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-notifications`,
         {
             method: 'POST',
             body: JSON.stringify({
