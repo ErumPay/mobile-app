@@ -71,9 +71,12 @@ export type PaymentDetailCard = {
 export type CardBenefit = {
   title: string;
   description: string;
+  performanceThresholds: number[];
 };
 
 export type CardPerformance = {
   yearMonth: string;
-  amount: string;
+  amount: number;
+  discountAmount?: number;
+  targetAmount?: number;
 };

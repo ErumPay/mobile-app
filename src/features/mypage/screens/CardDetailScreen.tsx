@@ -202,6 +202,9 @@ export function CardDetailScreen({ navigation, route }: Props) {
     if (activePaymentTab === 'completed') return payment.status === 'completed';
     return payment.status === 'canceled' || payment.status === 'cancelRequested';
   });
+  const performanceTarget =
+    cardPerformance?.targetAmount ??
+    resolvePerformanceTarget(cardPerformance?.amount ?? 0, cardBenefits);
 
   return (
     <>
@@ -241,17 +244,10 @@ export function CardDetailScreen({ navigation, route }: Props) {
                 <InfoRow label="등록일" value={card.registeredAt || '-'} />
               </Card>
 
-              <Card title="이번 달 실적">
-                <InfoRow
-                  label={
-                    cardPerformance
-                      ? `${Number(cardPerformance.yearMonth.slice(4, 6))}월 이용금액`
-                      : '이번 달 이용금액'
-                  }
-                  value={cardPerformance?.amount ?? '-'}
-                  valueClassName="text-erum-secondary"
-                />
-              </Card>
+              <MonthlyPerformanceCard
+                performance={cardPerformance}
+                targetAmount={performanceTarget}
+              />
 
               <Card title="혜택">
                 <View className="gap-2">
@@ -538,6 +534,99 @@ function InfoRow({
 
 function Divider() {
   return <View className="my-2 h-px w-full bg-neutral-grey1" />;
+}
+
+function MonthlyPerformanceCard({
+  performance,
+  targetAmount,
+}: {
+  performance: CardPerformance | null;
+  targetAmount?: number;
+}) {
+  const amount = performance?.amount ?? 0;
+  const progress =
+    targetAmount && targetAmount > 0
+      ? Math.min(Math.max((amount / targetAmount) * 100, 0), 100)
+      : 0;
+
+  return (
+    <Card title="이번 달 실적">
+      <View className="gap-1">
+        <PerformanceRow
+          label="사용금액"
+          value={performance ? formatCurrency(amount) : '-'}
+          valueClassName="text-[#2F62A3]"
+        />
+        <PerformanceRow
+          label="할인받은 금액"
+          value={
+            performance?.discountAmount == null
+              ? '-'
+              : formatCurrency(performance.discountAmount)
+          }
+          valueClassName="text-erum-primary"
+        />
+
+        <View className="mt-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="font-pretendard text-normal-regular text-neutral-black2">
+              실적 달성률
+            </Text>
+            <Text className="font-pretendard text-normal-regular text-neutral-black2">
+              {targetAmount ? formatCurrency(targetAmount) : '-'}
+            </Text>
+          </View>
+          <View className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-grey1">
+            <View
+              className="h-full rounded-full bg-[#2F62A3]"
+              style={{ width: `${progress}%` }}
+            />
+          </View>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function PerformanceRow({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName: string;
+}) {
+  return (
+    <View className="flex-row items-center justify-between py-1.5">
+      <Text className="font-pretendard text-large-regular text-neutral-black2">
+        {label}
+      </Text>
+      <Text className={`font-pretendard text-large-bold ${valueClassName}`}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function resolvePerformanceTarget(
+  currentAmount: number,
+  benefits: CardBenefit[],
+) {
+  const thresholds = Array.from(
+    new Set(
+      benefits.flatMap((benefit) => benefit.performanceThresholds),
+    ),
+  ).sort((a, b) => a - b);
+
+  return (
+    thresholds.find((threshold) => threshold > currentAmount) ??
+    thresholds.at(-1)
+  );
+}
+
+function formatCurrency(value: number) {
+  return `${Math.trunc(value).toLocaleString('ko-KR')}원`;
 }
 
 function AliasEditModal({

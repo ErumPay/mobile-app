@@ -222,7 +222,19 @@ export async function fetchCardPerformance(
 
   return {
     yearMonth: toStringValue(data.yearMonth ?? data.year_month) || yearMonth,
-    amount: formatCurrency(toNumberValue(data.amount)),
+    amount: toNumberValue(data.amount),
+    discountAmount: toOptionalNumberValue(
+      data.discountAmount ??
+        data.discount_amount ??
+        data.monthlyDiscountAmount ??
+        data.monthly_discount_amount,
+    ),
+    targetAmount: toOptionalNumberValue(
+      data.targetAmount ??
+        data.target_amount ??
+        data.targetPerformanceAmount ??
+        data.target_performance_amount,
+    ),
   };
 }
 
@@ -493,10 +505,21 @@ function normalizeCardBenefit(response: Record<string, unknown>): CardBenefit {
   const description = [descriptionBody, brandNames ? `대상 ${brandNames}` : '']
     .filter(Boolean)
     .join('\n');
+  const tiers = Array.isArray(response.tiers)
+    ? (response.tiers as Record<string, unknown>[])
+    : [];
+  const performanceThresholds = tiers
+    .map((tier) =>
+      toOptionalNumberValue(
+        tier.minPrevMonthUsage ?? tier.min_prev_month_usage,
+      ),
+    )
+    .filter((amount): amount is number => amount != null && amount > 0);
 
   return {
     title,
     description: description || '혜택 정보가 없습니다.',
+    performanceThresholds,
   };
 }
 
