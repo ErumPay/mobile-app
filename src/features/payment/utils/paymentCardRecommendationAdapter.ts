@@ -60,6 +60,48 @@ const allCombinationTypes: CardCombinationType[] = [
     'SPLIT_PERFORMANCE',
 ];
 
+const benefitStrategyTypes: PaymentCardRecommendationStrategyType[] = [
+    'BENEFIT_SINGLE',
+    'BENEFIT_SPLIT',
+];
+
+const getSelectionDescription = (
+    strategyType: PaymentCardRecommendationStrategyType,
+    cards: PaymentCardRecommendationCard[],
+): string => {
+    if (benefitStrategyTypes.includes(strategyType)) {
+        const discountAmount = cards.reduce(
+            (total, card) => total + Math.max(card.discountAmount, 0),
+            0,
+        );
+
+        return `이 카드로 결제시 ${discountAmount.toLocaleString()}원 할인`;
+    }
+
+    const performance = cards.reduce(
+        (total, card) => ({
+            expectedAmount:
+                total.expectedAmount + Math.max(card.expectedPerformanceAmount, 0),
+            targetAmount: total.targetAmount + Math.max(card.targetPerformanceAmount, 0),
+        }),
+        { expectedAmount: 0, targetAmount: 0 },
+    );
+    const achievementRate =
+        performance.targetAmount > 0
+            ? Math.max(
+                  0,
+                  Math.min(
+                      Math.round(
+                          (performance.expectedAmount / performance.targetAmount) * 100,
+                      ),
+                      100,
+                  ),
+              )
+            : 0;
+
+    return `이 카드로 결제시 실적 ${achievementRate}% 달성`;
+};
+
 const getCardTheme = (cardCompany: string): PaymentCardTheme => {
     if (cardCompany.includes('삼성')) {
         return 'BLUE';
@@ -189,7 +231,11 @@ export function toPaymentCardSelectData(
             label: meta.label,
             description: meta.description,
             cards,
-            benefitDescription: `${result.totalBenefitAmount.toLocaleString()}원 혜택`,
+            benefitDescription: `${result.totalBenefitAmount.toLocaleString()}원 할인`,
+            selectionDescription: getSelectionDescription(
+                result.strategyType,
+                result.cards ?? [],
+            ),
         };
     });
 

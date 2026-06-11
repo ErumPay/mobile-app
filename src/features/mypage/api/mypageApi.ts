@@ -27,6 +27,10 @@ const CARD_COLORS = [
   'bg-slate-700',
 ];
 
+function formatDiscountAmount(amount: number) {
+  return amount > 0 ? `-${formatCurrency(amount)}` : '0원';
+}
+
 function getMypageUserHeaders() {
   return {
     'X-User-Id': String(getMypageUserId()),
@@ -676,7 +680,7 @@ function normalizePaymentDetail(response: Record<string, unknown>): PaymentDetai
     phone:
       toStringValue(response.contactPhone ?? response.contact_phone) || '-',
     productAmount: formatCurrency(productAmount),
-    discountAmount: discountAmount > 0 ? `-${formatCurrency(discountAmount)}` : '0원',
+    discountAmount: formatDiscountAmount(discountAmount),
     tax: '0원',
     finalAmount: formatCurrency(finalAmount),
     status: canceledAt ? 'canceled' : history.status,
@@ -705,12 +709,16 @@ function normalizePaymentDetailCard(
   const paidAmount = toNumberValue(
     response.paidAmount ?? response.paid_amount,
   );
+  const discountAmount = toNumberValue(
+    response.discountAmount ?? response.discount_amount,
+  );
 
   return {
     id,
     name: name || '등록 카드',
     maskedNumber: maskedNumber || '-',
     paidAmount: formatCurrency(paidAmount),
+    discountAmount: formatDiscountAmount(discountAmount),
   };
 }
 
