@@ -27,6 +27,11 @@ type PrepareRemoteResponse = {
   amount: number;
 };
 
+type PrepareRemoteDraftPayload = Pick<
+  RemotePaymentRequestPayload,
+  'paymentId' | 'amount' | 'idempotencyKey'
+>;
+
 type RemotePaySsePayload = {
   event_type?: string;
   request_id?: number;
@@ -61,12 +66,22 @@ const REMOTE_PAY_EXPIRE_BATCH_URL = `${PAYMENT_API_BASE_URL}/internal/v1/remote-
 const PAYMENT_PREPARE_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/prepare`;
 const REMOTE_PAY_API_TIMEOUT_MS = 8000;
 
-function toRemoteStatus(status: RemotePayBackendResponse['status']): RemotePaymentRequestStatus {
-  if (status === 'COMPLETED') {
+function toRemoteStatus(response: RemotePayBackendResponse): RemotePaymentRequestStatus {
+  const payerPaymentId = response.payer_payment_id ?? response.payment_id;
+
+  if (response.status === 'PENDING' && payerPaymentId != null) {
+    return 'ACCEPTED';
+  }
+
+  if (response.status === 'COMPLETED') {
     return 'COMPLETED';
   }
 
-  if (status === 'REJECTED_BY_PAYER' || status === 'CANCELLED_BY_REQUESTER' || status === 'EXPIRED') {
+  if (
+    response.status === 'REJECTED_BY_PAYER' ||
+    response.status === 'CANCELLED_BY_REQUESTER' ||
+    response.status === 'EXPIRED'
+  ) {
     return 'REJECTED';
   }
 
@@ -110,7 +125,7 @@ function toRemotePaymentResponse(
     recipientUserId: String(response.target_user_id ?? fallback?.recipientUserId ?? ''),
     recipientName: fallback?.recipientName ?? (response.target_user_id ? `사용자 ${response.target_user_id}` : '대리자'),
     recipientPhoneSuffix: fallback?.recipientPhoneSuffix ?? '',
-    status: toRemoteStatus(response.status),
+    status: toRemoteStatus(response),
     expiresAt: response.expires_at ?? undefined,
   };
 }
@@ -153,8 +168,8 @@ function toRemotePaymentStreamEvent(
   };
 }
 
-async function prepareRemoteDraft(
-  payload: RemotePaymentRequestPayload,
+export async function prepareRemotePaymentDraft(
+  payload: PrepareRemoteDraftPayload,
 ): Promise<PrepareRemoteResponse> {
   const response = await fetchRemotePay(PAYMENT_PREPARE_URL, {
     method: 'POST',
@@ -277,7 +292,7 @@ export async function requestRemotePayment(
         remoteRequestId: payload.remoteRequestId,
         amount: payload.amount,
       }
-    : await prepareRemoteDraft(payload);
+    : await prepareRemotePaymentDraft(payload);
 
   if (!prepareResponse.remoteRequestId) {
     throw new Error('원격결제 요청 ID가 없습니다.');

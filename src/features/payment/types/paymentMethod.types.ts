@@ -7,6 +7,7 @@ export type PaymentRequestType =
 export type PaymentRequestSummary = {
     paymentId: number;
     remoteRequestId?: number;
+    payerPaymentId?: number;
     merchantName: string;
     amount: number;
     type: PaymentRequestType;

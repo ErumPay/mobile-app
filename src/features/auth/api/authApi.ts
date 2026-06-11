@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { AUTH_API_URL, getAuthDevUserId } from './authApiConfig';
+import { AUTH_API_URL } from './authApiConfig';
 
 export type SendSmsResponse = {
   verificationId: number;
@@ -18,23 +18,6 @@ export type SetupPinResponse = {
 
 export type ResetPinResponse = {
   message: string;
-};
-
-type DevUserResponse = {
-  userId: string;
-  kakaoOauthId: string;
-  status: string;
-};
-
-type DevTokenResponse = {
-  userId: string;
-  status: string;
-  accessToken: string;
-  refreshToken: string;
-};
-
-export type AuthRequestOptions = {
-  useExistingDevUser?: boolean;
 };
 
 const SECURE_STORE_KEYS = {
@@ -173,14 +156,12 @@ export type AgreeTermsResponse = {
     return response.json();                                                                   
   }
                                                                                               
-  export async function sendSmsCode(phoneNumber: string, options?: AuthRequestOptions):
+export async function sendSmsCode(phoneNumber: string):
   Promise<SendSmsResponse> {
-  const accessToken = await getAccessTokenForAuthRequest(phoneNumber, options);
   const response = await fetchAuth(`${AUTH_API_URL}/sms/send`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ phoneNumber }),
   });
@@ -234,9 +215,7 @@ export async function resetPin(
   newPin: string,
   newPinConfirm: string,
 ): Promise<ResetPinResponse> {
-  const accessToken = await getAccessTokenForAuthRequest(undefined, {
-    useExistingDevUser: true,
-  });
+  const accessToken = await getAccessTokenForAuthRequest();
   const response = await fetchAuth(`${AUTH_API_URL}/pin/reset`, {
     method: 'POST',
     headers: {
@@ -273,16 +252,11 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
       timeoutPromise,
     ]);
 
-    if (response.status === 401 && authSession?.refreshToken) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed && authSession?.accessToken) {
-        const retryInit = { ...init };
-        if (retryInit.headers && typeof retryInit.headers === 'object') {
-          retryInit.headers = {
-            ...retryInit.headers,
-            Authorization: `Bearer ${authSession.accessToken}`,
-          };
-        }
+    if (shouldRecoverAuthRequest(input, init, response.status)) {
+      const recovered = await recoverAuthSession();
+
+      if (recovered && authSession?.accessToken) {
+        const retryInit = withAuthorizationHeader(init, authSession.accessToken);
         const retryController = new AbortController();
         const retryTimeout = setTimeout(() => retryController.abort(), REQUEST_TIMEOUT_MS);
         try {
@@ -291,7 +265,9 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
           clearTimeout(retryTimeout);
         }
       }
-      await clearAuthSession();
+      if (!recovered) {
+        await clearAuthSession();
+      }
     }
 
     return response;
@@ -308,70 +284,60 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   }
 }
 
-export async function getAccessTokenForAuthRequest(phoneNumber?: string, options?: AuthRequestOptions) {
+function shouldRecoverAuthRequest(
+  input: RequestInfo,
+  init: RequestInit | undefined,
+  status: number,
+) {
+  if (![401, 403].includes(status)) {
+    return false;
+  }
+
+  const requestUrl = typeof input === 'string' ? input : input.url;
+
+  if (requestUrl.includes('/token/refresh') || requestUrl.includes('/auth/dev/')) {
+    return false;
+  }
+
+  return Boolean(getAuthorizationHeader(init?.headers));
+}
+
+async function recoverAuthSession() {
+  if (authSession?.refreshToken && await refreshAccessToken()) {
+    return true;
+  }
+
+  return false;
+}
+
+function getAuthorizationHeader(headers: RequestInit['headers']) {
+  if (!headers) {
+    return undefined;
+  }
+
+  if (headers instanceof Headers) {
+    return headers.get('Authorization') ?? headers.get('authorization') ?? undefined;
+  }
+
+  if (Array.isArray(headers)) {
+    return headers.find(([key]) => key.toLowerCase() === 'authorization')?.[1];
+  }
+
+  return headers.Authorization ?? headers.authorization;
+}
+
+function withAuthorizationHeader(init: RequestInit | undefined, accessToken: string) {
+  const nextInit = { ...init };
+  const nextHeaders = new Headers(init?.headers);
+  nextHeaders.set('Authorization', `Bearer ${accessToken}`);
+  nextInit.headers = nextHeaders;
+  return nextInit;
+}
+
+export async function getAccessTokenForAuthRequest() {
   if (authSession?.accessToken) {
     return authSession.accessToken;
   }
 
-  const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;
-
-  if (__DEV__ && configuredToken) {
-    return configuredToken;
-  }
-
-  if (__DEV__ && options?.useExistingDevUser) {
-    const devSession = await issueDevToken(getAuthDevUserId());
-    authSession = {
-      accessToken: devSession.accessToken,
-      refreshToken: devSession.refreshToken,
-      userId: Number(devSession.userId),
-    };
-    return authSession.accessToken;
-  }
-
-  if (!__DEV__) {
-    throw new Error('로그인 후 다시 시도해주세요.');
-  }
-
-  const devUser = await createDevUser(phoneNumber);
-  const devSession = await issueDevToken(devUser.userId);
-  authSession = {
-    accessToken: devSession.accessToken,
-    refreshToken: devSession.refreshToken,
-    userId: Number(devSession.userId),
-  };
-  return authSession.accessToken;
-}
-
-async function createDevUser(phoneNumber?: string): Promise<DevUserResponse> {
-  const response = await fetchAuth(`${AUTH_API_URL}/dev/users`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      kakaoOauthId: `mobile-dev-user-${getAuthDevUserId()}`,
-      phoneNumber,
-      name: 'Mobile Dev User',
-      status: 'PENDING',
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.message ?? '개발용 인증 사용자를 생성하지 못했습니다.');
-  }
-
-  return response.json();
-}
-
-async function issueDevToken(userId: string): Promise<DevTokenResponse> {
-  const response = await fetchAuth(`${AUTH_API_URL}/dev/token/${userId}`);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.message ?? '개발용 인증 토큰 발급에 실패했습니다.');
-  }
-
-  return response.json();
+  throw new Error('로그인 후 다시 시도해주세요.');
 }

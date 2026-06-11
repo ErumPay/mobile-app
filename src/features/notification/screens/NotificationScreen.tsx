@@ -12,9 +12,10 @@ import PageWrap from '../../../shared/components/PageWrap';
 import Tab from '../../../shared/components/Tab';
 
 const cardImg = require('../../../assets/icons/card.png');
-const paymentImg = require('../../../assets/icons/dutch.png');
+const peopleImg = require('../../../assets/icons/dutch.png');
+const friendImg = require('../../../assets/images/friend-add.png');
 
-type NotificationCategory = 'payment' | 'card';
+type NotificationCategory = 'payment' | 'card' | 'friend';
 type NotificationFilter = 'all' | NotificationCategory;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationScreen'>;
@@ -23,14 +24,31 @@ const notificationTabs: { label: string; value: NotificationFilter }[] = [
   { label: '전체', value: 'all' },
   { label: '결제', value: 'payment' },
   { label: '카드', value: 'card' },
+  { label: '친구', value: 'friend' },
 ];
 
 function getNotificationCategory(type: string): NotificationCategory {
-  return type.startsWith('CARD') ? 'card' : 'payment';
+  if (type === 'AUTH_FRIEND') {
+    return 'friend';
+  }
+
+  if (type.startsWith('CARD')) {
+    return 'card';
+  }
+
+  return 'payment';
 }
 
 function getNotificationIconSource(type: string) {
-  return type.startsWith('CARD') ? cardImg : paymentImg;
+  if (type === 'AUTH_FRIEND') {
+    return friendImg;
+  }
+
+  if (type.startsWith('CARD') || type.startsWith('PAYMENT')) {
+    return cardImg;
+  }
+
+  return peopleImg;
 }
 
 function formatNotificationDate(createdAt: string) {

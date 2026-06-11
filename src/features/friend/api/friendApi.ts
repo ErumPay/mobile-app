@@ -24,9 +24,7 @@ export type AuthFriendInviteLinkResponse = {
 };
 
 async function getFriendAccessToken() {
-  return getAccessTokenForAuthRequest(undefined, {
-    useExistingDevUser: true,
-  });
+  return getAccessTokenForAuthRequest();
 }
 
 function describeFriendsResponse(data: unknown) {

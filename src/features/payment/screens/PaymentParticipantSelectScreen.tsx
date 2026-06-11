@@ -25,7 +25,10 @@ import { colors } from '../../../shared/styles/designTokens';
 import { fetchAuthFriends, type AuthFriendResponse } from '../../friend/api/friendApi';
 import { fetchUserProfile } from '../../mypage/api/mypageApi';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
-import { requestRemotePayment } from '../api/remotePaymentApi';
+import {
+  prepareRemotePaymentDraft,
+  requestRemotePayment,
+} from '../api/remotePaymentApi';
 import {
   createDutchPayInviteLink,
   sendDutchPayInviteNotifications,
@@ -304,6 +307,9 @@ export default function PaymentParticipantSelectScreen({
   const [shareCountdown, setShareCountdown] = useState(3);
   const [shareUrl, setShareUrl] = useState('');
   const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
+  const [preparedRemoteRequestId, setPreparedRemoteRequestId] = useState<
+    number | undefined
+  >(route.params?.remoteRequestId);
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [dutchInviteCompleteModalVisible, setDutchInviteCompleteModalVisible] =
     useState(false);
@@ -494,13 +500,44 @@ export default function PaymentParticipantSelectScreen({
     setShareModalVisible(true);
 
     if (!isDutchPay) {
-      if (!route.params?.remoteRequestId) {
+      const remoteRequestId = route.params?.remoteRequestId ?? preparedRemoteRequestId;
+
+      if (remoteRequestId) {
+        setShareUrl(toDisplayRemoteInviteUrl(remoteRequestId));
+        return;
+      }
+
+      if (route.params?.paymentId == null || route.params?.amount == null) {
         Alert.alert('원격결제', '원격결제 요청 정보가 없습니다.');
         setShareModalVisible(false);
         return;
       }
 
-      setShareUrl(toDisplayRemoteInviteUrl(route.params.remoteRequestId));
+      try {
+        setIsShareLinkLoading(true);
+        const draft = await prepareRemotePaymentDraft({
+          paymentId: route.params.paymentId,
+          amount: route.params.amount,
+        });
+
+        if (!draft.remoteRequestId) {
+          throw new Error('remote request id is missing');
+        }
+
+        setPreparedRemoteRequestId(draft.remoteRequestId);
+        setShareUrl(toDisplayRemoteInviteUrl(draft.remoteRequestId));
+      } catch (error) {
+        Alert.alert(
+          'URL 공유',
+          error instanceof Error
+            ? error.message
+            : '원격결제 요청 링크 생성에 실패했습니다.',
+        );
+        setShareModalVisible(false);
+      } finally {
+        setIsShareLinkLoading(false);
+      }
+
       return;
     }
 
@@ -624,7 +661,7 @@ export default function PaymentParticipantSelectScreen({
 
       const response = await requestRemotePayment({
         paymentId: route.params.paymentId,
-        remoteRequestId: route.params?.remoteRequestId,
+        remoteRequestId: route.params?.remoteRequestId ?? preparedRemoteRequestId,
         amount: route.params.amount,
         merchantName: route.params?.orderName ?? '원격결제',
         orderName: route.params?.orderName,
@@ -635,8 +672,11 @@ export default function PaymentParticipantSelectScreen({
       });
 
       setRequesterProgress(response);
-    } catch {
-      Alert.alert('원격결제 요청', '원격결제 요청에 실패했습니다.');
+    } catch (error) {
+      Alert.alert(
+        '원격결제 요청',
+        error instanceof Error ? error.message : '원격결제 요청에 실패했습니다.',
+      );
       return;
     } finally {
       setIsRemoteRequesting(false);
