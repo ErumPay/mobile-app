@@ -1023,9 +1023,11 @@ function toDutchPayProgressVariant(
     session.status === "COMPLETED" ||
     session.status === "FAILED" ||
     session.status === "TIMEOUT_HANDLED" ||
+    session.status === "CANCELED" ||
     session.session_progress_step === "COMPLETED" ||
     session.session_progress_step === "FAILED" ||
-    session.session_progress_step === "TIMEOUT_HANDLED"
+    session.session_progress_step === "TIMEOUT_HANDLED" ||
+    session.session_progress_step === "CANCELED"
   ) {
     return null;
   }

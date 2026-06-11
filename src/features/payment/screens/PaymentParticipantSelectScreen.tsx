@@ -67,6 +67,10 @@ function toDisplayDutchInviteUrl(inviteToken: string, fallbackUrl: string) {
   return Linking.createURL(`payment/dutch-pay-invite/${encodeURIComponent(inviteToken)}`);
 }
 
+function toDisplayRemoteInviteUrl(remoteRequestId: number) {
+  return Linking.createURL(`payment/remote-pay-invite/${encodeURIComponent(remoteRequestId)}`);
+}
+
 function toParticipantFriend(friend: AuthFriendResponse): ParticipantFriend {
   const phoneSuffix = friend.phoneLastFour || String(friend.userId).padStart(4, '0').slice(-4);
 
@@ -483,15 +487,22 @@ export default function PaymentParticipantSelectScreen({
   };
 
   const handleOpenShareModal = async () => {
-    if (!isDutchPay) {
-      Alert.alert('URL 공유', '원격결제 URL 공유는 아직 지원되지 않습니다. 친구 목록에서 요청 대상을 선택해주세요.');
-      return;
-    }
-
     setShareStep('READY');
     setShareCountdown(3);
     setShareUrl('');
+    setIsShareLinkLoading(false);
     setShareModalVisible(true);
+
+    if (!isDutchPay) {
+      if (!route.params?.remoteRequestId) {
+        Alert.alert('원격결제', '원격결제 요청 정보가 없습니다.');
+        setShareModalVisible(false);
+        return;
+      }
+
+      setShareUrl(toDisplayRemoteInviteUrl(route.params.remoteRequestId));
+      return;
+    }
 
     if (!route.params?.dutchSessionId) {
       Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
@@ -815,8 +826,16 @@ export default function PaymentParticipantSelectScreen({
           linkText={shareUrl}
           isLoading={isShareLinkLoading}
           isCopied={shareStep === 'COPIED'}
-          copiedDescription="친구에게 공유하여 더치페이 그룹 생성을 진행해보세요."
-          copiedNotice={`${shareCountdown}초 뒤 그룹 생성 페이지로 이동합니다.`}
+          copiedDescription={
+            isDutchPay
+              ? '친구에게 공유하여 더치페이 그룹 생성을 진행해보세요.'
+              : '상대방이 링크를 열면 원격결제 요청을 수락하고 결제를 진행할 수 있어요.'
+          }
+          copiedNotice={
+            isDutchPay
+              ? `${shareCountdown}초 뒤 그룹 생성 페이지로 이동합니다.`
+              : `${shareCountdown}초 뒤 메인으로 이동합니다.`
+          }
           onClose={resetShareModal}
           onPressCopy={handlePressCopyLink}
         />

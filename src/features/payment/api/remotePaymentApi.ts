@@ -331,6 +331,24 @@ export async function getRemotePaymentRequest(
   return toRemotePaymentResponse(await response.json());
 }
 
+export async function acceptRemotePaymentRequest(
+  remoteRequestId: number | string,
+): Promise<RemotePaymentRequestResponse> {
+  const response = await fetchRemotePay(`${REMOTE_PAY_REQUESTS_URL}/${remoteRequestId}/accept`, {
+    method: 'POST',
+    headers: {
+      'X-User-Id': getPaymentUserId(),
+    },
+  });
+
+  if (!response.ok) {
+    const error = await parsePaymentApiError(response);
+    throw new Error(error.message ?? '원격결제 공유 링크 수락에 실패했습니다.');
+  }
+
+  return toRemotePaymentResponse(await response.json());
+}
+
 export async function getActiveRemotePaymentRequests(): Promise<RemotePaymentRequestResponse[]> {
   await expireRemotePaymentRequests().catch(() => undefined);
 
@@ -347,9 +365,7 @@ export async function getActiveRemotePaymentRequests(): Promise<RemotePaymentReq
 
   const requests: RemotePayBackendResponse[] = await response.json();
 
-  return requests
-    .map((request) => toRemotePaymentResponse(request))
-    .filter((request) => request.recipientUserId);
+  return requests.map((request) => toRemotePaymentResponse(request));
 }
 
 export async function expireRemotePaymentRequests(): Promise<void> {
