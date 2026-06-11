@@ -139,7 +139,8 @@ export function MypageHomeScreen({ navigation }: Props) {
         return;
       }
     } catch {
-      // eligibility API 미구현 시 무시하고 진행
+      setActionMessage('탈퇴 가능 여부를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      return;
     } finally {
       setIsSubmittingAccountAction(false);
     }
@@ -365,7 +366,14 @@ export function MypageHomeScreen({ navigation }: Props) {
             routes: [{ name: 'Tutorial' }],
           });
         }}
-        onClose={() => setIsWithdrawCompleteVisible(false)}
+        onClose={async () => {
+          await clearAuthSession();
+          setIsWithdrawCompleteVisible(false);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Tutorial' }],
+          });
+        }}
       />
 
       <WithdrawPinModal
