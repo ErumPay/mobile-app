@@ -158,10 +158,12 @@ export type AgreeTermsResponse = {
                                                                                               
 export async function sendSmsCode(phoneNumber: string):
   Promise<SendSmsResponse> {
+  const accessToken = await getAccessTokenForAuthRequest();
   const response = await fetchAuth(`${AUTH_API_URL}/sms/send`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ phoneNumber }),
   });
