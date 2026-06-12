@@ -329,6 +329,10 @@ function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
     return 'EMPTY' as const;
   }
 
+  if (participant.status === 'INVITED') {
+    return 'INVITED' as const;
+  }
+
   if (participant.status === 'PENDING') {
     return 'WAITING_AMOUNT' as const;
   }
@@ -629,8 +633,10 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         participant.status === 'PAID',
     );
   }, [currentUserId, role, serverSession]);
+  const isEqualSplit =
+    splitType === 'AUTO_SPLIT' || serverSession?.split_method === 'EQUAL';
   const isAutoSplitParticipantInput =
-    isParticipantAmountInputScenario && splitType === 'AUTO_SPLIT';
+    isParticipantAmountInputScenario && isEqualSplit;
   const visibleMembers = role === 'OWNER' ? data.members : members;
   const participantMembers = visibleMembers.filter((member) => !member.isOwner);
   const failedPaymentMembers = participantMembers.filter(
@@ -736,11 +742,13 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         !isMyAmountConfirmed &&
         myEditableAmount < 1));
   const primaryLabel =
-    isParticipantAmountInputScenario && isMyAmountConfirmed
+    isParticipantAmountInputScenario && isMyAmountConfirmed && !isAutoSplitParticipantInput
       ? '금액 수정하기'
       : data.footer.type === 'button'
         ? data.footer.label
         : '';
+  const shouldShowAutoSplitAmountNotice =
+    isAutoSplitParticipantInput && isMyAmountConfirmed;
   const shouldShowSecondaryAction =
     data.footer.type === 'button' &&
     data.footer.secondaryLabel &&
@@ -1627,7 +1635,12 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       }
       footer={
           <View className="w-full max-w-sm self-center">
-            {data.footer.type === 'button' ? (
+            {shouldShowAutoSplitAmountNotice ? (
+              <NoticeBox
+                tone="info"
+                description="N빵으로 자동 배분된 금액입니다. 대표자가 금액을 확정할 때까지 기다려주세요."
+              />
+            ) : data.footer.type === 'button' ? (
               <>
                 <Button
                   label={primaryLabel}

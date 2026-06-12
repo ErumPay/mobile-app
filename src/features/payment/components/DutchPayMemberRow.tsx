@@ -107,6 +107,21 @@ function MemberStatusLine({
     );
   }
 
+  if (member.status === 'INVITED') {
+    return (
+      <View className="mt-1 flex-row items-center">
+        <Text className="font-pretendard text-normal-bold text-erum-main">
+          초대됨
+        </Text>
+        <View className="ml-2 rounded-full bg-[#E7F7EC] px-2 py-1">
+          <Text className="font-pretendard text-small-bold text-state-success">
+            참여 대기
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   if (member.status === 'PAYMENT_PENDING') {
     return (
       <Text className="mt-1 font-pretendard text-normal-bold text-erum-main">

@@ -3,6 +3,7 @@ export type DutchPayRole = 'OWNER' | 'PARTICIPANT';
 export type DutchPayMemberStatus =
   | 'EMPTY'
   | 'AUTO_SPLIT'
+  | 'INVITED'
   | 'AMOUNT_CONFIRMED'
   | 'WAITING_AMOUNT'
   | 'INPUT_EDITING'
