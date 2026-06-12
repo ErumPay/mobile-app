@@ -9,6 +9,7 @@ const DUTCH_PAY_API_TIMEOUT_MS = 8000;
 
 export type DutchPayParticipantStatus =
     | 'INVITED'
+    | 'JOINED'
     | 'PENDING'
     | 'PAID'
     | 'REJECTED'
@@ -230,6 +231,19 @@ export function acceptDutchPayInviteLink(
 ): Promise<DutchPaySessionDetailResponse> {
     return requestJson(
         `${DUTCH_PAY_BASE_URL}/invite-links/${inviteToken}/accept`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
+}
+
+export function joinDutchPayInvitedParticipant(
+    sessionId: number,
+    userId?: number | string,
+): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/join`,
         {
             method: 'POST',
         },

@@ -4,6 +4,7 @@ export type DutchPayMemberStatus =
   | 'EMPTY'
   | 'AUTO_SPLIT'
   | 'INVITED'
+  | 'JOINED'
   | 'AMOUNT_CONFIRMED'
   | 'WAITING_AMOUNT'
   | 'INPUT_EDITING'

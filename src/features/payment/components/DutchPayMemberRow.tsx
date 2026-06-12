@@ -122,6 +122,17 @@ function MemberStatusLine({
     );
   }
 
+  if (member.status === 'JOINED') {
+    return (
+      <View className="mt-1 flex-row items-center">
+        <Text className="font-pretendard text-normal-bold text-erum-main">
+          참여
+        </Text>
+        <StatusCheck />
+      </View>
+    );
+  }
+
   if (member.status === 'PAYMENT_PENDING') {
     return (
       <Text className="mt-1 font-pretendard text-normal-bold text-erum-main">

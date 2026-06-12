@@ -38,10 +38,10 @@ function decodeInviteSessionId(inviteToken: string): number | null {
 
 function isAlreadyJoinedError(message: string): boolean {
   return (
-    message.includes('이미') ||
     message.includes('DUTCH_DUPLICATED_PARTICIPANT') ||
     message.includes('DUTCH_PARTICIPANT_DUPLICATED') ||
-    message.includes('DUPLICATED_PARTICIPANT')
+    message.includes('DUPLICATED_PARTICIPANT') ||
+    message.includes('이미 참여')
   );
 }
 

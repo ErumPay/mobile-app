@@ -31,6 +31,7 @@ import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
 import {
   getActiveDutchPaySessions,
+  joinDutchPayInvitedParticipant,
   type DutchPaySessionDetailResponse,
 } from "../../payment/api/dutchPayApi";
 import {
@@ -595,7 +596,7 @@ export default function MainScreen({ navigation, route }: Props) {
     }
   };
 
-  const handlePressPaymentProgressPrimary = () => {
+  const handlePressPaymentProgressPrimary = async () => {
     if (currentProgressItem?.type === "DUTCH") {
       if (currentProgressItem.variant === "DUTCHPAY_OWNER_GROUP_CREATE_READY") {
         navigation.push("PaymentParticipantSelect", {
@@ -606,6 +607,16 @@ export default function MainScreen({ navigation, route }: Props) {
           merchantId: currentProgressItem.session.merchant_id,
         });
         return;
+      }
+
+      if (
+        currentProgressItem.role === "PARTICIPANT" &&
+        currentProgressItem.variant === "DUTCHPAY_MEMBER_REQUEST_RECEIVED"
+      ) {
+        await joinDutchPayInvitedParticipant(
+          currentProgressItem.session.session_id,
+          paymentProgressUserId ?? undefined,
+        ).catch(() => undefined);
       }
 
       navigation.navigate("DutchPayGroup", {
@@ -1154,7 +1165,7 @@ function toDutchPayProgressVariant(
     return "DUTCHPAY_MEMBER_WAITING_OTHERS";
   }
 
-  if (myParticipant.status === "INVITED") {
+  if (myParticipant.status === "INVITED" || myParticipant.status === "JOINED") {
     return "DUTCHPAY_MEMBER_REQUEST_RECEIVED";
   }
 
@@ -1193,6 +1204,13 @@ function toDutchPayProgressVariant(
     myParticipant.amount == null
   ) {
     return "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY";
+  }
+
+  if (
+    session.session_progress_step === "AMOUNT_INPUT_COMPLETED" &&
+    myParticipant.amount != null
+  ) {
+    return "DUTCHPAY_MEMBER_AMOUNT_REVIEW";
   }
 
   if (myParticipant.amount != null) {

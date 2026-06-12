@@ -10,6 +10,7 @@ import { EmptyState } from '../../../shared/components/EmptyState';
 import FloatingButton from '../../../shared/components/FloatingButton/FloatingButton';
 import PageWrap from '../../../shared/components/PageWrap';
 import Tab from '../../../shared/components/Tab';
+import { joinDutchPayInvitedParticipant } from '../../payment/api/dutchPayApi';
 
 const cardImg = require('../../../assets/icons/card.png');
 const peopleImg = require('../../../assets/icons/dutch.png');
@@ -155,8 +156,21 @@ const NotificationScreen = ({ navigation }: Props) => {
     }
   };
 
+  const handleNotificationAction = async (notification: NotificationItem) => {
+    if (notification.type !== 'DUTCHPAY_INVITED' || notification.paymentId == null) {
+      return;
+    }
+
+    await joinDutchPayInvitedParticipant(notification.paymentId).catch(() => undefined);
+    navigation.navigate('DutchPayGroup', {
+      role: 'PARTICIPANT',
+      sessionId: notification.paymentId,
+    });
+  };
+
   const handlePressNotification = async (notification: NotificationItem) => {
     if (notification.isRead) {
+      await handleNotificationAction(notification);
       return;
     }
 
@@ -179,6 +193,7 @@ const NotificationScreen = ({ navigation }: Props) => {
             : item,
         ),
       );
+      await handleNotificationAction(notification);
     } catch {
       // 읽음 처리 실패 시 목록 화면은 그대로 유지합니다.
     } finally {
