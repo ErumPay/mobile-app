@@ -9,9 +9,15 @@ import { colors } from '../../../shared/styles/designTokens';
 import type { RegisteredCard } from '../types/card';
 
 type CardRegisterResultStatus = 'success' | 'failure';
+export type CardRegisterFailureType =
+  | 'GENERAL'
+  | 'AUTHENTICATION'
+  | 'UNAVAILABLE'
+  | 'SYSTEM';
 
 interface CardRegisterResultScreenProps {
   status: CardRegisterResultStatus;
+  failureType?: CardRegisterFailureType;
   onClose: () => void;
   onRetry?: () => void;
   onGoCardManagement?: () => void;
@@ -22,6 +28,7 @@ interface CardRegisterResultScreenProps {
 
 export function CardRegisterResultScreen({
   status,
+  failureType = 'GENERAL',
   onClose,
   onRetry,
   onGoCardManagement,
@@ -43,6 +50,7 @@ export function CardRegisterResultScreen({
         />
       ) : (
         <CardRegisterFailureResult
+          failureType={failureType}
           onRetry={onRetry}
           onGoHome={onGoHome}
         />
@@ -105,12 +113,16 @@ function CardRegisterSuccessResult({
 }
 
 function CardRegisterFailureResult({
+  failureType,
   onRetry,
   onGoHome,
 }: {
+  failureType: CardRegisterFailureType;
   onRetry?: () => void;
   onGoHome?: () => void;
 }) {
+  const content = cardRegisterFailureContent[failureType];
+
   return (
     <View className="w-full flex-1 pt-12">
       <View className="w-full items-center">
@@ -119,11 +131,11 @@ function CardRegisterFailureResult({
         </View>
 
         <Text className="mt-8 text-center font-pretendard text-heading-1 text-neutral-black1">
-          카드 등록 실패
+          {content.title}
         </Text>
 
         <Text className="mt-4 text-center font-pretendard text-heading-3 text-neutral-black2">
-          카드 등록 중 문제가 발생했습니다
+          {content.subtitle}
         </Text>
 
         <View className="mt-12 w-full">
@@ -135,7 +147,7 @@ function CardRegisterFailureResult({
             <View className="flex-row items-center gap-3">
               <View className="h-2 w-2 rounded-full bg-state-error" />
               <Text className="min-w-0 flex-1 font-pretendard text-large-regular text-neutral-black2">
-                카드 정보가 일치하지 않습니다
+                {content.description}
               </Text>
             </View>
           </Card>
@@ -143,7 +155,7 @@ function CardRegisterFailureResult({
 
         <View className="mt-10 w-full gap-4">
           <Button
-            label="다시 입력하기"
+            label={content.primaryButtonLabel}
             leftIcon={
               <Feather
                 name="refresh-cw"
@@ -166,7 +178,44 @@ function CardRegisterFailureResult({
   );
 }
 
-
+const cardRegisterFailureContent: Record<
+  CardRegisterFailureType,
+  {
+    title: string;
+    subtitle: string;
+    description: string;
+    primaryButtonLabel: string;
+  }
+> = {
+  GENERAL: {
+    title: '카드 등록 실패',
+    subtitle: '입력한 카드 정보를 확인해주세요.',
+    description:
+      '카드 정보(번호, 유효기간, CVC)가 올바른지 다시 확인해주세요.',
+    primaryButtonLabel: '다시 시도하기',
+  },
+  AUTHENTICATION: {
+    title: '카드 등록 실패',
+    subtitle: '카드 인증에 실패했습니다.',
+    description:
+      '비밀번호오류 등으로 인증이 제한되었습니다. 카드사를 통해 비밀번호 오류 해제 후 다시 시도해주세요.',
+    primaryButtonLabel: '다시 시도하기',
+  },
+  UNAVAILABLE: {
+    title: '사용할 수 없는 카드입니다.',
+    subtitle: '다른 카드를 등록해주세요.',
+    description:
+      '유효기간이 만료되었거나 정지된 카드입니다. 다른 카드를 사용해주세요.',
+    primaryButtonLabel: '다른 카드 등록하기',
+  },
+  SYSTEM: {
+    title: '잠시 후 다시 시도해주세요.',
+    subtitle: '카드 등록을 완료하지 못했습니다.',
+    description:
+      '네트워크 연결이 불안정하거나 시스템 점검 중입니다. 잠시 후 다시 시도해주세요.',
+    primaryButtonLabel: '확인',
+  },
+};
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (

@@ -10,6 +10,7 @@ import {
 } from './paymentApiConfig';
 
 const PAYMENT_REQUEST_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/request`;
+const PAYMENT_DIRECT_REQUEST_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/request-direct`;
 
 export class PaymentRequestError extends Error {
     code?: string;
@@ -30,6 +31,40 @@ export async function requestPayment(
     idempotencyKey: string,
 ): Promise<PaymentRequestResponse> {
     const response = await fetch(PAYMENT_REQUEST_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': getPaymentUserId(),
+            'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response
+            .json()
+            .catch(() => null) as PaymentRequestErrorBody | null;
+
+        if (errorBody) {
+            throw new PaymentRequestError(errorBody);
+        }
+
+        throw new Error('결제 요청에 실패했습니다.');
+    }
+
+    return response.json();
+}
+
+export async function requestDirectPayment(
+    payload: {
+        pin: string;
+        paymentId: number;
+        totalAmount: number;
+        cardId: number;
+    },
+    idempotencyKey: string,
+): Promise<PaymentRequestResponse> {
+    const response = await fetch(PAYMENT_DIRECT_REQUEST_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

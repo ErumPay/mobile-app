@@ -319,19 +319,36 @@ export async function fetchPaymentDetail(
   );
 
   const [requesterProfile, payerProfile] = await Promise.all([
-    detail.requesterName || requesterUserId == null
+    requesterUserId == null
       ? null
       : fetchUserProfileById(requesterUserId).catch(() => null),
-    detail.payerName || payerUserId == null
+    payerUserId == null
       ? null
       : fetchUserProfileById(payerUserId).catch(() => null),
   ]);
 
   return {
     ...detail,
-    requesterName: detail.requesterName ?? requesterProfile?.name,
-    payerName: detail.payerName ?? payerProfile?.name,
+    requesterName: formatRemoteParticipant(
+      requesterProfile,
+      detail.requesterName,
+    ),
+    payerName: formatRemoteParticipant(payerProfile, detail.payerName),
   };
+}
+
+function formatRemoteParticipant(
+  profile: UserProfile | null,
+  fallbackName?: string,
+) {
+  const name = profile?.name || fallbackName;
+  const phoneLast4 = profile?.phone.replace(/\D/g, '').slice(-4);
+
+  if (!name) {
+    return undefined;
+  }
+
+  return phoneLast4 ? `${name}(${phoneLast4})` : name;
 }
 
 export async function fetchPaymentHistoriesByCard(
@@ -619,7 +636,7 @@ function normalizePaymentHistoryItem(
     method,
     benefitType,
     status,
-    title: toStringValue(response.orderName ?? response.order_name) || '결제',
+    title: toStringValue(response.merchantName ?? response.merchant_name) || '결제',
     date: formatDateTimeToDate(paidAt),
     amount: formatCurrency(toNumberValue(response.amount)),
   };

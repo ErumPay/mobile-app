@@ -472,8 +472,6 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                                 ? 'MEMBER'
                                 : undefined,
                     sessionId: routeDutchSessionId,
-                    orderName: route.params?.orderName,
-                    merchantId,
                 });
 
                 const nextFlowType = isDutchFinalRoute
@@ -545,11 +543,9 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         isDutchFinalRoute,
         isDutchPayRoute,
         isRemotePaymentRoute,
-        merchantId,
         paymentId,
         remoteRequestId,
         routeDutchSessionId,
-        route.params?.orderName,
         shouldReusePreparedDutchMemberPayment,
     ]);
 
@@ -617,15 +613,9 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         const selectedCard = data?.registeredCards.find(
             (card) => card.id === pendingCardId,
         );
-        const selectedCombinationForCard = data?.cardCombinations.find((combination) =>
-            combination.cards.length === 1 &&
-            combination.cards[0]?.id === selectedCard?.id
-        );
-
         if (
             !hasPreparedPaymentId ||
             !selectedCard ||
-            !selectedCombinationForCard ||
             !idempotencyKey
         ) {
             setErrorMessage('선택한 카드로 결제를 진행할 수 없습니다.');
@@ -646,18 +636,19 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             paymentId: preparedPaymentId,
             cardId: Number(selectedCard.id),
             amount: selectedCard.amount,
-            strategyType: selectedCombinationForCard.strategyType,
-            cards: selectedCombinationForCard.cards.map((card) => ({
-                cardId: Number(card.id),
-                amount: card.amount,
-            })),
+            strategyType: 'BENEFIT_SINGLE',
+            isDirectPayment: true,
+            cards: [{
+                cardId: Number(selectedCard.id),
+                amount: selectedCard.amount,
+            }],
             flow: paymentFlow,
             idempotencyKey,
             remoteRequestId,
             dutchSessionId,
             selectedUserIds: route.params?.selectedUserIds,
             splitMethod: route.params?.splitMethod,
-            orderName: route.params?.orderName,
+            merchantName: route.params?.merchantName,
             merchantId,
         });
     };
@@ -686,7 +677,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             dutchSessionId,
             selectedUserIds: route.params?.selectedUserIds,
             splitMethod: route.params?.splitMethod,
-            orderName: route.params?.orderName,
+            merchantName: route.params?.merchantName,
             merchantId,
         });
     };

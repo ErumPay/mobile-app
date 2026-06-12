@@ -16,7 +16,6 @@ export type RemotePaymentRequestPayload = {
   recipientUserId: string;
   recipientName: string;
   recipientPhoneSuffix: string;
-  orderName?: string;
   merchantId?: number;
   idempotencyKey?: string;
 };

@@ -131,7 +131,6 @@ export function PaymentDetailScreen({ navigation, route }: Props) {
               </Card>
 
               <Card title="결제 정보">
-                <InfoRow label="주문명" value={payment.title} />
                 <BadgeInfoRow label="결제 방식">
                   <Badge
                     label={paymentMethodLabel[payment.method]}

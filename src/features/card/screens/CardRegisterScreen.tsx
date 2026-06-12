@@ -3,14 +3,17 @@ import { useState } from 'react';
 
 import type { RootStackParamList } from '../../../../App';
 import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
-import { registerCard } from '../api/cardApi';
+import { CardApiError, registerCard } from '../api/cardApi';
 import { getCardRegisterUserId } from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
 import { CardOcrScreen } from './CardOcrScreen';
 import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
-import { CardRegisterResultScreen } from './CardRegisterResultScreen';
+import {
+  CardRegisterResultScreen,
+  type CardRegisterFailureType,
+} from './CardRegisterResultScreen';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
@@ -23,6 +26,8 @@ export function CardRegisterScreen({ navigation, route }: Props) {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [failureType, setFailureType] =
+    useState<CardRegisterFailureType>('GENERAL');
 
   const addCard = useManagedCardsStore((state) => state.addCard);
   const paymentCardSelectParams =
@@ -70,6 +75,7 @@ export function CardRegisterScreen({ navigation, route }: Props) {
       });
 
       if (isRegisteredCardUnavailable(nextCard)) {
+        setFailureType('UNAVAILABLE');
         setMode('failure');
         return;
       }
@@ -77,7 +83,8 @@ export function CardRegisterScreen({ navigation, route }: Props) {
       syncRegisteredCardToStore(nextCard, values);
       setRegisteredCard(nextCard);
       setMode('success');
-    } catch {
+    } catch (error) {
+      setFailureType(resolveCardRegisterFailureType(error));
       setMode('failure');
     } finally {
       setIsSubmitting(false);
@@ -150,8 +157,16 @@ export function CardRegisterScreen({ navigation, route }: Props) {
     return (
       <CardRegisterResultScreen
         status="failure"
+        failureType={failureType}
         onClose={handleGoBack}
-        onRetry={() => setMode('manual')}
+        onRetry={
+          failureType === 'SYSTEM'
+            ? handleGoCardManagement
+            : () => {
+                setOcrInitialValues(null);
+                setMode('select');
+              }
+        }
         onGoHome={handleGoHome}
       />
     );
@@ -186,6 +201,37 @@ function isRegisteredCardUnavailable(card: RegisteredCard) {
   const status = card.status.toUpperCase();
 
   return status !== 'ACTIVE';
+}
+
+function resolveCardRegisterFailureType(error: unknown): CardRegisterFailureType {
+  if (!(error instanceof CardApiError)) {
+    return 'SYSTEM';
+  }
+
+  if (
+    error.code === 'CARD-AUTH-301' ||
+    error.code === 'CARD_AUTHENTICATION_FAILED'
+  ) {
+    return 'AUTHENTICATION';
+  }
+
+  if (
+    error.code === 'CARD-CARD-303' ||
+    error.code === 'CARD_UNAVAILABLE'
+  ) {
+    return 'UNAVAILABLE';
+  }
+
+  if (
+    error.status >= 500 ||
+    error.code === 'CARD-BILL-402' ||
+    error.code === 'CARD-BILL-403' ||
+    error.code === 'CARD-SYS-900'
+  ) {
+    return 'SYSTEM';
+  }
+
+  return 'GENERAL';
 }
 
 export default CardRegisterScreen;

@@ -176,7 +176,7 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                 mode: 'DUTCH_PAY',
                 scenario: 'DEFAULT',
                 dutchSessionId: nextDutchSessionId,
-                orderName: route.params?.orderName,
+                merchantName: route.params?.merchantName,
                 merchantId: route.params?.merchantId,
             });
             return;

@@ -472,7 +472,7 @@ export default function MainScreen({ navigation, route }: Props) {
           mode: "DUTCH_PAY",
           dutchSessionId: dutchProgress.session.session_id,
           amount: dutchProgress.session.total_amount,
-          orderName: dutchProgress.session.order_name,
+          merchantName: dutchProgress.session.merchant_name,
           merchantId: dutchProgress.session.merchant_id,
         });
         return;

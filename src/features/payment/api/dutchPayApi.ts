@@ -48,7 +48,7 @@ export type DutchPaySessionDetailResponse = {
     dutch_order_no: string;
     host_user_id: number;
     merchant_id: number;
-    order_name: string;
+    merchant_name: string;
     host_auth_payment_id: number | null;
     total_amount: number;
     remaining_amount: number;
@@ -64,7 +64,7 @@ export type DutchPayMyPaymentResponse = {
     user_id: number;
     host_user_id: number;
     merchant_id: number;
-    order_name: string;
+    merchant_name: string;
     amount: number;
     total_amount: number;
     split_method: DutchPaySplitMethod;
