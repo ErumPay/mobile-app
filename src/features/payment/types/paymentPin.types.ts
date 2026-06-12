@@ -9,6 +9,7 @@ type PaymentInputPinRouteParams = {
   cardId: number;
   amount: number;
   strategyType: string;
+  isDirectPayment?: boolean;
   cards: {
     cardId: number;
     amount: number;
@@ -19,7 +20,7 @@ type PaymentInputPinRouteParams = {
   dutchSessionId?: number;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
-  orderName?: string;
+  merchantName?: string;
   merchantId?: number;
 };
 
@@ -50,6 +51,7 @@ export type LegacyPaymentPinRouteParams = {
   cardId?: number;
   amount?: number;
   strategyType?: string;
+  isDirectPayment?: boolean;
   cards?: {
     cardId: number;
     amount: number;
@@ -60,6 +62,6 @@ export type LegacyPaymentPinRouteParams = {
   dutchSessionId?: number;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
-  orderName?: string;
+  merchantName?: string;
   merchantId?: number;
 };

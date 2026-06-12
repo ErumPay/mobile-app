@@ -15,7 +15,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OfflinePaymentQr'>;
 const DEFAULT_PAYMENT_QR_REQUEST: OfflinePaymentQrRequestPayload = {
     merchant_id: 101,
     amount: 777777,
-    order_name: '아메리카노 27잔',
     channel_type: 'OFFLINE',
 };
 
@@ -33,12 +32,11 @@ export default function OfflinePaymentQrScreen({ navigation, route }: Props) {
             merchant_id:
                 route.params?.merchantId ?? DEFAULT_PAYMENT_QR_REQUEST.merchant_id,
             amount: route.params?.amount ?? DEFAULT_PAYMENT_QR_REQUEST.amount,
-            order_name:
-                route.params?.orderName ?? DEFAULT_PAYMENT_QR_REQUEST.order_name,
             channel_type: 'OFFLINE',
         }),
-        [route.params?.amount, route.params?.merchantId, route.params?.orderName],
+        [route.params?.amount, route.params?.merchantId],
     );
+    const merchantName = route.params?.merchantName ?? '가맹점';
 
     const loadQrImage = useCallback(async () => {
         try {
@@ -119,7 +117,7 @@ export default function OfflinePaymentQrScreen({ navigation, route }: Props) {
 
                     <View className="w-full items-center">
                         <Text className="font-pretendard text-large-bold text-neutral-white">
-                            {payload.order_name}
+                            {merchantName}
                         </Text>
 
                         <Text className="mt-2 font-pretendard text-heading-2 text-neutral-white">

@@ -842,7 +842,7 @@ export default function GuideScreen({ navigation }: Props) {
                                 navigation.navigate("OfflinePaymentQr", {
                                   merchantId: 101,
                                   amount: 777777,
-                                  orderName: "아메리카노 27잔",
+                                  merchantName: "아메리카노 27잔",
                                 });
                                 return;
                               }

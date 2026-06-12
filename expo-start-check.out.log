@@ -1,0 +1,11 @@
+
+> start
+> expo start --port 19000 --clear
+
+env: load .env.local
+env: export EXPO_PUBLIC_DEV_USER_ID EXPO_PUBLIC_AUTH_API_BASE_URL EXPO_PUBLIC_CARD_API_BASE_URL EXPO_PUBLIC_PAYMENT_API_BASE_URL
+Starting project at C:\erum-pay\mobile-app
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:19000
+Logs for your project will appear below.

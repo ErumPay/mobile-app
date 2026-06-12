@@ -11,6 +11,13 @@ export type PaymentRequestPayload = {
     cards: PaymentRequestCard[];
 };
 
+export type DirectPaymentRequestPayload = {
+    pin: string;
+    paymentId: number;
+    totalAmount: number;
+    cardId: number;
+};
+
 export type PaymentRequestResponse = {
     paymentId: number;
     userId: number;

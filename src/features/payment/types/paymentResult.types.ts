@@ -19,6 +19,6 @@ export type PaymentResultRouteParams = {
     dutchSessionId?: number;
     selectedUserIds?: number[];
     splitMethod?: 'EQUAL' | 'CUSTOM';
-    orderName?: string;
+    merchantName?: string;
     merchantId?: number;
 };

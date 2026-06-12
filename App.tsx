@@ -54,7 +54,7 @@ export type PaymentCardSelectRouteParams =
       dutchSessionId?: number;
       selectedUserIds?: number[];
       splitMethod?: 'EQUAL' | 'CUSTOM';
-      orderName?: string;
+      merchantName?: string;
       merchantId?: number;
     }
   | undefined;

@@ -321,7 +321,7 @@ export async function requestRemotePayment(
 
   return toRemotePaymentResponse(remoteResponse, {
     paymentId: prepareResponse.paymentId,
-    merchantName: payload.orderName ?? payload.merchantName,
+    merchantName: payload.merchantName,
     requesterName: '나',
     recipientUserId: payload.recipientUserId,
     recipientName: payload.recipientName,
