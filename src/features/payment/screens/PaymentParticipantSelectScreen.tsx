@@ -31,7 +31,7 @@ import {
 } from '../api/remotePaymentApi';
 import {
   createDutchPayInviteLink,
-  sendDutchPayInviteNotifications,
+  inviteDutchPayAppFriends,
 } from '../api/dutchPayApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type {
@@ -59,7 +59,7 @@ const defaultOwner: ParticipantFriend = {
 function toUserIdFromFriendId(friendId: string) {
   const userId = Number(friendId);
 
-  return Number.isFinite(userId) && userId > 1 ? userId : undefined;
+  return Number.isFinite(userId) && userId > 0 ? userId : undefined;
 }
 
 function toDisplayDutchInviteUrl(inviteToken: string, fallbackUrl: string) {
@@ -624,13 +624,13 @@ export default function PaymentParticipantSelectScreen({
       if (selectedUserIds.length > 0) {
         try {
           setIsRemoteRequesting(true);
-          await sendDutchPayInviteNotifications({
+          await inviteDutchPayAppFriends({
             sessionId: route.params.dutchSessionId,
             userIds: selectedUserIds,
           });
           setDutchInviteCompleteModalVisible(true);
         } catch {
-          Alert.alert('더치페이 초대', '참여자 초대 알림 발송에 실패했습니다.');
+          Alert.alert('더치페이 초대', '참여자 초대에 실패했습니다.');
         } finally {
           setIsRemoteRequesting(false);
         }
