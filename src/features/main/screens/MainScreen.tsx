@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
@@ -36,6 +45,10 @@ import { getRequestedDutchPaySessionIdSet } from "../../payment/utils/requestedD
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
 import { useDutchPayProgressUserStore } from "../../payment/stores/useDutchPayProgressUserStore";
 import {
+  toRemotePaymentProgress,
+  toRemotePaymentProgressVariant,
+} from "../../payment/utils/remotePaymentAdapter";
+import {
   fetchPaymentHistories,
   fetchUserProfile,
   fetchUserProfileById,
@@ -55,6 +68,23 @@ type ActiveDutchPayProgress = {
   variant: PaymentProgressVariant;
 };
 
+type ActiveRemotePaymentProgress = {
+  role: "REQUESTER" | "RECIPIENT";
+  request: RemotePaymentRequestResponse;
+  participantName: string;
+  variant: PaymentProgressVariant;
+};
+
+type MainPaymentProgressItem =
+  | ({
+      id: string;
+      type: "DUTCH";
+    } & ActiveDutchPayProgress)
+  | ({
+      id: string;
+      type: "REMOTE";
+    } & ActiveRemotePaymentProgress);
+
 type QuickMenu = {
   label: string;
   icon: "friends" | "card" | "history";
@@ -62,6 +92,8 @@ type QuickMenu = {
   iconColor: string;
   onPress?: () => void;
 };
+
+const DUTCH_PAY_TIMEOUT_MS = 30 * 60 * 1000;
 
 function resolvePaymentProgressUserId(
   routeUserId?: number | null,
@@ -83,6 +115,9 @@ function resolvePaymentProgressUserId(
 }
 
 export default function MainScreen({ navigation, route }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
+  const progressViewportWidth = Math.max(screenWidth - 40, 1);
+  const progressScrollRef = useRef<ScrollView>(null);
   const routeUserId = toFiniteNumber(route.params?.userId);
   const storedDutchPayProgressUserId = useDutchPayProgressUserStore(
     (state) => state.userId,
@@ -103,17 +138,11 @@ export default function MainScreen({ navigation, route }: Props) {
   const [isPaymentProgressLoading, setIsPaymentProgressLoading] =
     useState(true);
   const remoteProgress = useRemotePaymentProgressStore((state) => state.progress);
-  const remoteProgressVariant = useRemotePaymentProgressStore((state) =>
-    state.getProgressVariant(),
-  );
   const acceptRemoteRequest = useRemotePaymentProgressStore(
     (state) => state.acceptRequest,
   );
   const rejectRemoteRequest = useRemotePaymentProgressStore(
     (state) => state.rejectRequest,
-  );
-  const recipientSummary = useRemotePaymentProgressStore((state) =>
-    state.getRecipientSummary(),
   );
   const setRequesterProgress = useRemotePaymentProgressStore(
     (state) => state.setRequesterProgress,
@@ -124,17 +153,49 @@ export default function MainScreen({ navigation, route }: Props) {
   const clearRemoteProgress = useRemotePaymentProgressStore(
     (state) => state.clearProgress,
   );
-  const [dutchProgress, setDutchProgress] =
-    useState<ActiveDutchPayProgress | null>(null);
-  const paymentProgressVariant =
-    dutchProgress?.variant ?? remoteProgressVariant ?? undefined;
-  const hasVisiblePaymentProgress =
-    !!dutchProgress || (!!remoteProgress && !!paymentProgressVariant);
+  const [dutchProgressItems, setDutchProgressItems] = useState<
+    ActiveDutchPayProgress[]
+  >([]);
+  const [remoteProgressItems, setRemoteProgressItems] = useState<
+    ActiveRemotePaymentProgress[]
+  >([]);
+  const progressItems = useMemo<MainPaymentProgressItem[]>(
+    () => [
+      ...dutchProgressItems.map((item) => ({
+        ...item,
+        id: `dutch-${item.session.session_id}`,
+        type: "DUTCH" as const,
+      })),
+      ...remoteProgressItems.map((item) => ({
+        ...item,
+        id: `remote-${item.request.remotePaymentRequestId}`,
+        type: "REMOTE" as const,
+      })),
+    ],
+    [dutchProgressItems, remoteProgressItems],
+  );
+  const hasMultipleProgressItems = progressItems.length > 1;
+  const progressCardGap = hasMultipleProgressItems ? 12 : 0;
+  const progressCardSidePeek = hasMultipleProgressItems ? 12 : 0;
+  const progressCardWidth = Math.max(
+    progressViewportWidth - progressCardSidePeek * 2,
+    1,
+  );
+  const progressCardInterval = progressCardWidth + progressCardGap;
+  const [currentProgressIndex, setCurrentProgressIndex] = useState(0);
+  const currentProgressItem = progressItems[currentProgressIndex] ?? null;
+  const hasVisiblePaymentProgress = progressItems.length > 0;
   const hasRemoteNotification =
-    !dutchProgress &&
-    remoteProgress?.role === "RECIPIENT" &&
-    remoteProgress.status === "REQUESTED";
+    progressItems.some(
+      (item) =>
+        item.type === "REMOTE" &&
+        item.role === "RECIPIENT" &&
+        item.request.status === "REQUESTED",
+    );
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
+  const [rejectTargetRequestId, setRejectTargetRequestId] = useState<
+    number | string | null
+  >(null);
   const remoteFriendLookupRef = useRef(new Map<string, AuthFriendResponse>());
   const remoteUserProfileLookupRef = useRef(new Map<string, UserProfile>());
   const remoteProgressRef = useRef(remoteProgress);
@@ -142,6 +203,40 @@ export default function MainScreen({ navigation, route }: Props) {
   useEffect(() => {
     remoteProgressRef.current = remoteProgress;
   }, [remoteProgress]);
+
+  useEffect(() => {
+    if (currentProgressIndex < progressItems.length) {
+      return;
+    }
+
+    setCurrentProgressIndex(Math.max(progressItems.length - 1, 0));
+  }, [currentProgressIndex, progressItems.length]);
+
+  const handleProgressScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const nextIndex = Math.round(
+        event.nativeEvent.contentOffset.x / progressCardInterval,
+      );
+
+      if (nextIndex >= 0 && nextIndex < progressItems.length) {
+        setCurrentProgressIndex(nextIndex);
+      }
+    },
+    [progressCardInterval, progressItems.length],
+  );
+
+  const goToProgressItem = useCallback(
+    (index: number) => {
+      const clampedIndex = Math.max(0, Math.min(index, progressItems.length - 1));
+
+      progressScrollRef.current?.scrollTo({
+        x: clampedIndex * progressCardInterval,
+        animated: true,
+      });
+      setCurrentProgressIndex(clampedIndex);
+    },
+    [progressCardInterval, progressItems.length],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -253,7 +348,8 @@ export default function MainScreen({ navigation, route }: Props) {
         try {
           const currentUserId = paymentProgressUserId;
           if (currentUserId == null) {
-            setDutchProgress(null);
+            setDutchProgressItems([]);
+            setRemoteProgressItems([]);
             clearRemoteProgress();
             return;
           }
@@ -278,8 +374,8 @@ export default function MainScreen({ navigation, route }: Props) {
           }
 
           if (dutchSessions.status === "fulfilled") {
-            setDutchProgress(
-              getActiveDutchPayProgress(
+            setDutchProgressItems(
+              getActiveDutchPayProgressItems(
                 dutchSessions.value,
                 currentUserId,
                 cancelledDutchSessionIds.status === "fulfilled"
@@ -291,10 +387,11 @@ export default function MainScreen({ navigation, route }: Props) {
               ),
             );
           } else {
-            setDutchProgress(null);
+            setDutchProgressItems([]);
           }
 
           if (requests.status !== "fulfilled") {
+            setRemoteProgressItems([]);
             clearRemoteProgress();
             return;
           }
@@ -328,6 +425,12 @@ export default function MainScreen({ navigation, route }: Props) {
           const outgoingRequest = remoteRequests.find(
             (request) => Number(request.requesterUserId) === currentUserId,
           );
+          const nextRemoteProgressItems = getActiveRemotePaymentProgressItems(
+            remoteRequests,
+            currentUserId,
+          );
+
+          setRemoteProgressItems(nextRemoteProgressItems);
 
           if (incomingRequest) {
             setRecipientProgress(incomingRequest);
@@ -441,56 +544,78 @@ export default function MainScreen({ navigation, route }: Props) {
   ];
 
   const handleRejectPaymentProgress = () => {
-    if (dutchProgress) {
+    if (
+      !currentProgressItem ||
+      currentProgressItem.type !== "REMOTE" ||
+      currentProgressItem.role !== "RECIPIENT" ||
+      currentProgressItem.request.status !== "REQUESTED"
+    ) {
       return;
     }
 
-    if (paymentProgressVariant !== "REMOTE_INCOMING_REQUEST_RECEIVED") {
-      return;
-    }
-
+    setRejectTargetRequestId(currentProgressItem.request.remotePaymentRequestId);
     setIsRejectConfirmVisible(true);
   };
 
   const confirmRejectPaymentProgress = async () => {
     try {
-      if (remoteProgress?.requestId) {
-        await rejectRemotePaymentRequest(remoteProgress.requestId);
+      if (rejectTargetRequestId) {
+        await rejectRemotePaymentRequest(rejectTargetRequestId);
       }
 
-      rejectRemoteRequest();
+      if (String(remoteProgress?.requestId) === String(rejectTargetRequestId)) {
+        rejectRemoteRequest();
+      }
+      setRemoteProgressItems((prevItems) =>
+        prevItems.filter(
+          (item) =>
+            String(item.request.remotePaymentRequestId) !==
+            String(rejectTargetRequestId),
+        ),
+      );
+      setRejectTargetRequestId(null);
       setIsRejectConfirmVisible(false);
     } catch {
+      setRejectTargetRequestId(null);
       setIsRejectConfirmVisible(false);
     }
   };
 
   const handlePressPaymentProgressPrimary = () => {
-    if (dutchProgress) {
-      if (dutchProgress.variant === "DUTCHPAY_OWNER_GROUP_CREATE_READY") {
-        navigation.navigate("PaymentParticipantSelect", {
+    if (currentProgressItem?.type === "DUTCH") {
+      if (currentProgressItem.variant === "DUTCHPAY_OWNER_GROUP_CREATE_READY") {
+        navigation.push("PaymentParticipantSelect", {
           mode: "DUTCH_PAY",
-          dutchSessionId: dutchProgress.session.session_id,
-          amount: dutchProgress.session.total_amount,
-          merchantName: dutchProgress.session.merchant_name,
-          merchantId: dutchProgress.session.merchant_id,
+          dutchSessionId: currentProgressItem.session.session_id,
+          amount: currentProgressItem.session.total_amount,
+          orderName: currentProgressItem.session.order_name,
+          merchantId: currentProgressItem.session.merchant_id,
         });
         return;
       }
 
       navigation.navigate("DutchPayGroup", {
-        role: dutchProgress.role,
-        scenario: getDutchPayRouteScenario(dutchProgress.variant),
-        sessionId: dutchProgress.session.session_id,
+        role: currentProgressItem.role,
+        scenario: getDutchPayRouteScenario(currentProgressItem.variant),
+        sessionId: currentProgressItem.session.session_id,
         userId: paymentProgressUserId ?? undefined,
       });
       return;
     }
 
-    if (remoteProgress?.role === "RECIPIENT" && recipientSummary) {
+    if (
+      currentProgressItem?.type === "REMOTE" &&
+      currentProgressItem.role === "RECIPIENT"
+    ) {
+      const progress = toRemotePaymentProgress({
+        response: currentProgressItem.request,
+        role: "RECIPIENT",
+      });
+
+      setRecipientProgress(currentProgressItem.request);
       navigation.navigate("PaymentMethodSelect", {
-        remoteRequestId: remoteProgress.requestId,
-        summary: recipientSummary,
+        remoteRequestId: progress.requestId,
+        summary: progress.summary,
       });
       return;
     }
@@ -499,17 +624,27 @@ export default function MainScreen({ navigation, route }: Props) {
   };
 
   const handlePressPaymentProgressAccept = () => {
-    acceptRemoteRequest();
-
-    if (recipientSummary) {
-      navigation.navigate("PaymentMethodSelect", {
-        remoteRequestId: remoteProgress?.requestId,
-        summary: recipientSummary,
-      });
+    if (
+      !currentProgressItem ||
+      currentProgressItem.type !== "REMOTE" ||
+      currentProgressItem.role !== "RECIPIENT"
+    ) {
+      navigation.navigate("QrScan");
       return;
     }
 
-    navigation.navigate("QrScan");
+    const progress = toRemotePaymentProgress({
+      response: currentProgressItem.request,
+      role: "RECIPIENT",
+    });
+
+    setRecipientProgress(currentProgressItem.request);
+    acceptRemoteRequest();
+
+    navigation.navigate("PaymentMethodSelect", {
+      remoteRequestId: progress.requestId,
+      summary: progress.summary,
+    });
   };
 
   return (
@@ -568,15 +703,68 @@ export default function MainScreen({ navigation, route }: Props) {
                 {isPaymentProgressLoading ? (
                   <PaymentProgressCardSkeleton />
                 ) : (
-                  <PaymentProgressCard
-                    participantName={
-                      dutchProgress ? undefined : remoteProgress?.participantName
-                    }
-                    variant={paymentProgressVariant}
-                    onPressAccept={handlePressPaymentProgressAccept}
-                    onPressPrimary={handlePressPaymentProgressPrimary}
-                    onPressReject={handleRejectPaymentProgress}
-                  />
+                  <>
+                    <ScrollView
+                      ref={progressScrollRef}
+                      horizontal
+                      bounces={false}
+                      decelerationRate="fast"
+                      showsHorizontalScrollIndicator={false}
+                      snapToInterval={progressCardInterval}
+                      snapToAlignment="start"
+                      contentContainerStyle={{
+                        paddingHorizontal: progressCardSidePeek,
+                      }}
+                      onScroll={handleProgressScroll}
+                      scrollEventThrottle={16}
+                    >
+                      {progressItems.map((item, itemIndex) => (
+                        <View
+                          key={item.id}
+                          style={{
+                            width: progressCardWidth,
+                            marginRight:
+                              itemIndex === progressItems.length - 1
+                                ? 0
+                                : progressCardGap,
+                          }}
+                        >
+                          <PaymentProgressCard
+                            participantName={
+                              item.type === "REMOTE"
+                                ? item.participantName
+                                : undefined
+                            }
+                            variant={item.variant}
+                            onPressAccept={handlePressPaymentProgressAccept}
+                            onPressPrimary={handlePressPaymentProgressPrimary}
+                            onPressReject={handleRejectPaymentProgress}
+                          />
+                        </View>
+                      ))}
+                    </ScrollView>
+
+                    {progressItems.length > 1 ? (
+                      <View className="mt-4 flex-row items-center justify-center gap-2">
+                        {progressItems.map((item, dotIndex) => (
+                          <Pressable
+                            key={`${item.id}-dot`}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${dotIndex + 1}번째 결제 진행 상태 보기`}
+                            onPress={() => goToProgressItem(dotIndex)}
+                          >
+                            <View
+                              className={`h-2 rounded-full ${
+                                dotIndex === currentProgressIndex
+                                  ? "w-5 bg-erum-main"
+                                  : "w-2 bg-neutral-disabled"
+                              }`}
+                            />
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
+                  </>
                 )}
               </View>
             ) : null}
@@ -720,12 +908,49 @@ function toFiniteNumber(value: unknown) {
   return undefined;
 }
 
-function getActiveDutchPayProgress(
+function parseServerDateTime(value?: string | null) {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalizedValue = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+    ? value
+    : `${value}Z`;
+  const timestamp = Date.parse(normalizedValue);
+
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+function isDutchPaySessionExpiredByTime(session: DutchPaySessionDetailResponse) {
+  const expiresAt = parseServerDateTime(session.expires_at ?? session.expiresAt);
+
+  if (expiresAt != null) {
+    return Date.now() >= expiresAt;
+  }
+
+  const timeoutAt = parseServerDateTime(session.timeout_at ?? session.timeoutAt);
+
+  if (timeoutAt != null) {
+    return Date.now() >= timeoutAt;
+  }
+
+  const createdAt = parseServerDateTime(session.created_at ?? session.createdAt);
+
+  if (createdAt == null) {
+    return false;
+  }
+
+  return Date.now() - createdAt >= DUTCH_PAY_TIMEOUT_MS;
+}
+
+function getActiveDutchPayProgressItems(
   sessions: DutchPaySessionDetailResponse[],
   currentUserId: number,
   cancelledSessionIds: Set<number>,
   requestedSessionIds: Set<number>,
-): ActiveDutchPayProgress | null {
+): ActiveDutchPayProgress[] {
+  const progressItems: ActiveDutchPayProgress[] = [];
+
   for (const session of sessions) {
     const isMySession = session.participants.some(
       (participant) => participant.user_id === currentUserId,
@@ -745,15 +970,48 @@ function getActiveDutchPayProgress(
     );
 
     if (variant) {
-      return {
+      progressItems.push({
         role,
         session,
         variant,
-      };
+      });
     }
   }
 
-  return null;
+  return progressItems;
+}
+
+function getActiveRemotePaymentProgressItems(
+  requests: RemotePaymentRequestResponse[],
+  currentUserId: number,
+): ActiveRemotePaymentProgress[] {
+  return requests
+    .map((request): ActiveRemotePaymentProgress | null => {
+      const isRecipient = Number(request.recipientUserId) === currentUserId;
+      const isRequester = Number(request.requesterUserId) === currentUserId;
+
+      if (!isRecipient && !isRequester) {
+        return null;
+      }
+
+      if (isTerminalRemotePaymentStatus(request.status)) {
+        return null;
+      }
+
+      const role = isRecipient ? "RECIPIENT" : "REQUESTER";
+      const progress = toRemotePaymentProgress({ response: request, role });
+
+      return {
+        role,
+        request,
+        participantName: progress.participantName,
+        variant: toRemotePaymentProgressVariant({
+          role,
+          status: request.status,
+        }),
+      };
+    })
+    .filter((item): item is ActiveRemotePaymentProgress => item != null);
 }
 
 function toDutchPayProgressVariant(
@@ -764,12 +1022,15 @@ function toDutchPayProgressVariant(
   isPaymentRequestSent = false,
 ): PaymentProgressVariant | null {
   if (
+    isDutchPaySessionExpiredByTime(session) ||
     session.status === "COMPLETED" ||
     session.status === "FAILED" ||
     session.status === "TIMEOUT_HANDLED" ||
+    session.status === "CANCELED" ||
     session.session_progress_step === "COMPLETED" ||
     session.session_progress_step === "FAILED" ||
-    session.session_progress_step === "TIMEOUT_HANDLED"
+    session.session_progress_step === "TIMEOUT_HANDLED" ||
+    session.session_progress_step === "CANCELED"
   ) {
     return null;
   }

@@ -83,6 +83,22 @@ function MemberStatusLine({
     );
   }
 
+  if (member.status === 'AMOUNT_REVIEW' && typeof member.amount === 'number') {
+    return (
+      <View className="mt-2 flex-row items-center gap-2">
+        <View className="min-w-0 flex-1 rounded-lg border border-neutral-grey1 bg-neutral-grey4 px-3 py-2">
+          <Text className="font-pretendard text-normal-regular text-neutral-black2">
+            {member.amount.toLocaleString('ko-KR')}
+          </Text>
+        </View>
+        <Text className="font-pretendard text-normal-regular text-neutral-black1">
+          원
+        </Text>
+        <StatusCheck />
+      </View>
+    );
+  }
+
   if (member.status === 'WAITING_AMOUNT') {
     return (
       <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
