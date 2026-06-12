@@ -21,7 +21,7 @@ export type PaymentRequestSummary =
     | (BasePaymentRequestSummary & {
         type: 'REMOTE_RECIPIENT';
         remoteRequestId: number;
-        payerPaymentId: number;
+        payerPaymentId?: number;
     });
 
 export type PaymentActionType =
