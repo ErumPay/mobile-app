@@ -43,6 +43,7 @@ type ProgressStepItem = {
 };
 
 type PaymentProgressCardProps = {
+  contextText?: string;
   participantName?: string;
   variant?: PaymentProgressVariant;
   onPressAccept?: () => void;
@@ -76,6 +77,7 @@ const remoteIncomingLabels = ["요청", "결제 진행", "결제 완료"];
 const remoteRejectedLabels = ["요청", "결제 거절", "결제 완료"];
 
 export function PaymentProgressCard({
+  contextText,
   participantName,
   variant = "DUTCHPAY_OWNER_GROUP_CREATE_READY",
   onPressAccept,
@@ -110,6 +112,11 @@ export function PaymentProgressCard({
           {config.description ? (
             <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
               {config.description}
+            </Text>
+          ) : null}
+          {contextText ? (
+            <Text className="mt-1 font-pretendard text-small-regular text-neutral-black2">
+              {contextText}
             </Text>
           ) : null}
         </View>

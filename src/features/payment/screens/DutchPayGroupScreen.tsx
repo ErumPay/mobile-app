@@ -141,6 +141,17 @@ function parseServerDateTime(value?: string | null) {
 
 function isDutchPayTimedOut(session: DutchPaySessionDetailResponse) {
   if (
+    session.status === 'COMPLETED' ||
+    session.status === 'CANCELED' ||
+    session.status === 'FAILED' ||
+    session.session_progress_step === 'COMPLETED' ||
+    session.session_progress_step === 'CANCELED' ||
+    session.session_progress_step === 'FAILED'
+  ) {
+    return false;
+  }
+
+  if (
     session.status === 'TIMEOUT_HANDLED' ||
     session.session_progress_step === 'TIMEOUT_HANDLED'
   ) {
@@ -541,6 +552,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const sessionClosedModalShownRef = useRef(false);
   const participantRemovedModalShownRef = useRef(false);
   const timeoutModalShownRef = useRef(false);
+  const dutchPayCompletedModalShownRef = useRef(false);
   const data = useMemo(
     () => {
       const nextData = serverSession
@@ -586,6 +598,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const [participantRemovedModalVisible, setParticipantRemovedModalVisible] =
     useState(false);
   const [paymentCompleteModalVisible, setPaymentCompleteModalVisible] =
+    useState(false);
+  const [dutchPayCompletedModalVisible, setDutchPayCompletedModalVisible] =
     useState(false);
 
   const isParticipantAmountInputScenario =
@@ -653,6 +667,18 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const myEditableAmount = parseAmount(myMember?.editableAmount);
   const isMyAmountConfirmed =
     myMember?.status === 'AMOUNT_CONFIRMED' && typeof myMember.amount === 'number';
+  const isDutchPayCompleted =
+    serverSession?.status === 'COMPLETED' ||
+    serverSession?.session_progress_step === 'COMPLETED';
+  const dutchPayContextName = serverSession?.merchant_name
+    ? `${serverSession.merchant_name} 더치페이`
+    : '해당 더치페이';
+  const dutchPayHostName =
+    serverSession?.host_user_id === currentUserId
+      ? '내'
+      : userSummaries[serverSession?.host_user_id ?? -1]?.name
+        ? `${userSummaries[serverSession?.host_user_id ?? -1].name}님의`
+        : '대표자의';
   const displayMembers = applyFailedPaymentAmountToOwner(
     visibleMembers.map((member) => {
       if (
@@ -751,6 +777,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     setCancelGroupModalVisible(false);
     setLeaveGroupModalVisible(false);
     setPaymentCompleteModalVisible(false);
+    setDutchPayCompletedModalVisible(false);
     setTimeoutModalVisible(false);
     setServerSession(null);
     setParticipantRemovedModalVisible(true);
@@ -1120,6 +1147,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       !isServerMode ||
       role !== 'PARTICIPANT' ||
       !isMyParticipantPaymentCompleted ||
+      isDutchPayCompleted ||
       participantPaymentCompleteModalShownRef.current
     ) {
       return;
@@ -1127,7 +1155,28 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
     participantPaymentCompleteModalShownRef.current = true;
     setPaymentCompleteModalVisible(true);
-  }, [isMyParticipantPaymentCompleted, isServerMode, role]);
+  }, [isDutchPayCompleted, isMyParticipantPaymentCompleted, isServerMode, role]);
+
+  useEffect(() => {
+    if (
+      !isServerMode ||
+      !serverSession ||
+      !isDutchPayCompleted ||
+      dutchPayCompletedModalShownRef.current
+    ) {
+      return;
+    }
+
+    dutchPayCompletedModalShownRef.current = true;
+    setToastVisible(false);
+    setStopModalVisible(false);
+    setCancelGroupModalVisible(false);
+    setLeaveGroupModalVisible(false);
+    setParticipantRemovedModalVisible(false);
+    setPaymentCompleteModalVisible(false);
+    setTimeoutModalVisible(false);
+    setDutchPayCompletedModalVisible(true);
+  }, [isDutchPayCompleted, isServerMode, serverSession]);
 
   useEffect(() => {
     if (
@@ -1140,13 +1189,13 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     }
 
     sessionClosedModalShownRef.current = true;
-    Alert.alert('더치페이', '더치페이 그룹이 취소되었습니다.', [
+    Alert.alert('더치페이', `${dutchPayContextName} 그룹이 취소되었습니다.`, [
       {
         text: '확인',
         onPress: () => navigation.navigate('Main', { userId: currentUserId }),
       },
     ]);
-  }, [currentUserId, isServerMode, navigation, serverSession]);
+  }, [currentUserId, dutchPayContextName, isServerMode, navigation, serverSession]);
 
   useEffect(() => {
     if (
@@ -1174,6 +1223,10 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
   const handleConfirmPaymentComplete = () => {
     setPaymentCompleteModalVisible(false);
+  };
+
+  const handleConfirmDutchPayCompleted = () => {
+    setDutchPayCompletedModalVisible(false);
     navigation.navigate('Main', { userId: currentUserId });
   };
 
@@ -1543,7 +1596,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
         <PaymentStopConfirmModal
           visible={stopModalVisible}
-          description="중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다."
+          description={`${dutchPayContextName} 진행상태는 메인에서 다시 확인할 수 있습니다.`}
           onConfirm={handleConfirmStopPayment}
           onCancel={() => setStopModalVisible(false)}
         />
@@ -1551,7 +1604,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           visible={participantRemovedModalVisible}
           type="one"
           title="더치페이 그룹에서 내보내졌습니다."
-          description="다시 참여하려면 초대 링크로 재입장해주세요."
+          description={`${dutchPayContextName}에 다시 참여하려면 초대 링크로 재입장해주세요.`}
           confirmLabel="확인"
           onConfirm={handleConfirmParticipantRemoved}
           onClose={handleConfirmParticipantRemoved}
@@ -1595,7 +1648,15 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
                 ) : null}
               </>
             ) : (
-              <NoticeBox tone={data.footer.tone} description={data.footer.message} />
+              <NoticeBox
+                tone={data.footer.tone}
+                description={
+                  isDutchPayCompleted &&
+                  data.scenario === 'PARTICIPANT_FINAL_PAYMENT_PROGRESS'
+                    ? '더치페이 결제가 완료되었습니다.'
+                    : data.footer.message
+                }
+              />
             )}
           </View>
       }
@@ -1608,7 +1669,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         />
         <PaymentStopConfirmModal
           visible={stopModalVisible}
-          description="중지하셔도 메인에서 결제 진행상태를 확인할 수 있습니다."
+          description={`${dutchPayContextName} 진행상태는 메인에서 다시 확인할 수 있습니다.`}
           onConfirm={handleConfirmStopPayment}
           onCancel={() => setStopModalVisible(false)}
         />
@@ -1616,7 +1677,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           visible={cancelGroupModalVisible}
           type="two"
           title="정말 해당 그룹을 취소하시겠습니까?"
-          description="취소하면 참여자는 더 이상 이 그룹에 참여할 수 없습니다."
+          description={`${dutchPayContextName}을 취소하면 참여자는 더 이상 이 그룹에 참여할 수 없습니다.`}
           confirmLabel="예"
           cancelLabel="아니오"
           onConfirm={handleConfirmCancelGroup}
@@ -1627,7 +1688,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           visible={leaveGroupModalVisible}
           type="two"
           title="더치페이 그룹을 나가시겠습니까?"
-          description="나가면 해당 더치페이 그룹에 다시 참여해야 결제를 진행할 수 있습니다."
+          description={`나가면 ${dutchPayHostName} ${dutchPayContextName}에 다시 참여해야 결제를 진행할 수 있습니다.`}
           confirmLabel="예"
           cancelLabel="아니오"
           onConfirm={handleConfirmLeaveGroup}
@@ -1638,7 +1699,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           visible={participantRemovedModalVisible}
           type="one"
           title="더치페이 그룹에서 내보내졌습니다."
-          description="다시 참여하려면 초대 링크로 재입장해주세요."
+          description={`${dutchPayContextName}에 다시 참여하려면 초대 링크로 재입장해주세요.`}
           confirmLabel="확인"
           onConfirm={handleConfirmParticipantRemoved}
           onClose={handleConfirmParticipantRemoved}
@@ -1647,15 +1708,25 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           visible={paymentCompleteModalVisible}
           type="one"
           title="결제가 완료되었습니다."
-          description="대표자의 최종 결제 진행 상황은 메인에서 확인할 수 있습니다."
+          description={`${dutchPayContextName} 진행 상황을 현재 화면에서 확인할 수 있습니다.`}
           confirmLabel="확인"
           onConfirm={handleConfirmPaymentComplete}
           onClose={handleConfirmPaymentComplete}
         />
         <Modal
+          visible={dutchPayCompletedModalVisible}
+          type="one"
+          title="더치페이가 완료되었습니다."
+          description={`${dutchPayContextName} 결제가 모두 완료되었습니다. 메인으로 이동합니다.`}
+          confirmLabel="확인"
+          onConfirm={handleConfirmDutchPayCompleted}
+          onClose={handleConfirmDutchPayCompleted}
+        />
+        <Modal
           visible={timeoutModalVisible}
           type="one"
           title="결제 요청 시간이 지났습니다."
+          description={`${dutchPayContextName} 결제 요청 시간이 만료되었습니다.`}
           confirmLabel="확인"
           onConfirm={handleConfirmTimeout}
           onClose={handleConfirmTimeout}

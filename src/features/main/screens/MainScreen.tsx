@@ -62,12 +62,14 @@ import type { RemotePaymentRequestResponse } from "../../payment/types/remotePay
 type Props = NativeStackScreenProps<RootStackParamList, "Main">;
 
 type ActiveDutchPayProgress = {
+  contextText?: string;
   role: "OWNER" | "PARTICIPANT";
   session: DutchPaySessionDetailResponse;
   variant: PaymentProgressVariant;
 };
 
 type ActiveRemotePaymentProgress = {
+  contextText?: string;
   role: "REQUESTER" | "RECIPIENT";
   request: RemotePaymentRequestResponse;
   participantName: string;
@@ -393,6 +395,9 @@ export default function MainScreen({ navigation, route }: Props) {
                 cancelledDutchSessionIds.status === "fulfilled"
                   ? cancelledDutchSessionIds.value
                   : new Set(),
+                friends.status === "fulfilled"
+                  ? friends.value
+                  : [],
               ),
             );
           } else {
@@ -739,6 +744,7 @@ export default function MainScreen({ navigation, route }: Props) {
                           }}
                         >
                           <PaymentProgressCard
+                            contextText={item.contextText}
                             participantName={
                               item.type === "REMOTE"
                                 ? item.participantName
@@ -964,8 +970,10 @@ function getActiveDutchPayProgressItems(
   sessions: DutchPaySessionDetailResponse[],
   currentUserId: number,
   cancelledSessionIds: Set<number>,
+  friends: AuthFriendResponse[] = [],
 ): ActiveDutchPayProgress[] {
   const progressItems: ActiveDutchPayProgress[] = [];
+  const friendLookup = createRemoteFriendLookup(friends);
 
   for (const session of sessions) {
     const isMySession = session.participants.some(
@@ -986,6 +994,12 @@ function getActiveDutchPayProgressItems(
 
     if (variant) {
       progressItems.push({
+        contextText: getDutchPayProgressContextText(
+          session,
+          role,
+          currentUserId,
+          friendLookup,
+        ),
         role,
         session,
         variant,
@@ -1017,6 +1031,7 @@ function getActiveRemotePaymentProgressItems(
       const progress = toRemotePaymentProgress({ response: request, role });
 
       return {
+        contextText: getRemotePaymentProgressContextText(request, role),
         role,
         request,
         participantName: progress.participantName,
@@ -1027,6 +1042,39 @@ function getActiveRemotePaymentProgressItems(
       };
     })
     .filter((item): item is ActiveRemotePaymentProgress => item != null);
+}
+
+function getDutchPayProgressContextText(
+  session: DutchPaySessionDetailResponse,
+  role: "OWNER" | "PARTICIPANT",
+  currentUserId: number,
+  friendLookup: Map<string, AuthFriendResponse>,
+) {
+  const merchantName = session.merchant_name || "가맹점";
+  const hostName =
+    session.host_user_id === currentUserId
+      ? "나"
+      : friendLookup.get(String(session.host_user_id))?.name ||
+        `대표자 ${session.host_user_id}`;
+
+  if (role === "OWNER") {
+    return `${merchantName} · 내가 만든 더치페이`;
+  }
+
+  return `${merchantName} · ${hostName}님이 만든 더치페이`;
+}
+
+function getRemotePaymentProgressContextText(
+  request: RemotePaymentRequestResponse,
+  role: "REQUESTER" | "RECIPIENT",
+) {
+  const merchantName = request.merchantName || "원격결제";
+
+  if (role === "REQUESTER") {
+    return `${merchantName} · ${request.recipientName}님에게 요청`;
+  }
+
+  return `${merchantName} · ${request.requesterName}님이 요청`;
 }
 
 function toDutchPayProgressVariant(
