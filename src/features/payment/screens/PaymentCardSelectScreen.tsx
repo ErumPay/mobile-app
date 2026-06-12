@@ -27,6 +27,7 @@ import {
 } from '../api/paymentCardRecommendationApi';
 import { toPaymentCardSelectData } from '../utils/paymentCardRecommendationAdapter';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import { saveRemotePaymentIdempotencyKey } from '../utils/remotePaymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCardSelect'>;
 
@@ -247,6 +248,8 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 (isDutchMemberRoute || isDutchPayRoute || isDutchFinalRoute)));
     const shouldReusePreparedDutchMemberPayment =
         isDutchMemberRoute && hasValidPaymentId && hasValidDutchSessionId;
+    const shouldReusePreparedRemotePayment =
+        isRemotePaymentRoute && hasValidPaymentId && hasValidRemoteRequestId;
     const idempotencyKey = useMemo(() => {
         if (!canPreparePayment) {
             return undefined;
@@ -416,8 +419,15 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     return;
                 }
 
-                if (shouldReusePreparedDutchMemberPayment && paymentId != null) {
+                if (
+                    (shouldReusePreparedDutchMemberPayment ||
+                        shouldReusePreparedRemotePayment) &&
+                    paymentId != null
+                ) {
                     let nextData: PaymentCardSelectData;
+                    const nextFlowType = shouldReusePreparedRemotePayment
+                        ? 'REMOTE_PAYMENT'
+                        : 'DUTCH_PAY_MEMBER';
 
                     try {
                         nextData = applyPaymentCardFlowUi(
@@ -429,7 +439,7 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                                 ),
                                 registeredCards: paymentRegisteredCards,
                             },
-                            'DUTCH_PAY_MEMBER',
+                            nextFlowType,
                         );
                     } catch {
                         nextData = applyPaymentCardFlowUi(
@@ -442,12 +452,14 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                                 paymentRegisteredCards,
                                 amount ?? 0,
                             ),
-                            'DUTCH_PAY_MEMBER',
+                            nextFlowType,
                         );
                     }
 
                     if (isMounted) {
-                        setDutchSessionId(routeDutchSessionId);
+                        if (shouldReusePreparedDutchMemberPayment) {
+                            setDutchSessionId(routeDutchSessionId);
+                        }
                         setPreparedPaymentId(paymentId);
                         setData(nextData);
                     }
@@ -475,6 +487,13 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     orderName: route.params?.orderName,
                     merchantId,
                 });
+
+                if (isRemotePaymentRoute && remoteRequestId != null) {
+                    saveRemotePaymentIdempotencyKey(
+                        remoteRequestId,
+                        idempotencyKey,
+                    ).catch(() => {});
+                }
 
                 const nextFlowType = isDutchFinalRoute
                     ? 'DUTCH_PAY_FINAL'

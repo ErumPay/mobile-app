@@ -5,9 +5,32 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
 import PageWrap from '../../../shared/components/PageWrap';
-import { acceptDutchPayInviteLink } from '../api/dutchPayApi';
+import { acceptDutchPayInviteLink, type DutchPaySessionDetailResponse } from '../api/dutchPayApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayInviteAccept'>;
+
+function decodeInviteSessionId(inviteToken: string): number | null {
+  try {
+    const encodedPayload = decodeURIComponent(inviteToken).split('.')[0];
+    const normalizedPayload = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(
+      Math.ceil(normalizedPayload.length / 4) * 4,
+      '=',
+    );
+    const atob = (globalThis as typeof globalThis & { atob?: (data: string) => string }).atob;
+
+    if (!atob) {
+      return null;
+    }
+
+    const decodedPayload = atob(paddedPayload);
+    const sessionId = Number(decodedPayload.split(':')[0]);
+
+    return Number.isFinite(sessionId) && sessionId > 0 ? sessionId : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function DutchPayInviteAcceptScreen({ navigation, route }: Props) {
   const [errorMessage, setErrorMessage] = useState('');
@@ -17,23 +40,42 @@ export default function DutchPayInviteAcceptScreen({ navigation, route }: Props)
 
     const acceptInvite = async () => {
       try {
-        const session = await acceptDutchPayInviteLink(route.params.inviteToken);
+        const inviteToken = decodeURIComponent(route.params.inviteToken);
+        const session = await acceptDutchPayInviteLink(inviteToken);
+        const sessionId =
+          (session as Partial<DutchPaySessionDetailResponse> | undefined)?.session_id ??
+          decodeInviteSessionId(inviteToken);
 
         if (!isMounted) {
           return;
         }
 
+        if (sessionId == null) {
+          setErrorMessage('더치페이 세션 정보를 찾지 못했습니다. 초대 링크를 다시 확인해주세요.');
+          return;
+        }
+
         navigation.replace('DutchPayGroup', {
           role: 'PARTICIPANT',
-          sessionId: session.session_id,
+          sessionId,
         });
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(
+          const message =
             error instanceof Error
               ? error.message
-              : '더치페이 초대 링크를 수락하지 못했습니다.',
-          );
+              : '더치페이 초대 링크를 수락하지 못했습니다.';
+          const sessionId = decodeInviteSessionId(route.params.inviteToken);
+
+          if (sessionId != null && message.includes('이미')) {
+            navigation.replace('DutchPayGroup', {
+              role: 'PARTICIPANT',
+              sessionId,
+            });
+            return;
+          }
+
+          setErrorMessage(message);
         }
       }
     };

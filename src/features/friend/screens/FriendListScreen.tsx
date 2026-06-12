@@ -106,13 +106,22 @@ export default function FriendListScreen({ navigation }: Props) {
   const hasVisibleFriendContent = friendRequests.length > 0 || filteredFriends.length > 0;
 
   const loadFriendData = useCallback(async () => {
-    const [nextFriends, nextRequests] = await Promise.all([
+    const [nextFriends, nextRequests] = await Promise.allSettled([
       fetchAuthFriends(),
       fetchReceivedFriendRequests(),
     ]);
 
-    setFriends(nextFriends.map(toDisplayFriend));
-    setFriendRequests(nextRequests.map(toDisplayFriendRequest));
+    if (nextFriends.status === 'fulfilled') {
+      setFriends(nextFriends.value.map(toDisplayFriend));
+    }
+
+    if (nextRequests.status === 'fulfilled') {
+      setFriendRequests(nextRequests.value.map(toDisplayFriendRequest));
+    }
+
+    if (nextFriends.status === 'rejected' && nextRequests.status === 'rejected') {
+      throw nextFriends.reason;
+    }
   }, []);
 
   useFocusEffect(
@@ -193,6 +202,10 @@ export default function FriendListScreen({ navigation }: Props) {
   };
 
   const handleOpenFriendAddModal = async () => {
+    if (isInviteLinkLoading) {
+      return;
+    }
+
     setFriendAddModalVisible(true);
     setInviteLink('');
     setIsInviteLinkCopied(false);
@@ -201,9 +214,12 @@ export default function FriendListScreen({ navigation }: Props) {
       setIsInviteLinkLoading(true);
       const link = await createFriendInviteLink();
       setInviteLink(toDisplayInviteUrl(link.inviteToken, link.inviteUrl));
-    } catch {
+    } catch (error) {
       setInviteLink('');
-      Alert.alert('친구 초대', '초대 링크 생성에 실패했습니다.');
+      Alert.alert(
+        '친구 초대',
+        error instanceof Error ? error.message : '초대 링크 생성에 실패했습니다.',
+      );
       setFriendAddModalVisible(false);
     } finally {
       setIsInviteLinkLoading(false);
@@ -224,6 +240,9 @@ export default function FriendListScreen({ navigation }: Props) {
     try {
       setProcessingRequestRelationId(request.relationId);
       await acceptFriendRequest(request.relationId);
+      setFriendRequests((prevRequests) =>
+        prevRequests.filter((item) => item.relationId !== request.relationId),
+      );
       await loadFriendData();
     } catch (error) {
       Alert.alert('친구 요청 수락 실패', error instanceof Error ? error.message : '친구 요청 수락에 실패했습니다.');
@@ -296,6 +315,7 @@ export default function FriendListScreen({ navigation }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel="친구 추가"
                 className="h-11 w-11 items-center justify-center"
+                disabled={isInviteLinkLoading}
                 hitSlop={8}
                 onPress={handleOpenFriendAddModal}
               >
@@ -486,7 +506,7 @@ export default function FriendListScreen({ navigation }: Props) {
         isLoading={isInviteLinkLoading}
         isCopied={isInviteLinkCopied}
         copiedDescription="친구에게 공유하여 친구 추가를 진행해보세요."
-        copiedNotice="Expo 환경에서는 복사한 링크를 개발용 route로 열어 테스트할 수 있어요."
+        copiedNotice="상대방이 링크를 통해 친구 추가를 진행할 수 있어요."
         onClose={() => setFriendAddModalVisible(false)}
         onPressCopy={() => void handleCopyInviteLink()}
       />

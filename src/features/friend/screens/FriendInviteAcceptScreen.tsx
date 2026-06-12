@@ -8,12 +8,23 @@ import Button from '../../../shared/components/Button';
 import Header from '../../../shared/components/Header';
 import PageWrap from '../../../shared/components/PageWrap';
 import { acceptFriendInviteLink } from '../api/friendApi';
+import { AuthApiError } from '../../auth/api/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FriendInviteAccept'>;
+
+function isAlreadyHandledInviteError(error: unknown) {
+  return (
+    error instanceof AuthApiError &&
+    error.status === 409 &&
+    (error.message.includes('이미 사용된 초대 링크') ||
+      error.message.includes('이미 친구 관계'))
+  );
+}
 
 export default function FriendInviteAcceptScreen({ navigation, route }: Props) {
   const [errorMessage, setErrorMessage] = useState('');
   const [isAccepted, setIsAccepted] = useState(false);
+  const [acceptedMessage, setAcceptedMessage] = useState('친구 목록에서 추가된 친구를 확인할 수 있어요.');
 
   useEffect(() => {
     let isMounted = true;
@@ -24,9 +35,18 @@ export default function FriendInviteAcceptScreen({ navigation, route }: Props) {
         await acceptFriendInviteLink(inviteToken);
 
         if (isMounted) {
+          setAcceptedMessage('친구 목록에서 추가된 친구를 확인할 수 있어요.');
           setIsAccepted(true);
         }
       } catch (error) {
+        if (isAlreadyHandledInviteError(error)) {
+          if (isMounted) {
+            setAcceptedMessage('이미 처리된 초대 링크입니다. 친구 목록을 확인해주세요.');
+            setIsAccepted(true);
+          }
+          return;
+        }
+
         if (isMounted) {
           setErrorMessage(
             error instanceof Error ? error.message : '친구 초대 링크를 수락하지 못했습니다.',
@@ -77,7 +97,7 @@ export default function FriendInviteAcceptScreen({ navigation, route }: Props) {
         </Text>
 
         <Text className="mt-3 text-center font-pretendard text-large-regular text-neutral-black2">
-          {errorMessage || (isAccepted ? '친구 목록에서 추가된 친구를 확인할 수 있어요.' : '잠시만 기다려주세요.')}
+          {errorMessage || (isAccepted ? acceptedMessage : '잠시만 기다려주세요.')}
         </Text>
 
         {errorMessage || isAccepted ? (

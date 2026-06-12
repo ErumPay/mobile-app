@@ -88,7 +88,7 @@ const scenarioData: Record<
     ]),
     footer: {
       type: 'button',
-      label: '참여자에게 결제 요청하기',
+      label: '더치페이 금액 확정하기',
     },
   },
   OWNER_PAYMENT_REQUEST: {
@@ -100,7 +100,7 @@ const scenarioData: Record<
     ]),
     footer: {
       type: 'button',
-      label: '더치페이 금액 확정하기',
+      label: '참여자에게 결제 요청하기',
     },
   },
   OWNER_PAYMENT_PROGRESS: {
@@ -164,6 +164,19 @@ const scenarioData: Record<
       label: '금액 확정하기',
     },
   },
+  PARTICIPANT_AMOUNT_REVIEW: {
+    totalAmount,
+    members: withMembers([
+      { amount: 40000, status: 'AMOUNT_CONFIRMED' },
+      { isMe: true, amount: 40000, status: 'AMOUNT_REVIEW' },
+      { amount: 10000, status: 'AMOUNT_CONFIRMED' },
+    ]),
+    footer: {
+      type: 'notice',
+      tone: 'info',
+      message: '대표자가 결제 금액 확인을 하고 있습니다.',
+    },
+  },
   PARTICIPANT_PAYMENT_PROGRESS: {
     totalAmount,
     members: withMembers([
@@ -185,9 +198,8 @@ const scenarioData: Record<
       { amount: 10000, status: 'AMOUNT_CONFIRMED' },
     ]),
     footer: {
-      type: 'notice',
-      tone: 'info',
-      message: '대표자가 결제 금액 확인을 하고 있습니다.',
+      type: 'button',
+      label: '결제 진행하기',
     },
   },
   PARTICIPANT_FINAL_PAYMENT_PROGRESS: {

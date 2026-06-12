@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -24,8 +25,14 @@ import { colors } from '../../../shared/styles/designTokens';
 import { fetchAuthFriends, type AuthFriendResponse } from '../../friend/api/friendApi';
 import { fetchUserProfile } from '../../mypage/api/mypageApi';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
-import { requestRemotePayment } from '../api/remotePaymentApi';
-import { createDutchPayInviteLink } from '../api/dutchPayApi';
+import {
+  prepareRemotePaymentDraft,
+  requestRemotePayment,
+} from '../api/remotePaymentApi';
+import {
+  createDutchPayInviteLink,
+  inviteDutchPayAppFriends,
+} from '../api/dutchPayApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type {
   ParticipantFriend,
@@ -52,7 +59,7 @@ const defaultOwner: ParticipantFriend = {
 function toUserIdFromFriendId(friendId: string) {
   const userId = Number(friendId);
 
-  return Number.isFinite(userId) && userId > 1 ? userId : undefined;
+  return Number.isFinite(userId) && userId > 0 ? userId : undefined;
 }
 
 function toDisplayDutchInviteUrl(inviteToken: string, fallbackUrl: string) {
@@ -61,6 +68,10 @@ function toDisplayDutchInviteUrl(inviteToken: string, fallbackUrl: string) {
   }
 
   return Linking.createURL(`payment/dutch-pay-invite/${encodeURIComponent(inviteToken)}`);
+}
+
+function toDisplayRemoteInviteUrl(remoteRequestId: number) {
+  return Linking.createURL(`payment/remote-pay-invite/${encodeURIComponent(remoteRequestId)}`);
 }
 
 function toParticipantFriend(friend: AuthFriendResponse): ParticipantFriend {
@@ -296,11 +307,17 @@ export default function PaymentParticipantSelectScreen({
   const [shareCountdown, setShareCountdown] = useState(3);
   const [shareUrl, setShareUrl] = useState('');
   const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
+  const [preparedRemoteRequestId, setPreparedRemoteRequestId] = useState<
+    number | undefined
+  >(route.params?.remoteRequestId);
   const [stopModalVisible, setStopModalVisible] = useState(false);
+  const [dutchInviteCompleteModalVisible, setDutchInviteCompleteModalVisible] =
+    useState(false);
   const [remoteRequestCompleteModalVisible, setRemoteRequestCompleteModalVisible] =
     useState(false);
   const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
   const [serverFriends, setServerFriends] = useState<ParticipantFriend[]>([]);
+  const [participantLoadError, setParticipantLoadError] = useState('');
   const [owner, setOwner] = useState<ParticipantFriend>(defaultOwner);
   const setRequesterProgress = useRemotePaymentProgressStore(
     (state) => state.setRequesterProgress,
@@ -368,33 +385,42 @@ export default function PaymentParticipantSelectScreen({
     selectedFriendIds,
   ]);
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-    const loadParticipantData = async () => {
-      try {
-        const [profile, friends] = await Promise.all([
+      const loadParticipantData = async () => {
+        const [profileResult, friendsResult] = await Promise.allSettled([
           fetchUserProfile(),
           fetchAuthFriends(),
         ]);
 
-        if (isMounted) {
-          setOwner(toOwnerParticipantFriend(profile));
-          setServerFriends(friends.map(toParticipantFriend));
+        if (!isActive) {
+          return;
         }
-      } catch {
-        if (isMounted) {
-          setServerFriends([]);
+
+        if (profileResult.status === 'fulfilled') {
+          setOwner(toOwnerParticipantFriend(profileResult.value));
         }
-      }
-    };
 
-    void loadParticipantData();
+        if (friendsResult.status === 'fulfilled') {
+          setServerFriends(friendsResult.value.map(toParticipantFriend));
+        }
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+        setParticipantLoadError(
+          profileResult.status === 'rejected' || friendsResult.status === 'rejected'
+            ? '친구 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
+            : '',
+        );
+      };
+
+      void loadParticipantData();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   const handlePressClose = () => {
     setStopModalVisible(true);
@@ -475,15 +501,53 @@ export default function PaymentParticipantSelectScreen({
   };
 
   const handleOpenShareModal = async () => {
-    if (!isDutchPay) {
-      Alert.alert('URL 공유', '원격결제 URL 공유는 아직 지원되지 않습니다. 친구 목록에서 요청 대상을 선택해주세요.');
-      return;
-    }
-
     setShareStep('READY');
     setShareCountdown(3);
     setShareUrl('');
+    setIsShareLinkLoading(false);
     setShareModalVisible(true);
+
+    if (!isDutchPay) {
+      const remoteRequestId = route.params?.remoteRequestId ?? preparedRemoteRequestId;
+
+      if (remoteRequestId) {
+        setShareUrl(toDisplayRemoteInviteUrl(remoteRequestId));
+        return;
+      }
+
+      if (route.params?.paymentId == null || route.params?.amount == null) {
+        Alert.alert('원격결제', '원격결제 요청 정보가 없습니다.');
+        setShareModalVisible(false);
+        return;
+      }
+
+      try {
+        setIsShareLinkLoading(true);
+        const draft = await prepareRemotePaymentDraft({
+          paymentId: route.params.paymentId,
+          amount: route.params.amount,
+        });
+
+        if (!draft.remoteRequestId) {
+          throw new Error('remote request id is missing');
+        }
+
+        setPreparedRemoteRequestId(draft.remoteRequestId);
+        setShareUrl(toDisplayRemoteInviteUrl(draft.remoteRequestId));
+      } catch (error) {
+        Alert.alert(
+          'URL 공유',
+          error instanceof Error
+            ? error.message
+            : '원격결제 요청 링크 생성에 실패했습니다.',
+        );
+        setShareModalVisible(false);
+      } finally {
+        setIsShareLinkLoading(false);
+      }
+
+      return;
+    }
 
     if (!route.params?.dutchSessionId) {
       Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
@@ -561,15 +625,28 @@ export default function PaymentParticipantSelectScreen({
         return;
       }
 
-      void removeCancelledDutchPaySession(route.params.dutchSessionId);
-      navigation.navigate('DutchPayGroup', {
-        role: 'OWNER',
-        sessionId: route.params.dutchSessionId,
-        splitMethod: autoSplitChecked ? 'EQUAL' : 'CUSTOM',
-        splitType: autoSplitChecked ? 'AUTO_SPLIT' : 'MANUAL',
-        orderName: route.params?.orderName,
-        merchantId: route.params?.merchantId,
-      });
+      const selectedUserIds = selectedFriendIds
+        .map(toUserIdFromFriendId)
+        .filter((userId): userId is number => userId != null);
+
+      if (selectedUserIds.length > 0) {
+        try {
+          setIsRemoteRequesting(true);
+          await inviteDutchPayAppFriends({
+            sessionId: route.params.dutchSessionId,
+            userIds: selectedUserIds,
+          });
+          setDutchInviteCompleteModalVisible(true);
+        } catch {
+          Alert.alert('더치페이 초대', '참여자 초대에 실패했습니다.');
+        } finally {
+          setIsRemoteRequesting(false);
+        }
+
+        return;
+      }
+
+      navigateToDutchPayGroup();
       return;
     }
 
@@ -592,7 +669,7 @@ export default function PaymentParticipantSelectScreen({
 
       const response = await requestRemotePayment({
         paymentId: route.params.paymentId,
-        remoteRequestId: route.params?.remoteRequestId,
+        remoteRequestId: route.params?.remoteRequestId ?? preparedRemoteRequestId,
         amount: route.params.amount,
         merchantName: route.params?.orderName ?? '원격결제',
         orderName: route.params?.orderName,
@@ -603,8 +680,11 @@ export default function PaymentParticipantSelectScreen({
       });
 
       setRequesterProgress(response);
-    } catch {
-      Alert.alert('원격결제 요청', '원격결제 요청에 실패했습니다.');
+    } catch (error) {
+      Alert.alert(
+        '원격결제 요청',
+        error instanceof Error ? error.message : '원격결제 요청에 실패했습니다.',
+      );
       return;
     } finally {
       setIsRemoteRequesting(false);
@@ -616,6 +696,33 @@ export default function PaymentParticipantSelectScreen({
   const handleConfirmRemoteRequestComplete = () => {
     setRemoteRequestCompleteModalVisible(false);
     navigation.navigate('Main');
+  };
+
+  const navigateToDutchPayGroup = useCallback(() => {
+    if (!route.params?.dutchSessionId) {
+      Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+      return;
+    }
+
+    void removeCancelledDutchPaySession(route.params.dutchSessionId);
+    navigation.navigate('DutchPayGroup', {
+      role: 'OWNER',
+      sessionId: route.params.dutchSessionId,
+      splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
+      splitType: latestAutoSplitCheckedRef.current ? 'AUTO_SPLIT' : 'MANUAL',
+      orderName: route.params?.orderName,
+      merchantId: route.params?.merchantId,
+    });
+  }, [
+    navigation,
+    route.params?.dutchSessionId,
+    route.params?.merchantId,
+    route.params?.orderName,
+  ]);
+
+  const handleConfirmDutchInviteComplete = () => {
+    setDutchInviteCompleteModalVisible(false);
+    navigateToDutchPayGroup();
   };
 
   return (
@@ -690,6 +797,12 @@ export default function PaymentParticipantSelectScreen({
                 onChangeText={setSearchKeyword}
               />
             </View>
+
+            {participantLoadError ? (
+              <View className="mb-4">
+                <NoticeBox tone="warning" description={participantLoadError} />
+              </View>
+            ) : null}
 
             {!hasVisibleFriends ? (
               <EmptyMessage
@@ -767,8 +880,16 @@ export default function PaymentParticipantSelectScreen({
           linkText={shareUrl}
           isLoading={isShareLinkLoading}
           isCopied={shareStep === 'COPIED'}
-          copiedDescription="친구에게 공유하여 더치페이 그룹 생성을 진행해보세요."
-          copiedNotice={`${shareCountdown}초 뒤 그룹 생성 페이지로 이동합니다.`}
+          copiedDescription={
+            isDutchPay
+              ? '친구에게 공유하여 더치페이 그룹 생성을 진행해보세요.'
+              : '상대방이 링크를 열면 원격결제 요청을 수락하고 결제를 진행할 수 있어요.'
+          }
+          copiedNotice={
+            isDutchPay
+              ? `${shareCountdown}초 뒤 그룹 생성 페이지로 이동합니다.`
+              : `${shareCountdown}초 뒤 메인으로 이동합니다.`
+          }
           onClose={resetShareModal}
           onPressCopy={handlePressCopyLink}
         />
@@ -786,6 +907,15 @@ export default function PaymentParticipantSelectScreen({
           confirmLabel="확인"
           onConfirm={handleConfirmRemoteRequestComplete}
           onClose={handleConfirmRemoteRequestComplete}
+        />
+        <ConfirmModal
+          visible={dutchInviteCompleteModalVisible}
+          type="one"
+          title="더치페이 초대 알림을 보냈습니다."
+          description="참여자가 알림 또는 링크를 수락하면 그룹에 추가됩니다."
+          confirmLabel="그룹 확인하기"
+          onConfirm={handleConfirmDutchInviteComplete}
+          onClose={handleConfirmDutchInviteComplete}
         />
       </View>
     </PageWrap>

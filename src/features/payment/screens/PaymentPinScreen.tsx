@@ -16,6 +16,7 @@ import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgres
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
+import { removeRemotePaymentIdempotencyKey } from '../utils/remotePaymentIdempotencyKey';
 import {
   canUseBiometricPaymentAuth,
   disableBiometricPayment,
@@ -292,6 +293,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
 
         if (paymentParams.flow === 'REMOTE_PAYMENT') {
           completeRemoteRequest();
+          if (paymentParams.remoteRequestId != null) {
+            void removeRemotePaymentIdempotencyKey(paymentParams.remoteRequestId);
+          }
         }
 
         setPin('');

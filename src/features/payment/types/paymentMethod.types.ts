@@ -4,15 +4,25 @@ export type PaymentRequestType =
     | 'DUTCH_PAY_PARTICIPANT'
     | 'REMOTE_RECIPIENT';
 
-export type PaymentRequestSummary = {
+type BasePaymentRequestSummary = {
     paymentId: number;
     remoteRequestId?: number;
     merchantName: string;
     amount: number;
-    type: PaymentRequestType;
     requesterName?: string;
     dutchPayOwnerName?: string;
 };
+
+export type PaymentRequestSummary =
+    | (BasePaymentRequestSummary & {
+        type: Exclude<PaymentRequestType, 'REMOTE_RECIPIENT'>;
+        payerPaymentId?: never;
+    })
+    | (BasePaymentRequestSummary & {
+        type: 'REMOTE_RECIPIENT';
+        remoteRequestId: number;
+        payerPaymentId: number;
+    });
 
 export type PaymentActionType =
     | 'PAY'
