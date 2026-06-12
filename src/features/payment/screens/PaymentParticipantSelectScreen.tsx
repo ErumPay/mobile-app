@@ -317,6 +317,7 @@ export default function PaymentParticipantSelectScreen({
     useState(false);
   const [isRemoteRequesting, setIsRemoteRequesting] = useState(false);
   const [serverFriends, setServerFriends] = useState<ParticipantFriend[]>([]);
+  const [participantLoadError, setParticipantLoadError] = useState('');
   const [owner, setOwner] = useState<ParticipantFriend>(defaultOwner);
   const setRequesterProgress = useRemotePaymentProgressStore(
     (state) => state.setRequesterProgress,
@@ -389,21 +390,28 @@ export default function PaymentParticipantSelectScreen({
       let isActive = true;
 
       const loadParticipantData = async () => {
-        try {
-          const [profile, friends] = await Promise.all([
-            fetchUserProfile(),
-            fetchAuthFriends(),
-          ]);
+        const [profileResult, friendsResult] = await Promise.allSettled([
+          fetchUserProfile(),
+          fetchAuthFriends(),
+        ]);
 
-          if (isActive) {
-            setOwner(toOwnerParticipantFriend(profile));
-            setServerFriends(friends.map(toParticipantFriend));
-          }
-        } catch {
-          if (isActive) {
-            setServerFriends([]);
-          }
+        if (!isActive) {
+          return;
         }
+
+        if (profileResult.status === 'fulfilled') {
+          setOwner(toOwnerParticipantFriend(profileResult.value));
+        }
+
+        if (friendsResult.status === 'fulfilled') {
+          setServerFriends(friendsResult.value.map(toParticipantFriend));
+        }
+
+        setParticipantLoadError(
+          profileResult.status === 'rejected' || friendsResult.status === 'rejected'
+            ? '친구 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'
+            : '',
+        );
       };
 
       void loadParticipantData();
@@ -789,6 +797,12 @@ export default function PaymentParticipantSelectScreen({
                 onChangeText={setSearchKeyword}
               />
             </View>
+
+            {participantLoadError ? (
+              <View className="mb-4">
+                <NoticeBox tone="warning" description={participantLoadError} />
+              </View>
+            ) : null}
 
             {!hasVisibleFriends ? (
               <EmptyMessage

@@ -238,6 +238,8 @@ export async function resetPin(
 export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
   const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const originalAuthorization = getAuthorizationHeader(init?.headers);
+  const originalSessionAccessToken = authSession?.accessToken;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       controller.abort();
@@ -255,6 +257,10 @@ export async function fetchAuth(input: RequestInfo, init?: RequestInit) {
     ]);
 
     if (shouldRecoverAuthRequest(input, init, response.status)) {
+      if (!canRetryWithRecoveredSession(originalAuthorization, originalSessionAccessToken)) {
+        return response;
+      }
+
       const recovered = await recoverAuthSession();
 
       if (recovered && authSession?.accessToken) {
@@ -326,6 +332,21 @@ function getAuthorizationHeader(headers: RequestInit['headers']) {
   }
 
   return headers.Authorization ?? headers.authorization;
+}
+
+function canRetryWithRecoveredSession(
+  originalAuthorization: string | undefined,
+  originalSessionAccessToken: string | undefined,
+) {
+  if (!originalAuthorization) {
+    return true;
+  }
+
+  if (!originalSessionAccessToken) {
+    return false;
+  }
+
+  return originalAuthorization.trim() === `Bearer ${originalSessionAccessToken}`;
 }
 
 function withAuthorizationHeader(init: RequestInit | undefined, accessToken: string) {
