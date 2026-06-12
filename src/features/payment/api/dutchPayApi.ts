@@ -5,6 +5,7 @@ import {
 
 
 const DUTCH_PAY_BASE_URL = `${PAYMENT_API_BASE_URL}/api/v1/dutch-pay`;
+const DUTCH_PAY_API_TIMEOUT_MS = 8000;
 
 export type DutchPayParticipantStatus =
     | 'INVITED'
@@ -19,7 +20,8 @@ export type DutchPaySessionStatus =
     | 'IN_PROGRESS'
     | 'COMPLETED'
     | 'FAILED'
-    | 'TIMEOUT_HANDLED';
+    | 'TIMEOUT_HANDLED'
+    | 'CANCELED';
 
 export type DutchPaySplitMethod = 'EQUAL' | 'CUSTOM';
 
@@ -32,7 +34,8 @@ export type DutchPaySessionProgressStep =
     | 'FINAL_PAYMENT_REQUIRED'
     | 'COMPLETED'
     | 'FAILED'
-    | 'TIMEOUT_HANDLED';
+    | 'TIMEOUT_HANDLED'
+    | 'CANCELED';
 
 export type DutchPayParticipantResponse = {
     participant_id: number;
@@ -56,6 +59,12 @@ export type DutchPaySessionDetailResponse = {
     status: DutchPaySessionStatus;
     session_progress_step: DutchPaySessionProgressStep;
     participants: DutchPayParticipantResponse[];
+    created_at?: string;
+    createdAt?: string;
+    timeout_at?: string | null;
+    timeoutAt?: string | null;
+    expires_at?: string;
+    expiresAt?: string;
 };
 
 export type DutchPayMyPaymentResponse = {
@@ -79,19 +88,42 @@ export type DutchPayInviteLinkResponse = {
     invite_url: string;
 };
 
+export type DutchPayInviteNotificationResponse = {
+    session_id: number;
+    invite_token: string;
+    invite_url: string;
+    notified_user_ids: number[];
+};
+
 async function requestJson<T>(
     url: string,
     options: RequestInit = {},
     userId?: number | string,
 ): Promise<T> {
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': String(userId ?? getPaymentUserId()),
-            ...options.headers,
-        },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DUTCH_PAY_API_TIMEOUT_MS);
+
+    let response: Response;
+
+    try {
+        response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Id': String(userId ?? getPaymentUserId()),
+                ...options.headers,
+            },
+        });
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('더치페이 서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        }
+
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
         let errorMessage = '더치페이 정보를 불러오지 못했습니다.';
@@ -111,7 +143,13 @@ async function requestJson<T>(
         throw new Error(errorMessage);
     }
 
-    return response.json();
+    const responseText = await response.text();
+
+    if (!responseText) {
+        return undefined as T;
+    }
+
+    return JSON.parse(responseText) as T;
 }
 
 export function getDutchPaySession(
@@ -138,6 +176,27 @@ export function inviteDutchPayAppFriends({
 }): Promise<DutchPaySessionDetailResponse> {
     return requestJson(
         `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invites`,
+        {
+            method: 'POST',
+            body: JSON.stringify({
+                user_ids: userIds,
+            }),
+        },
+        userId,
+    );
+}
+
+export function sendDutchPayInviteNotifications({
+    sessionId,
+    userIds,
+    userId,
+}: {
+    sessionId: number;
+    userIds: number[];
+    userId?: number | string;
+}): Promise<DutchPayInviteNotificationResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/invite-notifications`,
         {
             method: 'POST',
             body: JSON.stringify({
@@ -245,6 +304,37 @@ export function rejectDutchPayInvite(
         `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/reject`,
         {
             method: 'POST',
+        },
+        userId,
+    );
+}
+
+export function cancelDutchPaySession(
+    sessionId: number,
+    userId?: number | string,
+): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/cancel`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
+}
+
+export function removeDutchPayParticipant({
+    sessionId,
+    participantUserId,
+    userId,
+}: {
+    sessionId: number;
+    participantUserId: number;
+    userId?: number | string;
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/${participantUserId}`,
+        {
+            method: 'DELETE',
         },
         userId,
     );

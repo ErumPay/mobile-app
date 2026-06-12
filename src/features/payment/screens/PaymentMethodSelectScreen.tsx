@@ -23,7 +23,11 @@ import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgres
 import { toPaymentRequestSummary } from '../utils/paymentQrAdapter';
 import { normalizePaymentQrToken } from '../utils/paymentQrToken';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
-import { toRemotePaymentRecipientSummary } from '../utils/remotePaymentAdapter';
+import { getRemotePaymentIdempotencyKey } from '../utils/remotePaymentIdempotencyKey';
+import {
+    enrichRemotePaymentRequesterName,
+    toRemotePaymentRecipientSummary,
+} from '../utils/remotePaymentAdapter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentMethodSelect'>;
 
@@ -74,7 +78,9 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                     setErrorMessage('');
 
                     const remotePaymentRequest =
-                        await getRemotePaymentRequest(routeRemoteRequestId);
+                        await enrichRemotePaymentRequesterName(
+                            await getRemotePaymentRequest(routeRemoteRequestId),
+                        );
 
                     if (isMounted) {
                         setRecipientProgress(remotePaymentRequest);
@@ -161,32 +167,43 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
         navigation.navigate('Main');
     };
 
-    const handlePressOption = (type: PaymentActionType) => {
+    const handlePressOption = async (type: PaymentActionType) => {
         if (type === 'PAY') {
             if (!summary) {
                 return;
             }
 
+            const nextRemoteRequestId =
+                routeRemoteRequestId ?? summary.remoteRequestId;
+            const nextPaymentId =
+                summary.type === 'REMOTE_RECIPIENT'
+                    ? summary.payerPaymentId
+                    : summary.paymentId;
             const existingIdempotencyKey = paymentIdempotencyKeyMap.current.get(
-                summary.paymentId,
+                nextPaymentId ?? summary.paymentId,
             );
             const idempotencyKey =
                 existingIdempotencyKey ??
-                createPaymentIdempotencyKey(summary.paymentId);
+                (summary.type === 'REMOTE_RECIPIENT' &&
+                summary.payerPaymentId &&
+                nextRemoteRequestId
+                    ? await getRemotePaymentIdempotencyKey(nextRemoteRequestId)
+                    : undefined) ??
+                createPaymentIdempotencyKey(nextPaymentId ?? summary.paymentId);
 
             paymentIdempotencyKeyMap.current.set(
-                summary.paymentId,
+                nextPaymentId ?? summary.paymentId,
                 idempotencyKey,
             );
 
             navigation.navigate('PaymentCardSelect', {
                 paymentId:
                     summary.type === 'REMOTE_RECIPIENT'
-                        ? undefined
+                        ? summary.payerPaymentId
                         : summary.paymentId,
                 remoteRequestId:
                     summary.type === 'REMOTE_RECIPIENT'
-                        ? routeRemoteRequestId ?? summary.remoteRequestId
+                        ? nextRemoteRequestId
                         : undefined,
                 amount: summary.amount,
                 flow:

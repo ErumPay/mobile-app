@@ -104,9 +104,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
     setIsLoading(true);
     setCodeError('');
     try {
-      const res = await sendSmsCode(rawPhone, {
-        useExistingDevUser: isPinResetFlow,
-      });
+      const res = await sendSmsCode(rawPhone);
       setVerificationId(res.verificationId);
       setVerificationCode(res.verificationCode);
       setSmsReceiverNumber(res.smsReceiverNumber);
@@ -133,9 +131,7 @@ export default function SmsVerificationScreen({ navigation, route }: Props) {
     setIsLoading(true);
     setCodeError('');
     try {
-      const res = await sendSmsCode(rawPhone, {
-        useExistingDevUser: isPinResetFlow,
-      });
+      const res = await sendSmsCode(rawPhone);
       setVerificationId(res.verificationId);
       setVerificationCode(res.verificationCode);
       setSmsReceiverNumber(res.smsReceiverNumber);

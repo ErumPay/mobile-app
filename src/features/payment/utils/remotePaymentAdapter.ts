@@ -1,4 +1,6 @@
 import type { PaymentProgressVariant } from '../../main/components/PaymentProgressCard';
+import { fetchAuthFriends } from '../../friend/api/friendApi';
+import { fetchUserProfileById } from '../../mypage/api/mypageApi';
 import type { PaymentRequestSummary } from '../types/paymentMethod.types';
 import type {
   RemotePaymentProgress,
@@ -13,11 +15,58 @@ export function toRemotePaymentRecipientSummary(
   return {
     paymentId: response.paymentId,
     remoteRequestId: Number(response.remotePaymentRequestId),
+    payerPaymentId: response.payerPaymentId ?? response.paymentId,
     merchantName: response.merchantName,
     amount: response.amount,
     type: 'REMOTE_RECIPIENT',
     requesterName: response.requesterName,
   };
+}
+
+export async function enrichRemotePaymentRequesterName(
+  response: RemotePaymentRequestResponse,
+): Promise<RemotePaymentRequestResponse> {
+  const requesterUserId = Number(response.requesterUserId);
+
+  if (!Number.isFinite(requesterUserId)) {
+    return response;
+  }
+
+  const friends = await fetchAuthFriends().catch(() => []);
+  const requesterFriend = friends.find(
+    (friend) => Number(friend.userId) === requesterUserId,
+  );
+
+  if (requesterFriend) {
+    return {
+      ...response,
+      requesterName: formatRemoteUserLabel(
+        requesterFriend.name || response.requesterName,
+        requesterFriend.phoneLastFour,
+      ),
+    };
+  }
+
+  const requesterProfile = await fetchUserProfileById(requesterUserId).catch(
+    () => null,
+  );
+
+  if (!requesterProfile) {
+    return response;
+  }
+
+  return {
+    ...response,
+    requesterName: requesterProfile.name || response.requesterName,
+  };
+}
+
+function formatRemoteUserLabel(name: string, phoneSuffix?: string) {
+  if (!phoneSuffix || /\(\d{4}\)$/.test(name)) {
+    return name;
+  }
+
+  return `${name}(${phoneSuffix})`;
 }
 
 export function toRemotePaymentProgress({

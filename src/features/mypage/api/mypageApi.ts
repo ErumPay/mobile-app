@@ -433,32 +433,7 @@ async function getMypageAccessToken() {
     return sessionAccessToken;
   }
 
-  if (!__DEV__) {
-    throw new Error('로그인 후 다시 시도해주세요.');
-  }
-
-  const configuredToken = process.env.EXPO_PUBLIC_DEV_ACCESS_TOKEN;
-
-  if (configuredToken) {
-    return configuredToken;
-  }
-
-  const response = await fetchWithTimeout(
-    `${MYPAGE_AUTH_API_BASE_URL}/api/v1/auth/dev/token/${getMypageUserId()}`,
-  );
-
-  if (!response.ok) {
-    throw new Error(`MYPAGE_DEV_TOKEN_REQUEST_FAILED:${response.status}`);
-  }
-
-  const data = await response.json();
-  const accessToken = toStringValue(data.accessToken);
-
-  if (!accessToken) {
-    throw new Error('MYPAGE_DEV_TOKEN_EMPTY');
-  }
-
-  return accessToken;
+  throw new Error('로그인 후 다시 시도해주세요.');
 }
 
 function normalizeUserProfile(response: Record<string, unknown>): UserProfile {
