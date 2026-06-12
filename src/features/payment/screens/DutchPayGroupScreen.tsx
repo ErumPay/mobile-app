@@ -41,6 +41,10 @@ import {
   addRequestedDutchPaySession,
   getRequestedDutchPaySessionIdSet,
 } from '../utils/requestedDutchPaySessions';
+import {
+  addConfirmedDutchPayAmountSession,
+  getConfirmedDutchPayAmountSessionIdSet,
+} from '../utils/confirmedDutchPayAmountSessions';
 import { useDutchPayProgressUserStore } from '../stores/useDutchPayProgressUserStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
@@ -128,6 +132,38 @@ function getPhoneSuffix(value?: string) {
   return digits.slice(-4);
 }
 
+function parseServerDateTime(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const normalizedValue = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+    ? value
+    : `${value}Z`;
+  const parsedValue = Date.parse(normalizedValue);
+
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function isDutchPayTimedOut(session: DutchPaySessionDetailResponse) {
+  if (
+    session.status === 'TIMEOUT_HANDLED' ||
+    session.session_progress_step === 'TIMEOUT_HANDLED'
+  ) {
+    return true;
+  }
+
+  const timeoutAt = parseServerDateTime(session.timeout_at ?? session.timeoutAt);
+
+  if (timeoutAt != null && Date.now() >= timeoutAt) {
+    return true;
+  }
+
+  const expiresAt = parseServerDateTime(session.expires_at ?? session.expiresAt);
+
+  return expiresAt != null && Date.now() >= expiresAt;
+}
+
 function createDutchPayPaymentSummary({
   amount,
   paymentId,
@@ -197,7 +233,7 @@ function toDutchPayScenario(
           return 'PARTICIPANT_PAYMENT_PROGRESS';
         }
 
-        return 'PARTICIPANT_AMOUNT_REVIEW';
+        return 'PARTICIPANT_PAYMENT_REQUEST';
       case 'PAYMENT_IN_PROGRESS':
         if (currentParticipant?.status === 'PAID') {
           return 'PARTICIPANT_PAYMENT_PROGRESS';
@@ -451,8 +487,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const routeUserId = toFiniteNumber(route.params?.userId);
   const merchantId = toFiniteNumber(route.params?.merchantId);
   const isServerMode = typeof sessionId === 'number';
-  const appUserId = Number(getPaymentUserId()) || 1;
-  const currentUserId = routeUserId ?? appUserId;
+  const appUserId = routeUserId ?? (Number(getPaymentUserId()) || 1);
+  const currentUserId = appUserId;
   const setDutchPayProgressUserId = useDutchPayProgressUserStore(
     (state) => state.setUserId,
   );
@@ -466,14 +502,17 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const [serverErrorMessage, setServerErrorMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLeavingForPayment, setIsLeavingForPayment] = useState(false);
+  const [isAmountConfirmed, setIsAmountConfirmed] = useState(false);
   const [isPaymentRequestSent, setIsPaymentRequestSent] = useState(false);
   const [forcedScenario, setForcedScenario] = useState<DutchPayScenario | null>(
     isServerMode ? scenario ?? null : null,
   );
+  const [timeoutModalVisible, setTimeoutModalVisible] = useState(false);
   const isPollingSessionRef = useRef(false);
   const previousPaymentRequestSentRef = useRef(false);
   const participantPaymentCompleteModalShownRef = useRef(false);
   const sessionClosedModalShownRef = useRef(false);
+  const timeoutModalShownRef = useRef(false);
   const data = useMemo(
     () => {
       const nextData = serverSession
@@ -503,6 +542,17 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         }
 
         if (
+          isAmountConfirmed &&
+          nextData.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
+        ) {
+          return {
+            ...nextData,
+            scenario: 'OWNER_PAYMENT_REQUEST' as const,
+            footer: getServerFooter('OWNER_PAYMENT_REQUEST'),
+          };
+        }
+
+        if (
           isPaymentRequestSent &&
           nextData.scenario === 'PARTICIPANT_AMOUNT_REVIEW'
         ) {
@@ -510,6 +560,17 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
             ...nextData,
             scenario: 'PARTICIPANT_PAYMENT_REQUEST' as const,
             footer: getServerFooter('PARTICIPANT_PAYMENT_REQUEST'),
+          };
+        }
+
+        if (
+          isAmountConfirmed &&
+          nextData.scenario === 'PARTICIPANT_AMOUNT_INPUT'
+        ) {
+          return {
+            ...nextData,
+            scenario: 'PARTICIPANT_AMOUNT_REVIEW' as const,
+            footer: getServerFooter('PARTICIPANT_AMOUNT_REVIEW'),
           };
         }
 
@@ -529,6 +590,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     [
       currentUserId,
       forcedScenario,
+      isAmountConfirmed,
       isPaymentRequestSent,
       role,
       scenario,
@@ -575,7 +637,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   }, [currentUserId, role, serverSession]);
   const isAutoSplitParticipantInput =
     isParticipantAmountInputScenario && splitType === 'AUTO_SPLIT';
-  const participantMembers = members.filter((member) => !member.isOwner);
+  const visibleMembers = role === 'OWNER' ? data.members : members;
+  const participantMembers = visibleMembers.filter((member) => !member.isOwner);
   const failedPaymentMembers = participantMembers.filter(
     (member) => member.status === 'PAYMENT_FAILED',
   );
@@ -606,12 +669,12 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const isOwnerFinalPaymentScenario =
     data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
     data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE';
-  const myMember = members.find((member) => member.isMe);
+  const myMember = visibleMembers.find((member) => member.isMe);
   const myEditableAmount = parseAmount(myMember?.editableAmount);
   const isMyAmountConfirmed =
     myMember?.status === 'AMOUNT_CONFIRMED' && typeof myMember.amount === 'number';
   const displayMembers = applyFailedPaymentAmountToOwner(
-    members.map((member) => {
+    visibleMembers.map((member) => {
       if (
         member.isOwner &&
         (isOwnerAmountCheckScenario ||
@@ -672,6 +735,14 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       : data.footer.type === 'button'
         ? data.footer.label
         : '';
+  const shouldShowSecondaryAction =
+    data.footer.type === 'button' &&
+    data.footer.secondaryLabel &&
+    !(
+      isServerMode &&
+      role === 'PARTICIPANT' &&
+      data.scenario === 'PARTICIPANT_AMOUNT_INPUT'
+    );
   const ownerDisplayAmount =
     displayMembers.find((member) => member.isOwner)?.amount ?? ownerAmount;
   const myPaymentAmount =
@@ -695,6 +766,19 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     }
 
     const nextSession = await getDutchPaySession(sessionId, currentUserId);
+    const [confirmedSessionIds, requestedSessionIds] = await Promise.allSettled([
+      getConfirmedDutchPayAmountSessionIdSet(),
+      getRequestedDutchPaySessionIdSet(),
+    ]);
+
+    if (confirmedSessionIds.status === 'fulfilled') {
+      setIsAmountConfirmed(confirmedSessionIds.value.has(sessionId));
+    }
+
+    if (requestedSessionIds.status === 'fulfilled') {
+      setIsPaymentRequestSent(requestedSessionIds.value.has(sessionId));
+    }
+
     setServerSession(nextSession);
   }, [currentUserId, sessionId]);
 
@@ -706,20 +790,32 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (sessionId == null) {
+      setIsAmountConfirmed(false);
       setIsPaymentRequestSent(false);
       return;
     }
 
     let isMounted = true;
 
-    getRequestedDutchPaySessionIdSet()
-      .then((sessionIds) => {
+    Promise.allSettled([
+      getConfirmedDutchPayAmountSessionIdSet(),
+      getRequestedDutchPaySessionIdSet(),
+    ])
+      .then(([confirmedSessionIds, requestedSessionIds]) => {
         if (isMounted) {
-          setIsPaymentRequestSent(sessionIds.has(sessionId));
+          setIsAmountConfirmed(
+            confirmedSessionIds.status === 'fulfilled' &&
+              confirmedSessionIds.value.has(sessionId),
+          );
+          setIsPaymentRequestSent(
+            requestedSessionIds.status === 'fulfilled' &&
+              requestedSessionIds.value.has(sessionId),
+          );
         }
       })
       .catch(() => {
         if (isMounted) {
+          setIsAmountConfirmed(false);
           setIsPaymentRequestSent(false);
         }
       });
@@ -930,7 +1026,9 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       data.scenario === 'PARTICIPANT_INITIAL' ||
       data.scenario === 'OWNER_AMOUNT_INPUT_WAITING' ||
       data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE' ||
+      data.scenario === 'OWNER_PAYMENT_REQUEST' ||
       data.scenario === 'OWNER_PAYMENT_PROGRESS' ||
+      data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
       data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE' ||
       (data.scenario === 'PARTICIPANT_AMOUNT_INPUT' && isMyAmountConfirmed) ||
       data.scenario === 'PARTICIPANT_AMOUNT_REVIEW' ||
@@ -951,7 +1049,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       void refreshServerSession().finally(() => {
         isPollingSessionRef.current = false;
       });
-    }, 3000);
+    }, 5000);
 
     return () => {
       clearInterval(intervalId);
@@ -1073,6 +1171,20 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     ]);
   }, [currentUserId, isServerMode, navigation, serverSession]);
 
+  useEffect(() => {
+    if (
+      !isServerMode ||
+      !serverSession ||
+      timeoutModalShownRef.current ||
+      !isDutchPayTimedOut(serverSession)
+    ) {
+      return;
+    }
+
+    timeoutModalShownRef.current = true;
+    setTimeoutModalVisible(true);
+  }, [isServerMode, serverSession]);
+
   const handlePressClose = () => {
     setStopModalVisible(true);
   };
@@ -1085,6 +1197,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
   const handleConfirmPaymentComplete = () => {
     setPaymentCompleteModalVisible(false);
+    navigation.navigate('Main', { userId: currentUserId });
+  };
+
+  const handleConfirmTimeout = () => {
+    setTimeoutModalVisible(false);
     navigation.navigate('Main', { userId: currentUserId });
   };
 
@@ -1122,6 +1239,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           }
 
           if (data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE') {
+            await addConfirmedDutchPayAmountSession(sessionId);
+            setIsAmountConfirmed(true);
             setForcedScenario('OWNER_PAYMENT_REQUEST');
             return;
           }
@@ -1466,7 +1585,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
                   disabled={primaryDisabled}
                   onPress={handlePressPrimary}
                 />
-                {data.footer.secondaryLabel ? (
+                {shouldShowSecondaryAction ? (
                   <Pressable
                     accessibilityRole="button"
                     className="mt-4 items-center justify-center py-2"
@@ -1526,6 +1645,14 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           confirmLabel="확인"
           onConfirm={handleConfirmPaymentComplete}
           onClose={handleConfirmPaymentComplete}
+        />
+        <Modal
+          visible={timeoutModalVisible}
+          type="one"
+          title="결제 요청 시간이 지났습니다."
+          confirmLabel="확인"
+          onConfirm={handleConfirmTimeout}
+          onClose={handleConfirmTimeout}
         />
         </>
       }

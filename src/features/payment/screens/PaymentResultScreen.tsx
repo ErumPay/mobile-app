@@ -23,7 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PaymentResult'>;
 type PaymentResultButton =
     | {
         buttonLabel: string;
-        buttonAction: 'MAIN' | 'CREATE_GROUP';
+        buttonAction: 'MAIN' | 'CREATE_GROUP' | 'DUTCH_GROUP';
     }
     | {
         buttonLabel?: never;
@@ -70,6 +70,14 @@ function getPaymentResultContent({
             };
         }
 
+        if (flow === 'DUTCH_PAY_MEMBER') {
+            return {
+                ...failureContent,
+                buttonLabel: '더치페이 화면으로 돌아가기',
+                buttonAction: 'DUTCH_GROUP',
+            };
+        }
+
         return failureContent;
     }
 
@@ -96,6 +104,16 @@ function getPaymentResultContent({
             linkAction: 'RECEIPT',
             notice: '가결제는 취소 되었습니다.',
             noticeTone: 'warning',
+        };
+    }
+
+    if (flow === 'DUTCH_PAY_MEMBER') {
+        return {
+            title: '결제가 완료되었습니다!',
+            description: '더치페이 결제 진행 상황을 확인해보세요.',
+            buttonLabel: '더치페이 화면으로 돌아가기',
+            iconType: 'SUCCESS',
+            buttonAction: 'DUTCH_GROUP',
         };
     }
 
@@ -178,6 +196,20 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
                 dutchSessionId: nextDutchSessionId,
                 orderName: route.params?.orderName,
                 merchantId: route.params?.merchantId,
+            });
+            return;
+        }
+
+        if (content.buttonAction === 'DUTCH_GROUP') {
+            if (!route.params?.dutchSessionId) {
+                Alert.alert('더치페이', '더치페이 세션 정보가 없습니다.');
+                return;
+            }
+
+            navigation.navigate('DutchPayGroup', {
+                role: 'PARTICIPANT',
+                scenario: 'PARTICIPANT_PAYMENT_PROGRESS',
+                sessionId: route.params.dutchSessionId,
             });
             return;
         }

@@ -26,7 +26,7 @@ import { MainHeader } from "../components/MainHeader";
 import type { PaymentHistory } from "../components/RecentPaymentHistory";
 import { RecentPaymentHistory } from "../components/RecentPaymentHistory";
 import { FloatingButton } from "../../../shared/components/FloatingButton";
-import { RejectConfirmModal } from "../../../shared/components/Modal";
+import Modal, { RejectConfirmModal } from "../../../shared/components/Modal";
 import { PageWrap } from "../../../shared/components/PageWrap";
 import { Skeleton } from "../../../shared/components/Skeleton";
 import {
@@ -41,6 +41,7 @@ import {
 import { fetchAuthFriends, type AuthFriendResponse } from "../../friend/api/friendApi";
 import { getPaymentUserId } from "../../payment/api/paymentApiConfig";
 import { getCancelledDutchPaySessionIdSet } from "../../payment/utils/cancelledDutchPaySessions";
+import { getConfirmedDutchPayAmountSessionIdSet } from "../../payment/utils/confirmedDutchPayAmountSessions";
 import { getRequestedDutchPaySessionIdSet } from "../../payment/utils/requestedDutchPaySessions";
 import { useRemotePaymentProgressStore } from "../../payment/stores/useRemotePaymentProgressStore";
 import { useDutchPayProgressUserStore } from "../../payment/stores/useDutchPayProgressUserStore";
@@ -193,12 +194,16 @@ export default function MainScreen({ navigation, route }: Props) {
         item.request.status === "REQUESTED",
     );
   const [isRejectConfirmVisible, setIsRejectConfirmVisible] = useState(false);
+  const [isDutchTimeoutModalVisible, setIsDutchTimeoutModalVisible] =
+    useState(false);
   const [rejectTargetRequestId, setRejectTargetRequestId] = useState<
     number | string | null
   >(null);
   const remoteFriendLookupRef = useRef(new Map<string, AuthFriendResponse>());
   const remoteUserProfileLookupRef = useRef(new Map<string, UserProfile>());
   const remoteProgressRef = useRef(remoteProgress);
+  const hadActiveDutchSessionRef = useRef(false);
+  const dutchTimeoutModalShownRef = useRef(false);
 
   useEffect(() => {
     remoteProgressRef.current = remoteProgress;
@@ -358,6 +363,7 @@ export default function MainScreen({ navigation, route }: Props) {
             dutchSessions,
             requests,
             cancelledDutchSessionIds,
+            confirmedDutchAmountSessionIds,
             requestedDutchSessionIds,
             friends,
           ] =
@@ -365,6 +371,7 @@ export default function MainScreen({ navigation, route }: Props) {
             getActiveDutchPaySessions(currentUserId),
             getActiveRemotePaymentRequests(),
             getCancelledDutchPaySessionIdSet(),
+            getConfirmedDutchPayAmountSessionIdSet(),
             getRequestedDutchPaySessionIdSet(),
             fetchAuthFriends(),
           ]);
@@ -374,12 +381,26 @@ export default function MainScreen({ navigation, route }: Props) {
           }
 
           if (dutchSessions.status === "fulfilled") {
+            if (
+              hadActiveDutchSessionRef.current &&
+              dutchSessions.value.length === 0 &&
+              !dutchTimeoutModalShownRef.current
+            ) {
+              dutchTimeoutModalShownRef.current = true;
+              setIsDutchTimeoutModalVisible(true);
+            }
+
+            hadActiveDutchSessionRef.current = dutchSessions.value.length > 0;
+
             setDutchProgressItems(
               getActiveDutchPayProgressItems(
                 dutchSessions.value,
                 currentUserId,
                 cancelledDutchSessionIds.status === "fulfilled"
                   ? cancelledDutchSessionIds.value
+                  : new Set(),
+                confirmedDutchAmountSessionIds.status === "fulfilled"
+                  ? confirmedDutchAmountSessionIds.value
                   : new Set(),
                 requestedDutchSessionIds.status === "fulfilled"
                   ? requestedDutchSessionIds.value
@@ -824,6 +845,14 @@ export default function MainScreen({ navigation, route }: Props) {
         onCancel={() => setIsRejectConfirmVisible(false)}
         onConfirm={confirmRejectPaymentProgress}
       />
+      <Modal
+        visible={isDutchTimeoutModalVisible}
+        type="one"
+        title="결제 요청 시간이 지났습니다."
+        confirmLabel="확인"
+        onConfirm={() => setIsDutchTimeoutModalVisible(false)}
+        onClose={() => setIsDutchTimeoutModalVisible(false)}
+      />
     </View>
   );
 }
@@ -947,6 +976,7 @@ function getActiveDutchPayProgressItems(
   sessions: DutchPaySessionDetailResponse[],
   currentUserId: number,
   cancelledSessionIds: Set<number>,
+  confirmedAmountSessionIds: Set<number>,
   requestedSessionIds: Set<number>,
 ): ActiveDutchPayProgress[] {
   const progressItems: ActiveDutchPayProgress[] = [];
@@ -966,6 +996,7 @@ function getActiveDutchPayProgressItems(
       currentUserId,
       role,
       cancelledSessionIds.has(session.session_id),
+      confirmedAmountSessionIds.has(session.session_id),
       requestedSessionIds.has(session.session_id),
     );
 
@@ -1019,6 +1050,7 @@ function toDutchPayProgressVariant(
   currentUserId: number,
   role: "OWNER" | "PARTICIPANT",
   isLocallyCancelled = false,
+  isAmountConfirmed = false,
   isPaymentRequestSent = false,
 ): PaymentProgressVariant | null {
   if (
@@ -1031,6 +1063,13 @@ function toDutchPayProgressVariant(
     session.session_progress_step === "FAILED" ||
     session.session_progress_step === "TIMEOUT_HANDLED" ||
     session.session_progress_step === "CANCELED"
+  ) {
+    return null;
+  }
+
+  if (
+    session.session_progress_step === "GROUP_CREATED" ||
+    session.session_progress_step === "PARTICIPANT_CONFIRM"
   ) {
     return null;
   }
@@ -1053,18 +1092,14 @@ function toDutchPayProgressVariant(
 
   if (role === "OWNER") {
     switch (session.session_progress_step) {
-      case "GROUP_CREATED":
-        return hasParticipantBeyondOwner
-          ? "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY"
-          : "DUTCHPAY_OWNER_GROUP_CREATE_READY";
-      case "PARTICIPANT_CONFIRM":
-        return "DUTCHPAY_OWNER_MEMBER_CONFIRM_READY";
       case "AMOUNT_INPUT":
         return "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
       case "PAYMENT_REQUEST":
         return isPaymentRequestSent
           ? "DUTCHPAY_OWNER_WAITING_MEMBERS"
-          : "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
+          : isAmountConfirmed
+            ? "DUTCHPAY_OWNER_PAYMENT_REQUEST_READY"
+            : "DUTCHPAY_OWNER_AMOUNT_CONFIRM_READY";
       case "PAYMENT_IN_PROGRESS":
         return "DUTCHPAY_OWNER_WAITING_MEMBERS";
       case "FINAL_PAYMENT_REQUIRED":
@@ -1102,12 +1137,26 @@ function toDutchPayProgressVariant(
     return "DUTCHPAY_MEMBER_PAYMENT_READY";
   }
 
+  if (
+    session.session_progress_step === "PAYMENT_REQUEST" &&
+    myParticipant.amount != null
+  ) {
+    return "DUTCHPAY_MEMBER_PAYMENT_READY";
+  }
+
+  if (
+    isAmountConfirmed &&
+    myParticipant.amount != null
+  ) {
+    return "DUTCHPAY_MEMBER_AMOUNT_REVIEW";
+  }
+
   if (session.session_progress_step === "AMOUNT_INPUT" && myParticipant.amount == null) {
     return "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY";
   }
 
   if (myParticipant.amount != null) {
-    return "DUTCHPAY_MEMBER_PAYMENT_READY";
+    return "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY";
   }
 
   return "DUTCHPAY_MEMBER_REQUEST_RECEIVED";
@@ -1123,6 +1172,8 @@ function getDutchPayRouteScenario(variant: PaymentProgressVariant) {
       return "OWNER_FINAL_PAYMENT_READY" as const;
     case "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY":
       return "PARTICIPANT_AMOUNT_INPUT" as const;
+    case "DUTCHPAY_MEMBER_AMOUNT_REVIEW":
+      return "PARTICIPANT_AMOUNT_REVIEW" as const;
     case "DUTCHPAY_MEMBER_PAYMENT_READY":
       return "PARTICIPANT_PAYMENT_REQUEST" as const;
     case "DUTCHPAY_MEMBER_WAITING_OTHERS":
