@@ -15,7 +15,7 @@ export function toRemotePaymentRecipientSummary(
   return {
     paymentId: response.paymentId,
     remoteRequestId: Number(response.remotePaymentRequestId),
-    payerPaymentId: response.payerPaymentId,
+    payerPaymentId: response.payerPaymentId ?? response.paymentId,
     merchantName: response.merchantName,
     amount: response.amount,
     type: 'REMOTE_RECIPIENT',
@@ -57,10 +57,7 @@ export async function enrichRemotePaymentRequesterName(
 
   return {
     ...response,
-    requesterName: formatRemoteUserLabel(
-      requesterProfile.name || response.requesterName,
-      requesterProfile.phone?.replace(/\D/g, '').slice(-4),
-    ),
+    requesterName: requesterProfile.name || response.requesterName,
   };
 }
 

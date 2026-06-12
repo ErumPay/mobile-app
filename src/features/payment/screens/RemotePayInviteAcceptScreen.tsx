@@ -30,9 +30,7 @@ export default function RemotePayInviteAcceptScreen({ navigation, route }: Props
 
     const acceptInvite = async () => {
       if (!isValidRemoteRequestId(route.params.remoteRequestId)) {
-        navigation.replace('FriendInviteAccept', {
-          inviteToken: route.params.remoteRequestId,
-        });
+        setErrorMessage('유효하지 않은 원격결제 요청입니다.');
         return;
       }
 

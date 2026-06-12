@@ -225,15 +225,18 @@ export default function MainScreen({ navigation, route }: Props) {
     [progressCardInterval, progressItems.length],
   );
 
-  const goToProgressItem = (index: number) => {
-    const clampedIndex = Math.max(0, Math.min(index, progressItems.length - 1));
+  const goToProgressItem = useCallback(
+    (index: number) => {
+      const clampedIndex = Math.max(0, Math.min(index, progressItems.length - 1));
 
-    progressScrollRef.current?.scrollTo({
-      x: clampedIndex * progressCardInterval,
-      animated: true,
-    });
-    setCurrentProgressIndex(clampedIndex);
-  };
+      progressScrollRef.current?.scrollTo({
+        x: clampedIndex * progressCardInterval,
+        animated: true,
+      });
+      setCurrentProgressIndex(clampedIndex);
+    },
+    [progressCardInterval, progressItems.length],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -928,7 +931,7 @@ function isDutchPaySessionExpiredByTime(session: DutchPaySessionDetailResponse) 
   const timeoutAt = parseServerDateTime(session.timeout_at ?? session.timeoutAt);
 
   if (timeoutAt != null) {
-    return true;
+    return Date.now() >= timeoutAt;
   }
 
   const createdAt = parseServerDateTime(session.created_at ?? session.createdAt);

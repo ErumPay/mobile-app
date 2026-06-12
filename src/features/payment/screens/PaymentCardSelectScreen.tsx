@@ -489,10 +489,10 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                 });
 
                 if (isRemotePaymentRoute && remoteRequestId != null) {
-                    await saveRemotePaymentIdempotencyKey(
+                    saveRemotePaymentIdempotencyKey(
                         remoteRequestId,
                         idempotencyKey,
-                    );
+                    ).catch(() => {});
                 }
 
                 const nextFlowType = isDutchFinalRoute

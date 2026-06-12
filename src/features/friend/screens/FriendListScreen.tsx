@@ -240,6 +240,9 @@ export default function FriendListScreen({ navigation }: Props) {
     try {
       setProcessingRequestRelationId(request.relationId);
       await acceptFriendRequest(request.relationId);
+      setFriendRequests((prevRequests) =>
+        prevRequests.filter((item) => item.relationId !== request.relationId),
+      );
       await loadFriendData();
     } catch (error) {
       Alert.alert('친구 요청 수락 실패', error instanceof Error ? error.message : '친구 요청 수락에 실패했습니다.');
