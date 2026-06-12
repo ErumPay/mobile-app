@@ -213,7 +213,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                           ? 'DUTCH_PAY_MEMBER'
                           : 'NORMAL',
                 idempotencyKey,
-                orderName: summary.merchantName,
+                merchantName: summary.merchantName,
             });
             return;
         }
@@ -233,7 +233,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 paymentId: summary.paymentId,
                 remoteRequestId: summary.remoteRequestId,
                 amount: summary.amount,
-                orderName: summary.merchantName,
+                merchantName: summary.merchantName,
             });
             return;
         }
@@ -260,7 +260,7 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 amount: summary.amount,
                 flow: 'DUTCH_PAY',
                 idempotencyKey,
-                orderName: summary.merchantName,
+                merchantName: summary.merchantName,
             });
             return;
         }

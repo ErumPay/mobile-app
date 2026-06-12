@@ -7,6 +7,8 @@ import { registerCard } from '../api/cardApi';
 import { getCardRegisterUserId } from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
+import type { CardRegisterFailureType } from '../types/cardRegisterFailure';
+import { resolveCardRegisterFailureType } from '../utils/cardErrorMapper';
 import { CardOcrScreen } from './CardOcrScreen';
 import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
@@ -23,6 +25,8 @@ export function CardRegisterScreen({ navigation, route }: Props) {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [failureType, setFailureType] =
+    useState<CardRegisterFailureType>('GENERAL');
 
   const addCard = useManagedCardsStore((state) => state.addCard);
   const paymentCardSelectParams =
@@ -70,6 +74,7 @@ export function CardRegisterScreen({ navigation, route }: Props) {
       });
 
       if (isRegisteredCardUnavailable(nextCard)) {
+        setFailureType('UNAVAILABLE');
         setMode('failure');
         return;
       }
@@ -77,7 +82,8 @@ export function CardRegisterScreen({ navigation, route }: Props) {
       syncRegisteredCardToStore(nextCard, values);
       setRegisteredCard(nextCard);
       setMode('success');
-    } catch {
+    } catch (error) {
+      setFailureType(resolveCardRegisterFailureType(error));
       setMode('failure');
     } finally {
       setIsSubmitting(false);
@@ -150,8 +156,16 @@ export function CardRegisterScreen({ navigation, route }: Props) {
     return (
       <CardRegisterResultScreen
         status="failure"
+        failureType={failureType}
         onClose={handleGoBack}
-        onRetry={() => setMode('manual')}
+        onRetry={
+          failureType === 'SYSTEM'
+            ? handleGoCardManagement
+            : () => {
+                setOcrInitialValues(null);
+                setMode('select');
+              }
+        }
         onGoHome={handleGoHome}
       />
     );

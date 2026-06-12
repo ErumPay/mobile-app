@@ -11,7 +11,11 @@ import { NoticeBox } from '../../../shared/components/NoticeBox';
 import PageWrap from '../../../shared/components/PageWrap';
 import { PinCodeDots, PinCodeKeypad } from '../../../shared/components/PinCode';
 import PaymentStopConfirmModal from '../components/PaymentStopConfirmModal';
-import { PaymentRequestError, requestPayment } from '../api/paymentRequestApi';
+import {
+  PaymentRequestError,
+  requestDirectPayment,
+  requestPayment,
+} from '../api/paymentRequestApi';
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
@@ -146,7 +150,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         dutchSessionId: paymentParams.dutchSessionId,
         selectedUserIds: paymentParams.selectedUserIds,
         splitMethod: paymentParams.splitMethod,
-        orderName: paymentParams.orderName,
+        merchantName: paymentParams.merchantName,
         merchantId: paymentParams.merchantId,
       }
     : {};
@@ -282,16 +286,27 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
               },
             ];
 
-        const paymentResponse = await requestPayment(
-          {
-            pin: completedPin,
-            paymentId: paymentParams.paymentId,
-            totalAmount: requestCards.reduce((sum, card) => sum + card.amount, 0),
-            strategyType: paymentParams.strategyType,
-            cards: requestCards,
-          },
-          idempotencyKey,
-        );
+        const totalAmount = requestCards.reduce((sum, card) => sum + card.amount, 0);
+        const paymentResponse = paymentParams.isDirectPayment
+          ? await requestDirectPayment(
+              {
+                pin: completedPin,
+                paymentId: paymentParams.paymentId,
+                totalAmount,
+                cardId: paymentParams.cardId,
+              },
+              idempotencyKey,
+            )
+          : await requestPayment(
+              {
+                pin: completedPin,
+                paymentId: paymentParams.paymentId,
+                totalAmount,
+                strategyType: paymentParams.strategyType,
+                cards: requestCards,
+              },
+              idempotencyKey,
+            );
 
         if (paymentParams.flow === 'REMOTE_PAYMENT') {
           completeRemoteRequest();
@@ -311,7 +326,7 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
           dutchSessionId: paymentResponse.dutchSessionId ?? paymentParams.dutchSessionId,
           selectedUserIds: paymentParams.selectedUserIds,
           splitMethod: paymentParams.splitMethod,
-          orderName: paymentParams.orderName,
+          merchantName: paymentParams.merchantName,
           merchantId: paymentParams.merchantId,
         });
       } catch (error) {

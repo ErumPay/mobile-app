@@ -587,7 +587,7 @@ export default function PaymentParticipantSelectScreen({
           sessionId: route.params.dutchSessionId,
           splitMethod: latestAutoSplitCheckedRef.current ? 'EQUAL' : 'CUSTOM',
           splitType: latestAutoSplitCheckedRef.current ? 'AUTO_SPLIT' : 'MANUAL',
-          orderName: route.params?.orderName,
+          merchantName: route.params?.merchantName,
           merchantId: route.params?.merchantId,
         });
         return;
@@ -608,7 +608,7 @@ export default function PaymentParticipantSelectScreen({
     resetShareModal,
     route.params?.dutchSessionId,
     route.params?.merchantId,
-    route.params?.orderName,
+    route.params?.merchantName,
     shareCountdown,
     shareModalVisible,
     shareStep,
@@ -671,8 +671,7 @@ export default function PaymentParticipantSelectScreen({
         paymentId: route.params.paymentId,
         remoteRequestId: route.params?.remoteRequestId ?? preparedRemoteRequestId,
         amount: route.params.amount,
-        merchantName: route.params?.orderName ?? '원격결제',
-        orderName: route.params?.orderName,
+        merchantName: route.params?.merchantName ?? '원격결제',
         merchantId: route.params?.merchantId,
         recipientName: selectedRemoteFriend.name,
         recipientPhoneSuffix: selectedRemoteFriend.phoneSuffix,

@@ -1287,7 +1287,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               amount: myPaymentAmount,
               flow: 'DUTCH_PAY_MEMBER',
               dutchSessionId: sessionId,
-              orderName: serverSession.order_name,
+              merchantName: serverSession.merchant_name,
               merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;
@@ -1303,7 +1303,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               amount: myPaymentAmount,
               flow: 'DUTCH_PAY_MEMBER',
               dutchSessionId: sessionId,
-              orderName: serverSession.order_name,
+              merchantName: serverSession.merchant_name,
               merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;
@@ -1318,7 +1318,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
               amount: ownerDisplayAmount,
               flow: 'DUTCH_PAY_FINAL',
               dutchSessionId: sessionId,
-              orderName: serverSession.order_name,
+              merchantName: serverSession.merchant_name,
               merchantId: serverSession.merchant_id ?? merchantId,
             });
             return;

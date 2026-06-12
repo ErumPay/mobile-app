@@ -14,7 +14,7 @@ export type ParticipantSelectRouteParams = {
   remoteRequestId?: number;
   amount?: number;
   dutchSessionId?: number;
-  orderName?: string;
+  merchantName?: string;
   merchantId?: number;
 };
 

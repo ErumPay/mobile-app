@@ -18,8 +18,6 @@ type PreparePaymentParams = {
     paymentType?: 'SINGLE' | 'DUTCH' | 'REMOTE';
     dutchRole?: 'MEMBER' | 'HOST';
     sessionId?: number;
-    orderName?: string;
-    merchantId?: number;
 };
 
 type PaymentApiErrorResponse = {
@@ -68,8 +66,6 @@ export async function preparePayment({
     paymentType = 'SINGLE',
     dutchRole,
     sessionId,
-    orderName,
-    merchantId,
 }: PreparePaymentParams): Promise<PreparePaymentResponse> {
     const isDutchMember = paymentType === 'DUTCH' && dutchRole === 'MEMBER';
     const isDutchHost = paymentType === 'DUTCH' && dutchRole === 'HOST';
@@ -85,15 +81,11 @@ export async function preparePayment({
         ? {
             amount,
             sessionId,
-            orderName: orderName ?? '더치페이 결제',
-            merchantId: merchantId ?? 1,
         }
         : isRemoteProxy
             ? {
                 amount,
                 remoteRequestId,
-                orderName: orderName ?? '원격결제',
-                merchantId: merchantId ?? 101,
             }
         : {
             paymentId,
