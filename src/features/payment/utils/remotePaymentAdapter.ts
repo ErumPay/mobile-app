@@ -15,7 +15,7 @@ export function toRemotePaymentRecipientSummary(
   return {
     paymentId: response.paymentId,
     remoteRequestId: Number(response.remotePaymentRequestId),
-    payerPaymentId: response.payerPaymentId ?? response.paymentId,
+    payerPaymentId: response.payerPaymentId,
     merchantName: response.merchantName,
     amount: response.amount,
     type: 'REMOTE_RECIPIENT',

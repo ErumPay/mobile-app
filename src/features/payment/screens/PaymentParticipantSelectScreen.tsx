@@ -724,6 +724,17 @@ export default function PaymentParticipantSelectScreen({
     navigateToDutchPayGroup();
   };
 
+  const handleCloseShareModal = () => {
+    const shouldContinueDutchGroup =
+      isDutchPay && shareStep === 'COPIED' && route.params?.dutchSessionId != null;
+
+    resetShareModal();
+
+    if (shouldContinueDutchGroup) {
+      navigateToDutchPayGroup();
+    }
+  };
+
   return (
     <PageWrap
       scroll={false}
@@ -889,7 +900,7 @@ export default function PaymentParticipantSelectScreen({
               ? `${shareCountdown}초 뒤 그룹 생성 페이지로 이동합니다.`
               : `${shareCountdown}초 뒤 메인으로 이동합니다.`
           }
-          onClose={resetShareModal}
+          onClose={handleCloseShareModal}
           onPressCopy={handlePressCopyLink}
         />
         <PaymentStopConfirmModal

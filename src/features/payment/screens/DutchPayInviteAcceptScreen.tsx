@@ -5,7 +5,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../../App';
 import Button from '../../../shared/components/Button';
 import PageWrap from '../../../shared/components/PageWrap';
-import { acceptDutchPayInviteLink, type DutchPaySessionDetailResponse } from '../api/dutchPayApi';
+import {
+  acceptDutchPayInviteLink,
+  getDutchPaySession,
+  type DutchPaySessionDetailResponse,
+} from '../api/dutchPayApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayInviteAccept'>;
 
@@ -30,6 +34,15 @@ function decodeInviteSessionId(inviteToken: string): number | null {
   } catch {
     return null;
   }
+}
+
+function isAlreadyJoinedError(message: string): boolean {
+  return (
+    message.includes('DUTCH_DUPLICATED_PARTICIPANT') ||
+    message.includes('DUTCH_PARTICIPANT_DUPLICATED') ||
+    message.includes('DUPLICATED_PARTICIPANT') ||
+    message.includes('이미 참여')
+  );
 }
 
 export default function DutchPayInviteAcceptScreen({ navigation, route }: Props) {
@@ -67,12 +80,22 @@ export default function DutchPayInviteAcceptScreen({ navigation, route }: Props)
               : '더치페이 초대 링크를 수락하지 못했습니다.';
           const sessionId = decodeInviteSessionId(route.params.inviteToken);
 
-          if (sessionId != null && message.includes('이미')) {
-            navigation.replace('DutchPayGroup', {
-              role: 'PARTICIPANT',
-              sessionId,
-            });
-            return;
+          if (sessionId != null && isAlreadyJoinedError(message)) {
+            try {
+              await getDutchPaySession(sessionId);
+
+              if (!isMounted) {
+                return;
+              }
+
+              navigation.replace('DutchPayGroup', {
+                role: 'PARTICIPANT',
+                sessionId,
+              });
+              return;
+            } catch {
+              // Keep the original accept error when the current user cannot read the session.
+            }
           }
 
           setErrorMessage(message);

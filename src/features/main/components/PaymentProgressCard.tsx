@@ -12,6 +12,7 @@ type DutchpayProgressVariant =
   | "DUTCHPAY_OWNER_COMPLETED"
   | "DUTCHPAY_MEMBER_REQUEST_RECEIVED"
   | "DUTCHPAY_MEMBER_AMOUNT_INPUT_READY"
+  | "DUTCHPAY_MEMBER_AMOUNT_REVIEW"
   | "DUTCHPAY_MEMBER_PAYMENT_READY"
   | "DUTCHPAY_MEMBER_WAITING_OTHERS"
   | "DUTCHPAY_MEMBER_COMPLETED";
@@ -42,6 +43,7 @@ type ProgressStepItem = {
 };
 
 type PaymentProgressCardProps = {
+  contextText?: string;
   participantName?: string;
   variant?: PaymentProgressVariant;
   onPressAccept?: () => void;
@@ -75,6 +77,7 @@ const remoteIncomingLabels = ["요청", "결제 진행", "결제 완료"];
 const remoteRejectedLabels = ["요청", "결제 거절", "결제 완료"];
 
 export function PaymentProgressCard({
+  contextText,
   participantName,
   variant = "DUTCHPAY_OWNER_GROUP_CREATE_READY",
   onPressAccept,
@@ -109,6 +112,11 @@ export function PaymentProgressCard({
           {config.description ? (
             <Text className="mt-1 font-pretendard text-normal-regular text-neutral-black2">
               {config.description}
+            </Text>
+          ) : null}
+          {contextText ? (
+            <Text className="mt-1 font-pretendard text-small-regular text-neutral-black2">
+              {contextText}
             </Text>
           ) : null}
         </View>
@@ -368,6 +376,21 @@ function getPaymentProgressConfig({
           "pending",
         ]),
         title: "더치페이 금액을 입력하세요!",
+        tone: "default",
+        type: "primary",
+      };
+
+    case "DUTCHPAY_MEMBER_AMOUNT_REVIEW":
+      return {
+        actionLabel: "결제 금액 확인하기 >",
+        description: "대표자가 결제 금액을 확인하고 있어요.",
+        steps: buildSteps(dutchpayMemberLabels, [
+          "done",
+          "done",
+          "pending",
+          "pending",
+        ]),
+        title: "더치페이 결제 금액 확인중이에요.",
         tone: "default",
         type: "primary",
       };

@@ -10,6 +10,7 @@ export type PaymentQrValidateResponse = {
     paymentId: number;
     code: PaymentQrValidateCode;
     amount: number;
+    order_name?: string;
     merchant_name: string;
     channel_type: PaymentQrChannelType;
 };

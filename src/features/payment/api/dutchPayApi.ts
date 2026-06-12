@@ -9,6 +9,7 @@ const DUTCH_PAY_API_TIMEOUT_MS = 8000;
 
 export type DutchPayParticipantStatus =
     | 'INVITED'
+    | 'JOINED'
     | 'PENDING'
     | 'PAID'
     | 'REJECTED'
@@ -29,7 +30,10 @@ export type DutchPaySessionProgressStep =
     | 'GROUP_CREATED'
     | 'PARTICIPANT_CONFIRM'
     | 'AMOUNT_INPUT'
+    | 'AMOUNT_INPUT_COMPLETED'
+    | 'AMOUNT_CONFIRMED'
     | 'PAYMENT_REQUEST'
+    | 'PAYMENT_REQUESTED'
     | 'PAYMENT_IN_PROGRESS'
     | 'FINAL_PAYMENT_REQUIRED'
     | 'COMPLETED'
@@ -49,6 +53,7 @@ export type DutchPayParticipantResponse = {
 export type DutchPaySessionDetailResponse = {
     session_id: number;
     dutch_order_no: string;
+    order_name?: string;
     host_user_id: number;
     merchant_id: number;
     merchant_name: string;
@@ -233,6 +238,19 @@ export function acceptDutchPayInviteLink(
     );
 }
 
+export function joinDutchPayInvitedParticipant(
+    sessionId: number,
+    userId?: number | string,
+): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/participants/join`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
+}
+
 export function confirmDutchPayParticipants({
     sessionId,
     splitMethod,
@@ -291,6 +309,38 @@ export function updateDutchPayMyAmount({
             body: JSON.stringify({
                 amount,
             }),
+        },
+        userId,
+    );
+}
+
+export function confirmDutchPayAmount({
+    sessionId,
+    userId,
+}: {
+    sessionId: number;
+    userId?: number | string;
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/amount-confirm`,
+        {
+            method: 'POST',
+        },
+        userId,
+    );
+}
+
+export function requestDutchPayPayment({
+    sessionId,
+    userId,
+}: {
+    sessionId: number;
+    userId?: number | string;
+}): Promise<DutchPaySessionDetailResponse> {
+    return requestJson(
+        `${DUTCH_PAY_BASE_URL}/sessions/${sessionId}/payment-request`,
+        {
+            method: 'POST',
         },
         userId,
     );

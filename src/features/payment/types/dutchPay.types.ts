@@ -3,6 +3,8 @@ export type DutchPayRole = 'OWNER' | 'PARTICIPANT';
 export type DutchPayMemberStatus =
   | 'EMPTY'
   | 'AUTO_SPLIT'
+  | 'INVITED'
+  | 'JOINED'
   | 'AMOUNT_CONFIRMED'
   | 'WAITING_AMOUNT'
   | 'INPUT_EDITING'
@@ -35,6 +37,7 @@ export type DutchPayGroupRouteParams = {
   userId?: number | string;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
+  orderName?: string;
   merchantName?: string;
   merchantId?: number | string;
 };

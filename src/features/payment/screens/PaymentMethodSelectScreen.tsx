@@ -179,8 +179,17 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 summary.type === 'REMOTE_RECIPIENT'
                     ? summary.payerPaymentId
                     : summary.paymentId;
+            const paymentKeySeed =
+                nextPaymentId ??
+                (summary.type === 'REMOTE_RECIPIENT'
+                    ? nextRemoteRequestId
+                    : summary.paymentId);
+            if (paymentKeySeed == null) {
+                Alert.alert('결제 수단 선택', '원격결제 요청 정보가 올바르지 않습니다.');
+                return;
+            }
             const existingIdempotencyKey = paymentIdempotencyKeyMap.current.get(
-                nextPaymentId ?? summary.paymentId,
+                Number(paymentKeySeed),
             );
             const idempotencyKey =
                 existingIdempotencyKey ??
@@ -189,10 +198,10 @@ export default function PaymentMethodSelectScreen({ navigation, route }: Props) 
                 nextRemoteRequestId
                     ? await getRemotePaymentIdempotencyKey(nextRemoteRequestId)
                     : undefined) ??
-                createPaymentIdempotencyKey(nextPaymentId ?? summary.paymentId);
+                createPaymentIdempotencyKey(Number(paymentKeySeed));
 
             paymentIdempotencyKeyMap.current.set(
-                nextPaymentId ?? summary.paymentId,
+                Number(paymentKeySeed),
                 idempotencyKey,
             );
 

@@ -85,7 +85,9 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
   const paymentResultFlow: PaymentResultFlow =
     paymentParams?.flow === 'DUTCH_PAY'
       ? 'DUTCH_PAY_PRE_AUTH'
-    : paymentParams?.flow === 'DUTCH_PAY_FINAL'
+    : paymentParams?.flow === 'DUTCH_PAY_MEMBER'
+      ? 'DUTCH_PAY_MEMBER'
+      : paymentParams?.flow === 'DUTCH_PAY_FINAL'
         ? 'DUTCH_PAY_FINAL'
         : 'NORMAL';
 
