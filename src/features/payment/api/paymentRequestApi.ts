@@ -1,4 +1,5 @@
 import type {
+    DirectPaymentRequestPayload,
     PaymentRequestErrorBody,
     PaymentRequestErrorDetails,
     PaymentRequestPayload,
@@ -11,6 +12,7 @@ import {
 
 const PAYMENT_REQUEST_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/request`;
 const PAYMENT_DIRECT_REQUEST_URL = `${PAYMENT_API_BASE_URL}/api/v1/payment/request-direct`;
+const PAYMENT_REQUEST_TIMEOUT_MS = 15_000;
 
 export class PaymentRequestError extends Error {
     code?: string;
@@ -30,61 +32,53 @@ export async function requestPayment(
     payload: PaymentRequestPayload,
     idempotencyKey: string,
 ): Promise<PaymentRequestResponse> {
-    const response = await fetch(PAYMENT_REQUEST_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': getPaymentUserId(),
-            'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response
-            .json()
-            .catch(() => null) as PaymentRequestErrorBody | null;
-
-        if (errorBody) {
-            throw new PaymentRequestError(errorBody);
-        }
-
-        throw new Error('결제 요청에 실패했습니다.');
-    }
-
-    return response.json();
+    return postPaymentRequest(PAYMENT_REQUEST_URL, payload, idempotencyKey);
 }
 
 export async function requestDirectPayment(
-    payload: {
-        pin: string;
-        paymentId: number;
-        totalAmount: number;
-        cardId: number;
-    },
+    payload: DirectPaymentRequestPayload,
     idempotencyKey: string,
 ): Promise<PaymentRequestResponse> {
-    const response = await fetch(PAYMENT_DIRECT_REQUEST_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': getPaymentUserId(),
-            'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify(payload),
-    });
+    return postPaymentRequest(PAYMENT_DIRECT_REQUEST_URL, payload, idempotencyKey);
+}
 
-    if (!response.ok) {
-        const errorBody = await response
-            .json()
-            .catch(() => null) as PaymentRequestErrorBody | null;
+async function postPaymentRequest(
+    url: string,
+    payload: PaymentRequestPayload | DirectPaymentRequestPayload,
+    idempotencyKey: string,
+): Promise<PaymentRequestResponse> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+        () => controller.abort(),
+        PAYMENT_REQUEST_TIMEOUT_MS,
+    );
 
-        if (errorBody) {
-            throw new PaymentRequestError(errorBody);
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Id': getPaymentUserId(),
+                'Idempotency-Key': idempotencyKey,
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+        });
+
+        if (!response.ok) {
+            const errorBody = await response
+                .json()
+                .catch(() => null) as PaymentRequestErrorBody | null;
+
+            if (errorBody) {
+                throw new PaymentRequestError(errorBody);
+            }
+
+            throw new Error('결제 요청에 실패했습니다.');
         }
 
-        throw new Error('결제 요청에 실패했습니다.');
+        return response.json();
+    } finally {
+        clearTimeout(timeoutId);
     }
-
-    return response.json();
 }

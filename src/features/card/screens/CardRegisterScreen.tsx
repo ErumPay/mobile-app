@@ -3,17 +3,16 @@ import { useState } from 'react';
 
 import type { RootStackParamList } from '../../../../App';
 import { useManagedCardsStore } from '../../mypage/stores/useManagedCardsStore';
-import { CardApiError, registerCard } from '../api/cardApi';
+import { registerCard } from '../api/cardApi';
 import { getCardRegisterUserId } from '../api/cardApiConfig';
 import type { CardRegisterFormValues, RegisteredCard } from '../types/card';
 import { onlyDigits } from '../types/cardFormat';
+import type { CardRegisterFailureType } from '../types/cardRegisterFailure';
+import { resolveCardRegisterFailureType } from '../utils/cardErrorMapper';
 import { CardOcrScreen } from './CardOcrScreen';
 import { CardRegisterFormScreen } from './CardRegisterFormScreen';
 import { CardRegisterMethodSelectScreen } from './CardRegisterMethodSelectScreen';
-import {
-  CardRegisterResultScreen,
-  type CardRegisterFailureType,
-} from './CardRegisterResultScreen';
+import { CardRegisterResultScreen } from './CardRegisterResultScreen';
 
 type RegisterMode = 'select' | 'ocr' | 'manual' | 'success' | 'failure';
 type Props = NativeStackScreenProps<RootStackParamList, 'CardRegister'>;
@@ -201,37 +200,6 @@ function isRegisteredCardUnavailable(card: RegisteredCard) {
   const status = card.status.toUpperCase();
 
   return status !== 'ACTIVE';
-}
-
-function resolveCardRegisterFailureType(error: unknown): CardRegisterFailureType {
-  if (!(error instanceof CardApiError)) {
-    return 'SYSTEM';
-  }
-
-  if (
-    error.code === 'CARD-AUTH-301' ||
-    error.code === 'CARD_AUTHENTICATION_FAILED'
-  ) {
-    return 'AUTHENTICATION';
-  }
-
-  if (
-    error.code === 'CARD-CARD-303' ||
-    error.code === 'CARD_UNAVAILABLE'
-  ) {
-    return 'UNAVAILABLE';
-  }
-
-  if (
-    error.status >= 500 ||
-    error.code === 'CARD-BILL-402' ||
-    error.code === 'CARD-BILL-403' ||
-    error.code === 'CARD-SYS-900'
-  ) {
-    return 'SYSTEM';
-  }
-
-  return 'GENERAL';
 }
 
 export default CardRegisterScreen;

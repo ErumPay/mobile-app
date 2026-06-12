@@ -340,7 +340,7 @@ export async function fetchPaymentDetail(
 function formatRemoteParticipant(
   profile: UserProfile | null,
   fallbackName?: string,
-) {
+): string | undefined {
   const name = profile?.name || fallbackName;
   const phoneLast4 = profile?.phone.replace(/\D/g, '').slice(-4);
 

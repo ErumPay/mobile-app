@@ -7,13 +7,9 @@ import { Header } from '../../../shared/components/Header';
 import { PageWrap } from '../../../shared/components/PageWrap';
 import { colors } from '../../../shared/styles/designTokens';
 import type { RegisteredCard } from '../types/card';
+import type { CardRegisterFailureType } from '../types/cardRegisterFailure';
 
 type CardRegisterResultStatus = 'success' | 'failure';
-export type CardRegisterFailureType =
-  | 'GENERAL'
-  | 'AUTHENTICATION'
-  | 'UNAVAILABLE'
-  | 'SYSTEM';
 
 interface CardRegisterResultScreenProps {
   status: CardRegisterResultStatus;
