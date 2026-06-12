@@ -1090,13 +1090,20 @@ function toDutchPayProgressVariant(
   const myParticipant = session.participants.find(
     (participant) => participant.user_id === currentUserId,
   );
+  const isFailedPaymentParticipant =
+    myParticipant?.status === "REJECTED" &&
+    (myParticipant.payment_id != null || myParticipant.amount != null);
 
   if (
     !myParticipant ||
-    myParticipant.status === "REJECTED" ||
+    (myParticipant.status === "REJECTED" && !isFailedPaymentParticipant) ||
     myParticipant.status === "TIMEOUT"
   ) {
     return null;
+  }
+
+  if (isFailedPaymentParticipant) {
+    return "DUTCHPAY_MEMBER_WAITING_OTHERS";
   }
 
   if (myParticipant.status === "INVITED") {

@@ -195,6 +195,20 @@ function applyFailedPaymentAmountToOwner(
   );
 }
 
+function isDutchPayFailedPaymentParticipant(participant: DutchPayParticipantResponse) {
+  return (
+    participant.status === 'REJECTED' &&
+    (participant.payment_id != null || participant.amount != null)
+  );
+}
+
+function isDutchPayVisibleParticipant(participant: DutchPayParticipantResponse) {
+  return (
+    participant.status !== 'REJECTED' ||
+    isDutchPayFailedPaymentParticipant(participant)
+  );
+}
+
 function toDutchPayScenario(
   session: DutchPaySessionDetailResponse,
   role: 'OWNER' | 'PARTICIPANT',
@@ -203,9 +217,7 @@ function toDutchPayScenario(
 ): DutchPayScenario {
   const isEqualSplit =
     session.split_method === 'EQUAL' || routeSplitType === 'AUTO_SPLIT';
-  const activeParticipants = session.participants.filter(
-    (participant) => participant.status !== 'REJECTED',
-  );
+  const activeParticipants = session.participants.filter(isDutchPayVisibleParticipant);
   const currentParticipant = activeParticipants.find(
     (participant) => participant.user_id === currentUserId,
   );
@@ -278,6 +290,10 @@ function toDutchPayScenario(
 }
 
 function toDutchPayMemberStatus(participant: DutchPayParticipantResponse) {
+  if (isDutchPayFailedPaymentParticipant(participant)) {
+    return 'PAYMENT_FAILED' as const;
+  }
+
   if (participant.status === 'PAID' || participant.status === 'HOST_PAID') {
     return 'PAYMENT_COMPLETED' as const;
   }
@@ -364,7 +380,7 @@ function toDutchPayGroupData(
   const scenario = toDutchPayScenario(session, role, currentUserId, routeSplitType);
   const canEditMembers = role === 'OWNER' && scenario === 'OWNER_INITIAL';
   const members = session.participants
-    .filter((participant) => participant.status !== 'REJECTED')
+    .filter(isDutchPayVisibleParticipant)
     .map((participant) =>
     {
       const member = toDutchPayMember(participant, currentUserId, userSummaries);
@@ -482,6 +498,16 @@ function getServerFooter(scenario: DutchPayScenario) {
   };
 }
 
+function isDutchPayAccessDeniedError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+
+  return (
+    message.includes('DUTCH_ACCESS_DENIED') ||
+    message.includes('접근 권한') ||
+    message.includes('권한이 없습니다')
+  );
+}
+
 export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? 'OWNER';
   const scenario = route.params?.scenario;
@@ -513,6 +539,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const previousParticipantPaymentRequestRef = useRef(false);
   const participantPaymentCompleteModalShownRef = useRef(false);
   const sessionClosedModalShownRef = useRef(false);
+  const participantRemovedModalShownRef = useRef(false);
   const timeoutModalShownRef = useRef(false);
   const data = useMemo(
     () => {
@@ -556,6 +583,8 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const [stopModalVisible, setStopModalVisible] = useState(false);
   const [cancelGroupModalVisible, setCancelGroupModalVisible] = useState(false);
   const [leaveGroupModalVisible, setLeaveGroupModalVisible] = useState(false);
+  const [participantRemovedModalVisible, setParticipantRemovedModalVisible] =
+    useState(false);
   const [paymentCompleteModalVisible, setPaymentCompleteModalVisible] =
     useState(false);
 
@@ -711,14 +740,39 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     [navigation, role],
   );
 
+  const handleParticipantRemoved = useCallback(() => {
+    if (participantRemovedModalShownRef.current) {
+      return;
+    }
+
+    participantRemovedModalShownRef.current = true;
+    setToastVisible(false);
+    setStopModalVisible(false);
+    setCancelGroupModalVisible(false);
+    setLeaveGroupModalVisible(false);
+    setPaymentCompleteModalVisible(false);
+    setTimeoutModalVisible(false);
+    setServerSession(null);
+    setParticipantRemovedModalVisible(true);
+  }, []);
+
   const refreshServerSession = useCallback(async () => {
     if (sessionId == null) {
       return;
     }
 
-    const nextSession = await getDutchPaySession(sessionId, currentUserId);
-    setServerSession(nextSession);
-  }, [currentUserId, sessionId]);
+    try {
+      const nextSession = await getDutchPaySession(sessionId, currentUserId);
+      setServerSession(nextSession);
+    } catch (error) {
+      if (role === 'PARTICIPANT' && isDutchPayAccessDeniedError(error)) {
+        handleParticipantRemoved();
+        return;
+      }
+
+      throw error;
+    }
+  }, [currentUserId, handleParticipantRemoved, role, sessionId]);
 
   useEffect(() => {
     if (isServerMode) {
@@ -864,6 +918,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
         }
       } catch (error) {
         if (isMounted) {
+          if (role === 'PARTICIPANT' && isDutchPayAccessDeniedError(error)) {
+            handleParticipantRemoved();
+            return;
+          }
+
           setServerErrorMessage(
             error instanceof Error
               ? error.message
@@ -888,7 +947,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     return () => {
       isMounted = false;
     };
-  }, [currentUserId, sessionId]);
+  }, [currentUserId, handleParticipantRemoved, role, sessionId]);
 
   useEffect(() => {
     if (!forcedScenario || !serverSession) {
@@ -931,6 +990,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       data.scenario === 'OWNER_PAYMENT_PROGRESS' ||
       data.scenario === 'OWNER_FINAL_PAYMENT_READY' ||
       data.scenario === 'OWNER_FINAL_PAYMENT_FAILURE' ||
+      (role === 'PARTICIPANT' && data.scenario === 'PARTICIPANT_AMOUNT_INPUT') ||
       (data.scenario === 'PARTICIPANT_AMOUNT_INPUT' && isMyAmountConfirmed) ||
       data.scenario === 'PARTICIPANT_AMOUNT_REVIEW' ||
       data.scenario === 'PARTICIPANT_PAYMENT_REQUEST' ||
@@ -961,6 +1021,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     isMyAmountConfirmed,
     isServerMode,
     refreshServerSession,
+    role,
     sessionId,
   ]);
 
@@ -1113,6 +1174,11 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
 
   const handleConfirmPaymentComplete = () => {
     setPaymentCompleteModalVisible(false);
+    navigation.navigate('Main', { userId: currentUserId });
+  };
+
+  const handleConfirmParticipantRemoved = () => {
+    setParticipantRemovedModalVisible(false);
     navigation.navigate('Main', { userId: currentUserId });
   };
 
@@ -1481,6 +1547,15 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           onConfirm={handleConfirmStopPayment}
           onCancel={() => setStopModalVisible(false)}
         />
+        <Modal
+          visible={participantRemovedModalVisible}
+          type="one"
+          title="더치페이 그룹에서 내보내졌습니다."
+          description="다시 참여하려면 초대 링크로 재입장해주세요."
+          confirmLabel="확인"
+          onConfirm={handleConfirmParticipantRemoved}
+          onClose={handleConfirmParticipantRemoved}
+        />
       </PageWrap>
     );
   }
@@ -1558,6 +1633,15 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           onConfirm={handleConfirmLeaveGroup}
           onCancel={() => setLeaveGroupModalVisible(false)}
           onClose={() => setLeaveGroupModalVisible(false)}
+        />
+        <Modal
+          visible={participantRemovedModalVisible}
+          type="one"
+          title="더치페이 그룹에서 내보내졌습니다."
+          description="다시 참여하려면 초대 링크로 재입장해주세요."
+          confirmLabel="확인"
+          onConfirm={handleConfirmParticipantRemoved}
+          onClose={handleConfirmParticipantRemoved}
         />
         <Modal
           visible={paymentCompleteModalVisible}
