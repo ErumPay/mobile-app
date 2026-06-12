@@ -35,6 +35,7 @@ export type DutchPayGroupRouteParams = {
   userId?: number | string;
   selectedUserIds?: number[];
   splitMethod?: 'EQUAL' | 'CUSTOM';
+  orderName?: string;
   merchantName?: string;
   merchantId?: number | string;
 };

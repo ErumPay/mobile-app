@@ -28,23 +28,17 @@ import type {
 } from '../types/dutchPay.types';
 import {
   cancelDutchPaySession,
+  confirmDutchPayAmount,
   confirmDutchPayParticipants,
   getDutchPaySession,
   rejectDutchPayInvite,
   removeDutchPayParticipant,
+  requestDutchPayPayment,
   updateDutchPayMyAmount,
   type DutchPayParticipantResponse,
   type DutchPaySessionDetailResponse,
 } from '../api/dutchPayApi';
 import { getPaymentUserId } from '../api/paymentApiConfig';
-import {
-  addRequestedDutchPaySession,
-  getRequestedDutchPaySessionIdSet,
-} from '../utils/requestedDutchPaySessions';
-import {
-  addConfirmedDutchPayAmountSession,
-  getConfirmedDutchPayAmountSessionIdSet,
-} from '../utils/confirmedDutchPayAmountSessions';
 import { useDutchPayProgressUserStore } from '../stores/useDutchPayProgressUserStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DutchPayGroup'>;
@@ -227,8 +221,12 @@ function toDutchPayScenario(
   if (role === 'PARTICIPANT') {
     switch (session.session_progress_step) {
       case 'AMOUNT_INPUT':
+      case 'AMOUNT_INPUT_COMPLETED':
         return 'PARTICIPANT_AMOUNT_INPUT';
+      case 'AMOUNT_CONFIRMED':
+        return 'PARTICIPANT_AMOUNT_REVIEW';
       case 'PAYMENT_REQUEST':
+      case 'PAYMENT_REQUESTED':
         if (currentParticipant?.status === 'PAID') {
           return 'PARTICIPANT_PAYMENT_PROGRESS';
         }
@@ -258,8 +256,13 @@ function toDutchPayScenario(
       }
 
       return 'OWNER_AMOUNT_INPUT_WAITING';
-    case 'PAYMENT_REQUEST':
+    case 'AMOUNT_INPUT_COMPLETED':
       return 'OWNER_AMOUNT_INPUT_COMPLETE';
+    case 'AMOUNT_CONFIRMED':
+      return 'OWNER_PAYMENT_REQUEST';
+    case 'PAYMENT_REQUEST':
+    case 'PAYMENT_REQUESTED':
+      return 'OWNER_PAYMENT_PROGRESS';
     case 'PAYMENT_IN_PROGRESS':
       return 'OWNER_PAYMENT_PROGRESS';
     case 'FINAL_PAYMENT_REQUIRED':
@@ -502,14 +505,12 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   const [serverErrorMessage, setServerErrorMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLeavingForPayment, setIsLeavingForPayment] = useState(false);
-  const [isAmountConfirmed, setIsAmountConfirmed] = useState(false);
-  const [isPaymentRequestSent, setIsPaymentRequestSent] = useState(false);
   const [forcedScenario, setForcedScenario] = useState<DutchPayScenario | null>(
     isServerMode ? scenario ?? null : null,
   );
   const [timeoutModalVisible, setTimeoutModalVisible] = useState(false);
   const isPollingSessionRef = useRef(false);
-  const previousPaymentRequestSentRef = useRef(false);
+  const previousParticipantPaymentRequestRef = useRef(false);
   const participantPaymentCompleteModalShownRef = useRef(false);
   const sessionClosedModalShownRef = useRef(false);
   const timeoutModalShownRef = useRef(false);
@@ -525,55 +526,7 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           )
         : getMockDutchPayGroupData({ role, scenario });
 
-      if (
-        !forcedScenario ||
-        nextData.scenario !== 'OWNER_AMOUNT_INPUT_COMPLETE'
-      ) {
-        if (
-          isPaymentRequestSent &&
-          nextData.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
-        ) {
-          return {
-            ...nextData,
-            scenario: 'OWNER_PAYMENT_PROGRESS' as const,
-            footer: getServerFooter('OWNER_PAYMENT_PROGRESS'),
-            members: nextData.members.map(toOwnerPaymentProgressMember),
-          };
-        }
-
-        if (
-          isAmountConfirmed &&
-          nextData.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE'
-        ) {
-          return {
-            ...nextData,
-            scenario: 'OWNER_PAYMENT_REQUEST' as const,
-            footer: getServerFooter('OWNER_PAYMENT_REQUEST'),
-          };
-        }
-
-        if (
-          isPaymentRequestSent &&
-          nextData.scenario === 'PARTICIPANT_AMOUNT_REVIEW'
-        ) {
-          return {
-            ...nextData,
-            scenario: 'PARTICIPANT_PAYMENT_REQUEST' as const,
-            footer: getServerFooter('PARTICIPANT_PAYMENT_REQUEST'),
-          };
-        }
-
-        if (
-          isAmountConfirmed &&
-          nextData.scenario === 'PARTICIPANT_AMOUNT_INPUT'
-        ) {
-          return {
-            ...nextData,
-            scenario: 'PARTICIPANT_AMOUNT_REVIEW' as const,
-            footer: getServerFooter('PARTICIPANT_AMOUNT_REVIEW'),
-          };
-        }
-
+      if (!forcedScenario || nextData.scenario !== 'OWNER_AMOUNT_INPUT_COMPLETE') {
         return nextData;
       }
 
@@ -590,8 +543,6 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     [
       currentUserId,
       forcedScenario,
-      isAmountConfirmed,
-      isPaymentRequestSent,
       role,
       scenario,
       serverSession,
@@ -766,19 +717,6 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
     }
 
     const nextSession = await getDutchPaySession(sessionId, currentUserId);
-    const [confirmedSessionIds, requestedSessionIds] = await Promise.allSettled([
-      getConfirmedDutchPayAmountSessionIdSet(),
-      getRequestedDutchPaySessionIdSet(),
-    ]);
-
-    if (confirmedSessionIds.status === 'fulfilled') {
-      setIsAmountConfirmed(confirmedSessionIds.value.has(sessionId));
-    }
-
-    if (requestedSessionIds.status === 'fulfilled') {
-      setIsPaymentRequestSent(requestedSessionIds.value.has(sessionId));
-    }
-
     setServerSession(nextSession);
   }, [currentUserId, sessionId]);
 
@@ -787,43 +725,6 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
       setDutchPayProgressUserId(currentUserId);
     }
   }, [currentUserId, isServerMode, setDutchPayProgressUserId]);
-
-  useEffect(() => {
-    if (sessionId == null) {
-      setIsAmountConfirmed(false);
-      setIsPaymentRequestSent(false);
-      return;
-    }
-
-    let isMounted = true;
-
-    Promise.allSettled([
-      getConfirmedDutchPayAmountSessionIdSet(),
-      getRequestedDutchPaySessionIdSet(),
-    ])
-      .then(([confirmedSessionIds, requestedSessionIds]) => {
-        if (isMounted) {
-          setIsAmountConfirmed(
-            confirmedSessionIds.status === 'fulfilled' &&
-              confirmedSessionIds.value.has(sessionId),
-          );
-          setIsPaymentRequestSent(
-            requestedSessionIds.status === 'fulfilled' &&
-              requestedSessionIds.value.has(sessionId),
-          );
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setIsAmountConfirmed(false);
-          setIsPaymentRequestSent(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [sessionId]);
 
   useEffect(() => {
     if (!isServerMode) {
@@ -1127,16 +1028,31 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
   }, [data.scenario]);
 
   useEffect(() => {
+    if (!toastVisible) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setToastVisible(false);
+    }, 2500);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [toastVisible]);
+
+  useEffect(() => {
     if (
       role === 'PARTICIPANT' &&
-      isPaymentRequestSent &&
-      !previousPaymentRequestSentRef.current
+      data.scenario === 'PARTICIPANT_PAYMENT_REQUEST' &&
+      !previousParticipantPaymentRequestRef.current
     ) {
       setToastVisible(true);
     }
 
-    previousPaymentRequestSentRef.current = isPaymentRequestSent;
-  }, [isPaymentRequestSent, role]);
+    previousParticipantPaymentRequestRef.current =
+      data.scenario === 'PARTICIPANT_PAYMENT_REQUEST';
+  }, [data.scenario, role]);
 
   useEffect(() => {
     if (
@@ -1239,16 +1155,22 @@ export default function DutchPayGroupScreen({ navigation, route }: Props) {
           }
 
           if (data.scenario === 'OWNER_AMOUNT_INPUT_COMPLETE') {
-            await addConfirmedDutchPayAmountSession(sessionId);
-            setIsAmountConfirmed(true);
-            setForcedScenario('OWNER_PAYMENT_REQUEST');
+            const nextSession = await confirmDutchPayAmount({
+              sessionId,
+              userId: currentUserId,
+            });
+            setServerSession(nextSession);
+            setForcedScenario(null);
             return;
           }
 
           if (data.scenario === 'OWNER_PAYMENT_REQUEST') {
-            await addRequestedDutchPaySession(sessionId);
-            setIsPaymentRequestSent(true);
-            setForcedScenario('OWNER_PAYMENT_PROGRESS');
+            const nextSession = await requestDutchPayPayment({
+              sessionId,
+              userId: currentUserId,
+            });
+            setServerSession(nextSession);
+            setForcedScenario(null);
             return;
           }
 

@@ -9,7 +9,7 @@ export function toPaymentRequestSummary(
             paymentId: response.paymentId,
             remoteRequestId: response.paymentId,
             payerPaymentId: response.paymentId,
-            merchantName: response.order_name,
+            merchantName: response.order_name ?? response.merchant_name,
             amount: response.amount,
             type: 'REMOTE_RECIPIENT',
         };
