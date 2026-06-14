@@ -727,11 +727,17 @@ export default function PaymentParticipantSelectScreen({
   const handleCloseShareModal = () => {
     const shouldContinueDutchGroup =
       isDutchPay && shareStep === 'COPIED' && route.params?.dutchSessionId != null;
+    const shouldReturnMainAfterRemoteShare = !isDutchPay && shareStep === 'COPIED';
 
     resetShareModal();
 
     if (shouldContinueDutchGroup) {
       navigateToDutchPayGroup();
+      return;
+    }
+
+    if (shouldReturnMainAfterRemoteShare) {
+      navigation.navigate('Main');
     }
   };
 

@@ -26,6 +26,7 @@ import {
     subscribePaymentCardRecommendations,
 } from '../api/paymentCardRecommendationApi';
 import { toPaymentCardSelectData } from '../utils/paymentCardRecommendationAdapter';
+import { getPaymentDisplayErrorMessage } from '../utils/paymentDisplayErrorMessage';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 import { saveRemotePaymentIdempotencyKey } from '../utils/remotePaymentIdempotencyKey';
 
@@ -536,9 +537,10 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
                     setData(null);
                     setHasNoRegisteredCards(false);
                     setErrorMessage(
-                        error instanceof Error
-                            ? error.message
-                            : '결제 카드 추천 정보를 불러오지 못했습니다.',
+                        getPaymentDisplayErrorMessage(
+                            error,
+                            '결제 카드 추천 정보를 불러오지 못했습니다.',
+                        ),
                     );
                 }
             } finally {

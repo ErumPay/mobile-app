@@ -15,6 +15,7 @@ import { colors } from '../../../shared/styles/designTokens';
 import { fetchPaymentDetail } from '../../mypage/api/mypageApi';
 import type { PaymentDetail } from '../../mypage/types/mypage';
 import { cancelPayment } from '../api/paymentCancelApi';
+import { getPaymentDisplayErrorMessage } from '../utils/paymentDisplayErrorMessage';
 import { createPaymentCancelIdempotencyKey } from '../utils/paymentIdempotencyKey';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentCancel'>;
@@ -273,10 +274,10 @@ export default function PaymentCancelScreen({ navigation, route }: Props) {
         idempotencyKey,
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : '결제 취소에 실패했습니다.';
+      const message = getPaymentDisplayErrorMessage(
+        error,
+        '결제 취소에 실패했습니다.',
+      );
       setErrorMessage(message);
       setModalVisible(true);
     } finally {
