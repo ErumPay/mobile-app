@@ -7,6 +7,7 @@ import type { RootStackParamList } from '../../../../App';
 import { Button } from '../../../shared/components/Button';
 import { Header } from '../../../shared/components/Header';
 import { colors } from '../../../shared/styles/designTokens';
+import { fetchMerchantName } from '../api/merchantApi';
 import { requestOfflinePaymentQrImage } from '../api/paymentQrApi';
 import type { OfflinePaymentQrRequestPayload } from '../types/offlinePaymentQr.types';
 
@@ -22,21 +23,39 @@ function formatAmount(amount: number) {
     return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+function normalizeChannelType(value?: string): OfflinePaymentQrRequestPayload['channel_type'] {
+    const channelType = value?.trim().toUpperCase();
+
+    return channelType === 'ONLINE' || channelType === 'OFFLINE'
+        ? channelType
+        : DEFAULT_PAYMENT_QR_REQUEST.channel_type;
+}
+
+function normalizeMerchantName(value?: string) {
+    const merchantName = value?.trim();
+
+    return merchantName ? merchantName : undefined;
+}
+
 export default function OfflinePaymentQrScreen({ navigation, route }: Props) {
+    const routeMerchantName = normalizeMerchantName(route.params?.merchantName);
     const [qrImageUri, setQrImageUri] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const [resolvedMerchantName, setResolvedMerchantName] = useState(
+        routeMerchantName ?? '가맹점',
+    );
 
     const payload = useMemo<OfflinePaymentQrRequestPayload>(
         () => ({
             merchant_id:
                 route.params?.merchantId ?? DEFAULT_PAYMENT_QR_REQUEST.merchant_id,
             amount: route.params?.amount ?? DEFAULT_PAYMENT_QR_REQUEST.amount,
-            channel_type: 'OFFLINE',
+            channel_type: normalizeChannelType(route.params?.channelType),
         }),
-        [route.params?.amount, route.params?.merchantId],
+        [route.params?.amount, route.params?.channelType, route.params?.merchantId],
     );
-    const merchantName = route.params?.merchantName ?? '가맹점';
+    const merchantName = routeMerchantName ?? resolvedMerchantName;
 
     const loadQrImage = useCallback(async () => {
         try {
@@ -57,6 +76,31 @@ export default function OfflinePaymentQrScreen({ navigation, route }: Props) {
     useEffect(() => {
         void loadQrImage();
     }, [loadQrImage]);
+
+    useEffect(() => {
+        if (routeMerchantName) {
+            setResolvedMerchantName(routeMerchantName);
+            return;
+        }
+
+        let isMounted = true;
+
+        fetchMerchantName(payload.merchant_id)
+            .then((merchantName) => {
+                if (isMounted) {
+                    setResolvedMerchantName(merchantName);
+                }
+            })
+            .catch(() => {
+                if (isMounted) {
+                    setResolvedMerchantName('가맹점');
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [payload.merchant_id, routeMerchantName]);
 
     const handlePressClose = () => {
         if (navigation.canGoBack()) {

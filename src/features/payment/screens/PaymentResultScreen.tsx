@@ -17,6 +17,7 @@ import type {
     PaymentResultStatus,
 } from '../types/paymentResult.types';
 import { getActiveDutchPaySessions } from '../api/dutchPayApi';
+import { getPaymentDisplayErrorMessage } from '../utils/paymentDisplayErrorMessage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PaymentResult'>;
 
@@ -172,7 +173,7 @@ export default function PaymentResultScreen({ navigation, route }: Props) {
     const content = getPaymentResultContent({ status, flow });
     const description =
         status === 'FAILURE' && route.params?.failureMessage
-            ? route.params.failureMessage
+            ? getPaymentDisplayErrorMessage(route.params.failureMessage)
             : content.description;
 
     const handlePressClose = () => {

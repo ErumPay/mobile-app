@@ -19,6 +19,7 @@ import {
 import { useRemotePaymentProgressStore } from '../stores/useRemotePaymentProgressStore';
 import type { PaymentPinMode } from '../types/paymentPin.types';
 import type { PaymentResultFlow } from '../types/paymentResult.types';
+import { getPaymentDisplayErrorMessage } from '../utils/paymentDisplayErrorMessage';
 import { createPaymentIdempotencyKey } from '../utils/paymentIdempotencyKey';
 import { removeRemotePaymentIdempotencyKey } from '../utils/remotePaymentIdempotencyKey';
 import {
@@ -362,10 +363,10 @@ export default function PaymentPinScreen({ navigation, route }: Props) {
         navigation?.replace('PaymentResult', {
           status: 'FAILURE',
           flow: paymentResultFlow,
-          failureMessage:
-            error instanceof Error
-              ? error.message
-              : '결제 요청에 실패했습니다. 다시 시도해주세요.',
+          failureMessage: getPaymentDisplayErrorMessage(
+            error,
+            '결제 요청에 실패했습니다. 다시 시도해주세요.',
+          ),
           ...retryPaymentResultParams,
         });
       } finally {
