@@ -101,6 +101,7 @@ function resolveRecommendedCard(data: PaymentCardSelectData | null): Recommended
     return {
         ...data.recommendedCard,
         card: fallbackCard,
+        cards: [fallbackCard],
     };
 }
 
@@ -348,7 +349,9 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
             return null;
         }
 
-        const recommendedCombination = data.cardCombinations[0];
+        const recommendedCombination =
+            data.cardCombinations.find((combination) => combination.isBest) ??
+            data.cardCombinations[0];
 
         if (
             recommendedCombination &&
@@ -388,6 +391,17 @@ export default function PaymentCardSelectScreen({ navigation, route }: Props) {
         (!selectedCardId && !isCombinationSelected) ||
         !selectedStrategyType ||
         !selectedPaymentCards.length;
+
+    useEffect(() => {
+        const recommendedCombination = data?.cardCombinations[0];
+
+        if (!recommendedCombination) {
+            return;
+        }
+
+        setSelectedCombinationType(recommendedCombination.type);
+        setIsCombinationSelected(false);
+    }, [data]);
 
     useEffect(() => {
         if (!canPreparePayment || !idempotencyKey) {

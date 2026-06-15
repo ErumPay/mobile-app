@@ -36,11 +36,13 @@ export type RecommendedPaymentCard = {
     description?: string;
     badgeText?: string;
     card?: PaymentCard;
+    cards?: PaymentCard[];
 };
 
 export type CardCombination = {
     type: CardCombinationType;
     strategyType: PaymentCardRecommendationStrategyType;
+    isBest?: boolean;
     label: string;
     description: string;
     cards: PaymentCard[];

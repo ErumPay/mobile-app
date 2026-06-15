@@ -7,7 +7,7 @@ import type { PaymentCard } from '../types/paymentCard.types';
 type Props = {
     card: PaymentCard;
     selected?: boolean;
-    size?: 'large' | 'small';
+    size?: 'large' | 'grid' | 'small';
     showInfoOverlay?: boolean;
 };
 
@@ -40,7 +40,9 @@ export default function PaymentCardPreview({
     const containerClassName =
         size === 'small'
             ? 'h-14 w-20 rounded-lg'
-            : 'h-[176px] w-full rounded-2xl';
+            : size === 'grid'
+                ? 'h-[104px] w-full rounded-xl'
+                : 'h-[176px] w-full rounded-2xl';
     const wrapperClassName =
         size === 'small'
             ? 'relative items-center'
@@ -48,8 +50,8 @@ export default function PaymentCardPreview({
 
     const imageStyle = isVerticalImage
         ? {
-            width: size === 'small' ? 48 : 176,
-            height: size === 'small' ? 80 : 300,
+            width: size === 'small' ? 48 : size === 'grid' ? 104 : 176,
+            height: size === 'small' ? 80 : size === 'grid' ? 176 : 300,
             opacity: showInfoOverlay ? 0.8 : 1,
             transform: [{ rotate: '90deg' }],
         }
@@ -61,6 +63,8 @@ export default function PaymentCardPreview({
     const companyTextClassName =
         size === 'small'
             ? 'text-center font-pretendard text-caption-bold text-neutral-black1'
+            : size === 'grid'
+                ? 'text-center font-pretendard text-[11px] leading-4 text-neutral-black1'
             : 'text-center font-pretendard text-normal-bold text-neutral-black1';
     const maskedNumberTextClassName =
         size === 'small'
@@ -85,6 +89,8 @@ export default function PaymentCardPreview({
                                     className={
                                         size === 'small'
                                             ? 'max-w-[72px] rounded-md bg-neutral-white/90 px-1.5 py-0.5'
+                                            : size === 'grid'
+                                                ? 'max-w-[88%] rounded-lg bg-neutral-white/90 px-2 py-1'
                                             : 'max-w-[88%] rounded-xl bg-neutral-white/90 px-4 py-2'
                                     }
                                 >

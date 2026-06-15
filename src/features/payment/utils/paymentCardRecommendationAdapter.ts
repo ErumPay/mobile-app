@@ -8,6 +8,7 @@ import type {
 import type {
     PaymentCardRecommendationCard,
     PaymentCardRecommendationResponse,
+    PaymentCardRecommendationResult,
     PaymentCardRecommendationStrategyType,
 } from '../types/paymentCardRecommendation.types';
 
@@ -55,9 +56,16 @@ const emptyCombinationStrategyTypeByType: Record<
 
 const allCombinationTypes: CardCombinationType[] = [
     'SINGLE_BENEFIT',
-    'SINGLE_PERFORMANCE',
     'SPLIT_BENEFIT',
+    'SINGLE_PERFORMANCE',
     'SPLIT_PERFORMANCE',
+];
+
+const strategyDisplayOrder: PaymentCardRecommendationStrategyType[] = [
+    'BENEFIT_SINGLE',
+    'BENEFIT_SPLIT',
+    'PERF_SINGLE',
+    'PERF_SPLIT',
 ];
 
 const benefitStrategyTypes: PaymentCardRecommendationStrategyType[] = [
@@ -185,6 +193,16 @@ const createEmptyCardCombinations = (): CardCombination[] =>
         cards: [],
     }));
 
+const sortResultsByDisplayOrder = (
+    results: PaymentCardRecommendationResult[],
+): PaymentCardRecommendationResult[] => {
+    return [...results].sort(
+        (a, b) =>
+            strategyDisplayOrder.indexOf(a.strategyType) -
+            strategyDisplayOrder.indexOf(b.strategyType),
+    );
+};
+
 export function toPaymentCardSelectData(
     response: PaymentCardRecommendationResponse,
     fallbackRegisteredCards: PaymentCard[] = [],
@@ -200,13 +218,15 @@ export function toPaymentCardSelectData(
             paymentAmount,
         );
         const cardCombinations = createEmptyCardCombinations();
+        const primaryCard = registeredCards.find((card) => card.isPrimary) ?? registeredCards[0];
 
         return {
             flowType: 'NORMAL',
             recommendedCard: {
                 title: '이룸페이가 추천해요!',
                 badgeText: undefined,
-                card: registeredCards.find((card) => card.isPrimary) ?? registeredCards[0],
+                card: primaryCard,
+                cards: primaryCard ? [primaryCard] : [],
             },
             registeredCards,
             cardCombinations,
@@ -216,7 +236,9 @@ export function toPaymentCardSelectData(
     const fallbackCardMap = new Map(
         fallbackRegisteredCards.map((card) => [card.id, card]),
     );
-    const combinations = response.results.map((result) => {
+    const orderedResults = sortResultsByDisplayOrder(response.results);
+    const bestResult = response.results.find((result) => result.isBest);
+    const combinations = orderedResults.map((result) => {
         const type = strategyTypeToCombinationType[result.strategyType];
         const meta = combinationMeta[type];
         const cards =
@@ -228,6 +250,7 @@ export function toPaymentCardSelectData(
         return {
             type,
             strategyType: result.strategyType,
+            isBest: result.isBest,
             label: meta.label,
             description: meta.description,
             cards,
@@ -240,13 +263,19 @@ export function toPaymentCardSelectData(
     });
 
     const recommendedRegisteredCards = getUniqueCards(
-        response.results.flatMap((result) => result.cards?.map(toPaymentCard) ?? []),
+        orderedResults.flatMap((result) => result.cards?.map(toPaymentCard) ?? []),
     );
     const registeredCards =
         recommendedRegisteredCards.length > 0
             ? recommendedRegisteredCards
             : toFallbackRegisteredCards(fallbackRegisteredCards, paymentAmount);
+    const recommendedCards =
+        bestResult?.cards
+            ?.map(toPaymentCard)
+            .map((card) => mergeRegisteredCardFallback(card, fallbackCardMap)) ??
+        [];
     const recommendedCard =
+        recommendedCards[0] ??
         combinations.flatMap((combination) => combination.cards)[0] ??
         registeredCards.find((card) => card.isPrimary) ??
         registeredCards[0];
@@ -261,6 +290,7 @@ export function toPaymentCardSelectData(
             title: '이룸페이가 추천해요!',
             badgeText: 'BEST',
             card: recommendedCard,
+            cards: recommendedCards.length > 0 ? recommendedCards : [recommendedCard],
         },
         registeredCards,
         cardCombinations: combinations,

@@ -29,6 +29,7 @@ export type PaymentCardRecommendationCard = {
 
 export type PaymentCardRecommendationResult = {
     strategyType: PaymentCardRecommendationStrategyType;
+    isBest?: boolean;
     totalBenefitAmount: number;
     cards: PaymentCardRecommendationCard[];
     reason: string | null;

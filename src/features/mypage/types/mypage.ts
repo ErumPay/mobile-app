@@ -40,6 +40,7 @@ export type PaymentHistoryItem = {
   title: string;
   date: string;
   amount: string;
+  discountAmount?: string;
 };
 
 export type PaymentDetail = PaymentHistoryItem & {

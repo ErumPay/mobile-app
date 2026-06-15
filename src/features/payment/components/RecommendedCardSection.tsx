@@ -22,6 +22,16 @@ export default function RecommendedCardSection({
                                                    onPress,
                                                    onPressAction,
                                                }: Props) {
+    const recommendedCards =
+        recommendedCard.cards?.length
+            ? recommendedCard.cards
+            : recommendedCard.card
+                ? [recommendedCard.card]
+                : [];
+    const hasMultipleCards = recommendedCards.length > 1;
+    const lastRowStartIndex =
+        recommendedCards.length - (recommendedCards.length % 2 === 0 ? 2 : 1);
+
     return (
         <View>
             <View className="flex-row items-center justify-between gap-3">
@@ -58,7 +68,7 @@ export default function RecommendedCardSection({
                 </Text>
             )}
 
-            {recommendedCard.card ? (
+            {recommendedCards.length > 0 ? (
                 <Pressable
                     onPress={onPress}
                     className={`mt-5 rounded-2xl border bg-[#EBFFF8] p-4 ${
@@ -85,7 +95,30 @@ export default function RecommendedCardSection({
                         </View>
                     )}
 
-                    <PaymentCardPreview card={recommendedCard.card} selected={selected} />
+                    {hasMultipleCards ? (
+                        <View className="flex-row flex-wrap justify-between">
+                            {recommendedCards.map((card, index) => (
+                                <View
+                                    key={`${card.id}-${index}`}
+                                    style={{
+                                        width: '48%',
+                                        marginBottom: index < lastRowStartIndex ? 12 : 0,
+                                    }}
+                                >
+                                    <PaymentCardPreview
+                                        card={card}
+                                        selected={selected}
+                                        size="grid"
+                                    />
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <PaymentCardPreview
+                            card={recommendedCards[0]}
+                            selected={selected}
+                        />
+                    )}
                 </Pressable>
             ) : (
                 <View className="mt-5">

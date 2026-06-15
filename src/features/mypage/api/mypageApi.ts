@@ -244,6 +244,7 @@ export async function fetchCardPerformance(
 }
 
 type FetchPaymentHistoriesParams = {
+  page?: number;
   status?: 'ALL' | 'PAID' | 'CANCELED';
   period?: 'WEEK' | 'MONTH' | 'YEAR';
   start?: string;
@@ -252,11 +253,44 @@ type FetchPaymentHistoriesParams = {
   strategyType?: 'BENEFIT_SINGLE' | 'BENEFIT_SPLIT' | 'PERF_SINGLE' | 'PERF_SPLIT';
 };
 
+type PaymentHistoryPage = {
+  items: PaymentHistoryItem[];
+  hasNext: boolean;
+};
+
 export async function fetchPaymentHistories(
   params: FetchPaymentHistoriesParams = {},
 ): Promise<PaymentHistoryItem[]> {
+  return (await fetchPaymentHistoryPage(params)).items;
+}
+
+export async function fetchAllPaymentHistories(
+  params: FetchPaymentHistoriesParams = {},
+): Promise<PaymentHistoryItem[]> {
+  const payments: PaymentHistoryItem[] = [];
+  let page = params.page ?? 0;
+
+  while (true) {
+    const nextPage = await fetchPaymentHistoryPage({
+      ...params,
+      page,
+    });
+
+    payments.push(...nextPage.items);
+
+    if (!nextPage.hasNext) {
+      return payments;
+    }
+
+    page += 1;
+  }
+}
+
+async function fetchPaymentHistoryPage(
+  params: FetchPaymentHistoriesParams = {},
+): Promise<PaymentHistoryPage> {
   const searchParams = new URLSearchParams({
-    page: '0',
+    page: String(params.page ?? 0),
     status: params.status ?? 'ALL',
   });
 
@@ -282,7 +316,10 @@ export async function fetchPaymentHistories(
   const data = await response.json();
   const items = Array.isArray(data.items) ? data.items : [];
 
-  return items.map(normalizePaymentHistoryItem);
+  return {
+    items: items.map(normalizePaymentHistoryItem),
+    hasNext: Boolean(data.hasNext ?? data.has_next),
+  };
 }
 
 export async function fetchPaymentDetail(
@@ -599,6 +636,10 @@ function normalizePaymentHistoryItem(
     ? (response.cards as Record<string, unknown>[])
     : [];
   const firstCard = cards[0];
+  const discountAmount = cards.reduce(
+    (sum, card) => sum + toNumberValue(card.discountAmount ?? card.discount_amount),
+    0,
+  );
 
   return {
     id: paymentId,
@@ -614,6 +655,7 @@ function normalizePaymentHistoryItem(
     title: toStringValue(response.merchantName ?? response.merchant_name) || '결제',
     date: formatDateTimeToDate(paidAt),
     amount: formatCurrency(toNumberValue(response.amount)),
+    discountAmount: formatDiscountAmount(discountAmount),
   };
 }
 

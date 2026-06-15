@@ -49,6 +49,8 @@ import {
   toRemotePaymentProgressVariant,
 } from "../../payment/utils/remotePaymentAdapter";
 import {
+  fetchAllPaymentHistories,
+  fetchPaymentDetail,
   fetchPaymentHistories,
   fetchUserProfile,
   fetchUserProfileById,
@@ -294,7 +296,7 @@ export default function MainScreen({ navigation, route }: Props) {
     let isMounted = true;
 
     setIsMonthlyPaymentLoading(true);
-    fetchPaymentHistories({ period: "MONTH", status: "PAID" })
+    fetchMonthlyPaymentHistories()
       .then((payments) => {
         if (isMounted) {
           setMonthlyPayment(createMonthlyPayment(payments));
@@ -1340,15 +1342,55 @@ function isTerminalRemotePaymentStatus(
   return status === "REJECTED" || status === "COMPLETED";
 }
 
+async function fetchMonthlyPaymentHistories() {
+  const { start, end } = getCurrentMonthDateRange();
+  const payments = await fetchAllPaymentHistories({
+    start,
+    end,
+    status: "PAID",
+  });
+
+  return Promise.all(
+    payments.map(async (payment) => {
+      try {
+        return await fetchPaymentDetail(payment.id);
+      } catch {
+        return payment;
+      }
+    }),
+  );
+}
+
+function getCurrentMonthDateRange(now = new Date()) {
+  return {
+    start: formatDateParam(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: formatDateParam(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
+function formatDateParam(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function createMonthlyPayment(payments: PaymentHistoryItem[]) {
   const totalAmount = payments
     .filter((payment) => payment.status === "completed")
     .reduce((sum, payment) => sum + parseCurrency(payment.amount), 0);
+  const totalBenefitAmount = payments
+    .filter((payment) => payment.status === "completed")
+    .reduce(
+      (sum, payment) => sum + Math.abs(parseCurrency(payment.discountAmount ?? "")),
+      0,
+    );
 
   return {
     month: new Date().getMonth() + 1,
     amount: formatCurrency(totalAmount),
-    remaining: "이번 달 받은 혜택 0원",
+    remaining: `이번 달 받은 혜택 ${formatCurrency(totalBenefitAmount)}`,
   };
 }
 
